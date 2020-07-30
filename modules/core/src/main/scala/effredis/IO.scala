@@ -10,6 +10,8 @@ trait RedisIO extends Log {
   val host: String
   val port: Int
   val timeout: Int
+  val database: Int       = 0
+  val secret: Option[Any] = None
 
   val sslContext: Option[SSLContext] = None
 

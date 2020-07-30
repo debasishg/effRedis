@@ -8,7 +8,6 @@ import serialization.Format
 import cats.effect._
 import cats.implicits._
 
-
 object RedisClient {
   sealed trait SortOrder
   case object ASC extends SortOrder
@@ -39,31 +38,44 @@ object RedisClient {
 
   def makeWithURI[F[_]: ContextShift: Concurrent](
     uri: URI
-  ): Resource[F, RedisClient] = for {
+  ): Resource[F, RedisCommands[F]] = for {
     blocker <- RedisBlocker.make
     client <- acquireAndRelease(uri, blocker)
-  } yield client
+  } yield {
+    implicit val bl: Blocker = blocker 
+    RedisCommands(client, 
+      new StringOperations[F],
+      new BaseOperations[F]) 
+  }
 }
 
 trait Redis extends RedisIO with Protocol {
 
-  def send[A](command: String, args: Seq[Any])(result: => A)(implicit format: Format): A =
-    try {
-      write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-      result
-    } catch {
-      case e: RedisConnectionException =>
-        if (disconnect) send(command, args)(result)
-        else throw e
-      case e: SocketException =>
-        if (disconnect) send(command, args)(result)
-        else throw e
+  def send[F[_]: Concurrent: ContextShift, A]
+    (command: String, args: Seq[Any])
+    (result: => A)
+    (implicit format: Format, blocker: Blocker): F[A] = blocker.blockOn {
+
+      try {
+        write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
+        result.pure[F]
+      } catch {
+        case e: RedisConnectionException =>
+          if (disconnect) send(command, args)(result)
+          else throw e
+        case e: SocketException =>
+          if (disconnect) send(command, args)(result)
+          else throw e
+      }
     }
 
-  def send[A](command: String)(result: => A): A =
+  def send[F[_]: Concurrent: ContextShift, A]
+    (command: String)
+    (result: => A)
+    (implicit blocker: Blocker): F[A] = blocker.blockOn {
     try {
       write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
-      result
+      result.pure[F]
     } catch {
       case e: RedisConnectionException =>
         if (disconnect) send(command)(result)
@@ -72,6 +84,7 @@ trait Redis extends RedisIO with Protocol {
         if (disconnect) send(command)(result)
         else throw e
     }
+  }
 
   def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
 
@@ -80,12 +93,19 @@ trait Redis extends RedisIO with Protocol {
 
 }
 
+case class RedisCommands[F[_]: ContextShift: Concurrent](
+  cli: RedisClient,
+  str: algebra.StringApi[F],
+  bse: algebra.BaseApi[F]
+)
+
 trait RedisCommand
+    // extends StringOperations[IO]
     extends Redis
+    // with StringApi[IO]
 //     with BaseOperations
 //     with GeoOperations
 //     with NodeOperations
-//     with StringOperations
 //     with ListOperations
 //     with SetOperations
 //     with SortedSetOperations
@@ -95,8 +115,8 @@ trait RedisCommand
 //     with HyperLogLogOperations
     with AutoCloseable {
 
-  val database: Int       = 0
-  val secret: Option[Any] = None
+  // val database: Int       = 0
+  // val secret: Option[Any] = None
 
   override def onConnect: Unit = ??? // {
 //     secret.foreach(s => auth(s))
@@ -119,8 +139,9 @@ class RedisClient(
     override val secret: Option[Any] = None,
     override val timeout: Int = 0,
     override val sslContext: Option[SSLContext] = None
-) extends RedisCommand {
+) extends Redis with AutoCloseable {
     // with PubSub {
+  override def onConnect: Unit = ??? 
 
   def this() = this("localhost", 6379)
   def this(connectionUri: java.net.URI) = this(
