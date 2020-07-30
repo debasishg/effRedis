@@ -22,9 +22,24 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.makeWithURI[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
-      for {
-        s <- set("a", "b")
-        _ = println(s)
-      } yield ExitCode.Success
+
+      val s = System.currentTimeMillis()
+      for (i <- 0 to 10000) { 
+        for {
+          _ <- set(s"name$i", s"debasish ghosh $i")
+        } yield ()
+      }
+      val timeElapsedSet = System.currentTimeMillis() - s
+      println(s"Time elapsed in set = $timeElapsedSet")
+
+      val t = System.currentTimeMillis()
+      for (i <- 0 to 10000) { 
+        for {
+          _ <- get(s"name$i")
+        } yield ()
+      }
+      val timeElapsed = System.currentTimeMillis() - t
+      println(s"Time elapsed in get = $timeElapsed")
+      IO(ExitCode.Success)
     }
 }
