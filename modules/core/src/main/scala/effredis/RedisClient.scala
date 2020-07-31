@@ -113,10 +113,10 @@ trait RedisCommand[F[_]]
     with HashOperations[F]
     with SortedSetOperations[F]
     with NodeOperations[F]
-//     with GeoOperations
-//     with EvalOperations
+    with GeoOperations[F]
+    with EvalOperations[F]
+    with HyperLogLogOperations[F]
 //     with PubOperations
-//     with HyperLogLogOperations
     with AutoCloseable {
 
   val database: Int       = 0
