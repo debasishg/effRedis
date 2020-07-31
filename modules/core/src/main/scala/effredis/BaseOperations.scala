@@ -165,11 +165,13 @@ trait BaseOperations[F[_]] extends BaseApi[F] with Redis { self: Redis =>
   override def unwatch(): F[Boolean] =
     send("UNWATCH")(asBoolean)
 
-  override def getConfig(key: Any = "*")(implicit format: Format): F[Option[Map[String, Option[String]]]] = ???
-//   override def getConfig(key: Any = "*")(implicit format: Format): F[Option[Map[String, Option[String]]]] =
-//     send("CONFIG", List("GET", key))(asList).map { ls =>
+  override def getConfig(key: Any = "*")(implicit format: Format): F[Option[Map[String, Option[String]]]] = ??? // {
+//     val fa = send("CONFIG", List("GET", key))(asList)
+//     val ev = implicitly[Concurrent[F]]
+//     ev.fmap(fa) { ls =>
 //       ls.grouped(2).collect { case Some(k) :: v :: Nil => k -> v }.toMap
 //     }
+//   }
 
   override def setConfig(key: Any, value: Any)(implicit format: Format): F[Option[String]] =
     send("CONFIG", List("SET", key, value))(asString)

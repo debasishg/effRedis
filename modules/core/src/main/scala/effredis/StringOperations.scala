@@ -24,7 +24,6 @@ import StringApi._
 
 import scala.concurrent.duration.Duration
 
-// class StringOperations[F[_]: Concurrent: ContextShift](implicit blocker: Blocker) extends StringApi[F] with Redis {
 trait StringOperations[F[_]] extends StringApi[F] { self: Redis =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]

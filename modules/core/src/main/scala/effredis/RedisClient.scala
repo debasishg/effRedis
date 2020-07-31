@@ -67,31 +67,33 @@ trait Redis extends RedisIO with Protocol {
       result: => A
   )(implicit format: Format, blocker: Blocker): F[A] = blocker.blockOn {
 
+    val ev = implicitly[Concurrent[F]]
     try {
       write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
       result.pure[F]
     } catch {
       case e: RedisConnectionException =>
         if (disconnect) send(command, args)(result)
-        else throw e
+        else ev.raiseError(e)
       case e: SocketException =>
         if (disconnect) send(command, args)(result)
-        else throw e
+        else ev.raiseError(e)
     }
   }
 
   def send[F[_]: Concurrent: ContextShift, A](command: String)(result: => A)(implicit blocker: Blocker): F[A] =
     blocker.blockOn {
+      val ev = implicitly[Concurrent[F]]
       try {
         write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
         result.pure[F]
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command)(result)
-          else throw e
+          else ev.raiseError(e)
         case e: SocketException =>
           if (disconnect) send(command)(result)
-          else throw e
+          else ev.raiseError(e)
       }
     }
 
@@ -106,15 +108,15 @@ trait RedisCommand[F[_]]
     extends Redis
     with StringOperations[F]
     with BaseOperations[F]
-//     with GeoOperations
-//     with NodeOperations
-//     with ListOperations
-//     with SetOperations
-//     with SortedSetOperations
-//     with HashOperations
-//     with EvalOperations
+    with ListOperations[F]
+    with SetOperations[F]
+    with HashOperations[F]
+    with SortedSetOperations[F]
+    with NodeOperations[F]
+    with GeoOperations[F]
+    with EvalOperations[F]
+    with HyperLogLogOperations[F]
 //     with PubOperations
-//     with HyperLogLogOperations
     with AutoCloseable {
 
   val database: Int       = 0

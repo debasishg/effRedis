@@ -16,27 +16,30 @@
 
 package effredis
 
-import java.net.URI
 import cats.effect._
 
-object Main extends IOApp {
+object Bench extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
+    RedisClient.makeWithURI[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
-      val result = for {
+      val s = System.currentTimeMillis()
+      for (i <- 0 to 10000) {
+        for {
+          _ <- set(s"name$i", s"debasish ghosh $i")
+        } yield ()
+      }
+      val timeElapsedSet = System.currentTimeMillis() - s
+      println(s"Time elapsed in set = $timeElapsedSet")
 
-        _ <- set("key1", "debasish ghosh")
-        _ <- set("key2", 100)
-        _ <- set("key3", true)
-        d <- get("key1")
-        p <- incrby("key2", 12)
-        a <- mget("key1", "key2", "key3")
-        l <- lpush("list1", "debasish", "paramita", "aarush")
-
-      } yield (d, p, a, l)
-
-      println(result.unsafeRunSync())
+      val t = System.currentTimeMillis()
+      for (i <- 0 to 10000) {
+        for {
+          _ <- get(s"name$i")
+        } yield ()
+      }
+      val timeElapsed = System.currentTimeMillis() - t
+      println(s"Time elapsed in get = $timeElapsed")
       IO(ExitCode.Success)
     }
 }
