@@ -46,6 +46,8 @@ object Dependencies {
     val catsTestKit     = cats("testkit")
     val munitCore       = "org.scalameta" %% "munit" % V.munit
     val munitScalacheck = "org.scalameta" %% "munit-scalacheck" % V.munit
+
+    val redisclient     = "net.debasishg" %% "redisclient" % "3.30"
   }
 
   object CompilerPlugins {

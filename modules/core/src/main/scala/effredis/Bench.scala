@@ -25,21 +25,24 @@ object Bench extends IOApp {
 
       val s = System.currentTimeMillis()
       for (i <- 0 to 10000) {
-        for {
-          _ <- set(s"name$i", s"debasish ghosh $i")
-        } yield ()
+        val r = for {
+          a <- set(s"name$i", s"debasish ghosh $i")
+        } yield a
+        r.unsafeRunSync()
       }
       val timeElapsedSet = System.currentTimeMillis() - s
-      println(s"Time elapsed in set = $timeElapsedSet")
+      println(s"Time elapsed in setting 10000 keys = $timeElapsedSet")
 
       val t = System.currentTimeMillis()
       for (i <- 0 to 10000) {
-        for {
-          _ <- get(s"name$i")
-        } yield ()
+        val r = for {
+          a <- get(s"name$i")
+        } yield a
+        r.unsafeRunSync()
       }
       val timeElapsed = System.currentTimeMillis() - t
-      println(s"Time elapsed in get = $timeElapsed")
+      println(s"Time elapsed in getting 10000 values = $timeElapsed")
+
       IO(ExitCode.Success)
     }
 }
