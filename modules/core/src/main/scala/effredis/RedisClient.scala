@@ -109,11 +109,11 @@ trait RedisCommand[F[_]]
     with StringOperations[F]
     with BaseOperations[F]
     with ListOperations[F]
+    with SetOperations[F]
+    with HashOperations[F]
+    with SortedSetOperations[F]
+    with NodeOperations[F]
 //     with GeoOperations
-//     with NodeOperations
-//     with SetOperations
-//     with SortedSetOperations
-//     with HashOperations
 //     with EvalOperations
 //     with PubOperations
 //     with HyperLogLogOperations

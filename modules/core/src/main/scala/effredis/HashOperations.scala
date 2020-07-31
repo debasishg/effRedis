@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 Debasish Ghosh
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package effredis
 
 import cats.effect._
@@ -27,10 +43,13 @@ trait HashOperations[F[_]] extends HashApi[F] { self: Redis =>
   override def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Option[Map[K, V]]] =
     send("HMGET", key :: fields.toList) {
       asList.map { values =>
-        fields.zip(values).flatMap {
-          case (field, Some(value)) => Some((field, value))
-          case (_, None) => None
-        }.toMap
+        fields
+          .zip(values)
+          .flatMap {
+            case (field, Some(value)) => Some((field, value))
+            case (_, None)            => None
+          }
+          .toMap
       }
     }
 
@@ -55,18 +74,30 @@ trait HashOperations[F[_]] extends HashApi[F] { self: Redis =>
   override def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Option[List[A]]] =
     send("HVALS", List(key))(asList.map(_.flatten))
 
-  override def hgetall[K, V](key: Any)(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Option[Map[K, V]]] =
+  override def hgetall[K, V](
+      key: Any
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Option[Map[K, V]]] =
     send("HGETALL", List(key))(asListPairs[K, V].map(_.flatten.toMap))
 
-  override def hgetall1[K, V](key: Any)(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Option[Map[K, V]]] = {
+  override def hgetall1[K, V](
+      key: Any
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Option[Map[K, V]]] = {
     val fa = send("HGETALL", List(key))(asListPairs[K, V].map(_.flatten.toMap))
     val ev = implicitly[Concurrent[F]]
-    ev.fmap(fa) { 
-      case s@Some(m) if m.nonEmpty => s
-      case _ => None
+    ev.fmap(fa) {
+      case s @ Some(m) if m.nonEmpty => s
+      case _                         => None
     }
   }
 
-  override def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(implicit format: Format, parse: Parse[A]): F[Option[(Option[Int], Option[List[Option[A]]])]] =
-    send("HSCAN", key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x) (if (count == 10) Nil else List("count", count)))(asPair)
+  override def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Option[(Option[Int], Option[List[Option[A]]])]] =
+    send(
+      "HSCAN",
+      key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(
+            if (count == 10) Nil else List("count", count)
+          )
+    )(asPair)
 }
