@@ -106,9 +106,9 @@ trait RedisCommand[F[_]]
     extends Redis
     with StringOperations[F]
     with BaseOperations[F]
+    with ListOperations[F]
 //     with GeoOperations
 //     with NodeOperations
-//     with ListOperations
 //     with SetOperations
 //     with SortedSetOperations
 //     with HashOperations
