@@ -33,6 +33,7 @@ val commonSettings = Seq(
         Libraries.slf4jApi,
         Libraries.log4j,
         Libraries.redisclient,
+        Libraries.redis4cats,
         Libraries.catsLaws        % Test,
         Libraries.catsTestKit     % Test,
         Libraries.munitCore       % Test,

@@ -14,45 +14,25 @@
  * limitations under the License.
  */
 
-package effredis
-
 import cats.effect._
+import dev.profunktor.redis4cats.Redis
+import dev.profunktor.redis4cats.effect.Log.Stdout._
 
-object Bench extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
-      import cmd._
-
+object Bench4cats extends IOApp {
+  override def run(args: List[String]): IO[ExitCode] = {
+    Redis[IO].utf8("redis://localhost").use { cmd =>
       val nKeys = 100000
       val s     = System.currentTimeMillis()
-      val x = (0 to nKeys).map { i =>
-        for {
-          a <- set(s"key$i", s"debasish ghosh $i")
-        } yield a
-      }
-      x.foreach(_.unsafeRunSync)
-      /*
       for (i <- 0 to nKeys) {
-        val r = for {
-          a <- set(s"key$i", s"debasish ghosh $i")
-        } yield a
-        r.unsafeRunSync()
+        val x = for {
+          _ <- cmd.set(s"key-$i", s"debasish ghosh $i ")
+        } yield ()
+        x.unsafeRunSync
       }
-       */
       val timeElapsedSet = (System.currentTimeMillis() - s) / 1000
       println(s"Time elapsed in setting $nKeys keys = $timeElapsedSet seconds")
       println(s"Rate = ${nKeys / timeElapsedSet} sets per second")
-
-      val t = System.currentTimeMillis()
-      for (i <- 0 to 10000) {
-        val r = for {
-          a <- get(s"key$i")
-        } yield a
-        r.unsafeRunSync()
-      }
-      val timeElapsed = System.currentTimeMillis() - t
-      println(s"Time elapsed in getting 10000 values = $timeElapsed")
-
       IO(ExitCode.Success)
     }
+  }
 }
