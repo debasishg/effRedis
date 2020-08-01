@@ -18,7 +18,7 @@ package effredis
 
 import cats.effect._
 
-import serialization._
+import codecs._
 import algebra.StringApi
 import StringApi._
 

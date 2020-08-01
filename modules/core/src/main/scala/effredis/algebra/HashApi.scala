@@ -16,7 +16,7 @@
 
 package effredis.algebra
 
-import effredis.serialization.{ Format, Parse }
+import effredis.codecs.{ Format, Parse }
 
 trait HashApi[F[_]] {
 

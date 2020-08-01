@@ -19,7 +19,7 @@ package effredis
 import cats.effect._
 import RedisClient._
 import algebra.SortedSetApi
-import serialization._
+import codecs._
 
 trait SortedSetOperations[F[_]] extends SortedSetApi[F] { self: Redis =>
   implicit def blocker: Blocker

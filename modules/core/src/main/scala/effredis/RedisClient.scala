@@ -19,7 +19,7 @@ package effredis
 import java.net.{ SocketException, URI }
 import javax.net.ssl.SSLContext
 
-import serialization.Format
+import codecs.Format
 
 import cats.effect._
 import cats.implicits._
@@ -47,8 +47,11 @@ object RedisClient {
       blocker: Blocker
   ): Resource[F, RedisClient[F]] = {
 
-    val acquire: F[RedisClient[F]]         = blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
-    val release: RedisClient[F] => F[Unit] = c => { c.disconnect; ().pure[F] }
+    val acquire: F[RedisClient[F]] = {
+      blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
+    }
+    val release: RedisClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
+
     Resource.make(acquire)(release)
   }
 

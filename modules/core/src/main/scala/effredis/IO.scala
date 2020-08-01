@@ -20,7 +20,7 @@ import java.io._
 import java.net.{ InetSocketAddress, Socket, SocketTimeoutException }
 import javax.net.ssl.SSLContext
 
-import serialization.Parse.parseStringSafe
+import codecs.Parse.parseStringSafe
 
 trait RedisIO extends Log {
   val host: String

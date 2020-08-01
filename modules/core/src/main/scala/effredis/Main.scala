@@ -29,14 +29,19 @@ object Main extends IOApp {
         _ <- set("key1", "debasish ghosh")
         _ <- set("key2", 100)
         _ <- set("key3", true)
-        d <- get("key1")
+        d <- get("key2")
         p <- incrby("key2", 12)
         a <- mget("key1", "key2", "key3")
         l <- lpush("list1", "debasish", "paramita", "aarush")
 
       } yield (d, p, a, l)
 
-      println(result.unsafeRunSync())
+      // println(result.unsafeRunSync())
+      result.unsafeRunAsync {
+        case Left(ex)    => ex.printStackTrace
+        case Right(vals) => println(vals)
+      }
+      Thread.sleep(1000)
       IO(ExitCode.Success)
     }
 }

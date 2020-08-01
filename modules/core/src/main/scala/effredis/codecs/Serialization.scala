@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package effredis.serialization
+package effredis.codecs
 
 object Format {
   def apply(f: PartialFunction[Any, Any]): Format = new Format(f)

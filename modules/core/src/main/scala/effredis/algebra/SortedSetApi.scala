@@ -17,7 +17,7 @@
 package effredis.algebra
 
 import effredis.RedisClient.{ ASC, Aggregate, SUM, SortOrder }
-import effredis.serialization.{ Format, Parse }
+import effredis.codecs.{ Format, Parse }
 
 trait SortedSetApi[F[_]] {
 

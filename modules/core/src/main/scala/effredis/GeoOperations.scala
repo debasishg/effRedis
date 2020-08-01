@@ -18,7 +18,7 @@ package effredis
 
 import cats.effect._
 import algebra.GeoApi
-import serialization._
+import codecs._
 
 trait GeoOperations[F[_]] extends GeoApi[F] { self: Redis =>
   implicit def blocker: Blocker

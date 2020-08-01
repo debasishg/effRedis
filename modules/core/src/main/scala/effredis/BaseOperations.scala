@@ -18,9 +18,8 @@ package effredis
 
 import cats.effect.{ Blocker, Concurrent, ContextShift }
 import algebra.BaseApi
-import serialization._
+import codecs._
 
-// class BaseOperations[F[_]: Concurrent: ContextShift](implicit blocker: Blocker) extends BaseApi[F] with Redis {
 trait BaseOperations[F[_]] extends BaseApi[F] with Redis { self: Redis =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]

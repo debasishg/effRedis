@@ -18,7 +18,7 @@ package effredis
 
 import cats.effect._
 import algebra.ListApi
-import serialization._
+import codecs._
 
 trait ListOperations[F[_]] extends ListApi[F] { self: Redis =>
   implicit def blocker: Blocker

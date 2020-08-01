@@ -16,7 +16,7 @@
 
 package effredis
 
-import serialization.Parse
+import codecs.Parse
 import Parse.{ Implicits => Parsers }
 
 case class GeoRadiusMember(

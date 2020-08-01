@@ -17,7 +17,7 @@
 package effredis.algebra
 
 import effredis.GeoRadiusMember
-import effredis.serialization.{ Format, Parse }
+import effredis.codecs.{ Format, Parse }
 
 trait GeoApi[F[_]] {
 

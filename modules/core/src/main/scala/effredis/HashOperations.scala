@@ -18,7 +18,7 @@ package effredis
 
 import cats.effect._
 import algebra.HashApi
-import serialization._
+import codecs._
 
 trait HashOperations[F[_]] extends HashApi[F] { self: Redis =>
   implicit def blocker: Blocker
