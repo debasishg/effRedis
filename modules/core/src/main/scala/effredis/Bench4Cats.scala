@@ -19,7 +19,7 @@ import dev.profunktor.redis4cats.Redis
 import dev.profunktor.redis4cats.effect.Log.Stdout._
 
 object Bench4cats extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
+  override def run(args: List[String]): IO[ExitCode] =
     Redis[IO].utf8("redis://localhost").use { cmd =>
       val nKeys = 100000
       val s     = System.currentTimeMillis()
@@ -34,5 +34,4 @@ object Bench4cats extends IOApp {
       println(s"Rate = ${nKeys / timeElapsedSet} sets per second")
       IO(ExitCode.Success)
     }
-  }
 }

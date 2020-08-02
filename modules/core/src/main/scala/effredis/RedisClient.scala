@@ -19,7 +19,7 @@ package effredis
 import java.net.{ SocketException, URI }
 import javax.net.ssl.SSLContext
 
-import codecs.Format
+import codecs.{ Format, Parse }
 
 import cats.effect._
 import cats.implicits._
@@ -100,11 +100,50 @@ trait Redis extends RedisIO with Protocol {
       }
     }
 
+  var handlers: Vector[() => Any] = Vector.empty
+
+  def sendPipeline[F[_]: Concurrent: ContextShift, A](command: String, args: Seq[Any])(
+      result: => A
+  )(implicit format: Format, blocker: Blocker): F[A] = blocker.blockOn {
+    write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
+    handlers :+= (() => result)
+    receive(singleLineReply).map(Parse.parseDefault)
+    null.asInstanceOf[F[A]]
+  }
+
+  def sendPipeline[F[_]: Concurrent: ContextShift, A](command: String)(result: => A)(implicit blocker: Blocker): F[A] =
+    blocker.blockOn {
+      write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
+      handlers :+= (() => result)
+      receive(singleLineReply).map(Parse.parseDefault)
+      null.asInstanceOf[F[A]]
+    }
+
+  def pipeline[F[_]: Concurrent: ContextShift](client: RedisClient[F], f: RedisClient[F] => Any)(
+      implicit blocker: Blocker
+  ): F[Option[List[Any]]] = {
+    val ev = implicitly[Concurrent[F]]
+    sendPipeline("MULTI")(asString).flatMap { _ =>
+      try {
+        try {
+          f(client)
+        } catch {
+          case e: Exception =>
+            sendPipeline("DISCARD")(asString)
+            ev.raiseError(e)
+        }
+        sendPipeline("EXEC")(asExec(handlers))
+      } catch {
+        case th: RedisMultiExecException =>
+          ev.raiseError(th)
+      }
+    }
+  }
+
   def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
 
   protected def flattenPairs(in: Iterable[Product2[Any, Any]]): List[Any] =
     in.iterator.flatMap(x => Iterator(x._1, x._2)).toList
-
 }
 
 trait RedisCommand[F[_]]
