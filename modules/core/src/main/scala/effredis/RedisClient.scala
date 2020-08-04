@@ -34,7 +34,7 @@ object RedisClient {
   case object MIN extends Aggregate
   case object MAX extends Aggregate
 
-  private def extractDatabaseNumber(connectionUri: java.net.URI): Int =
+  private[effredis] def extractDatabaseNumber(connectionUri: java.net.URI): Int =
     Option(connectionUri.getPath)
       .map(path =>
         if (path.isEmpty) 0
@@ -42,7 +42,7 @@ object RedisClient {
       )
       .getOrElse(0)
 
-  private[effredis] def acquireAndRelease[F[_]: Concurrent: ContextShift](
+  private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift](
       uri: URI,
       blocker: Blocker
   ): Resource[F, RedisClient[F]] = {
@@ -55,90 +55,79 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
-  def makeWithURI[F[_]: ContextShift: Concurrent](
+  private[effredis] def acquireAndReleasePipelineClient[F[+_]: Concurrent: ContextShift](
+      parent: RedisClient[F],
+      blocker: Blocker
+  ): Resource[F, PipelineClient[F]] = {
+
+    val acquire: F[PipelineClient[F]] = {
+      blocker.blockOn((new PipelineClient[F](parent)).pure[F])
+    }
+    val release: PipelineClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
+
+    Resource.make(acquire)(release)
+  }
+
+  def makeWithURI[F[+_]: ContextShift: Concurrent](
       uri: URI
   ): Resource[F, RedisClient[F]] =
     for {
       blocker <- RedisBlocker.make
       client <- acquireAndRelease(uri, blocker)
     } yield client
+
+  def makePipelineClientWithURI[F[+_]: ContextShift: Concurrent](
+      parent: RedisClient[F]
+  ): Resource[F, PipelineClient[F]] =
+    for {
+      blocker <- RedisBlocker.make
+      client <- acquireAndReleasePipelineClient(parent, blocker)
+    } yield client
 }
 
-trait Redis extends RedisIO with Protocol {
+abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Protocol {
 
-  def send[F[_]: Concurrent: ContextShift, A](command: String, args: Seq[Any])(
+  def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[A] = blocker.blockOn {
+  )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
 
-    val ev = implicitly[Concurrent[F]]
     try {
+      // val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      // println(s"sending ${new String(cmd)}")
+
       write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-      result.pure[F]
+      Right(Right(result)).pure[F]
     } catch {
       case e: RedisConnectionException =>
         if (disconnect) send(command, args)(result)
-        else ev.raiseError(e)
+        else Left(e.getMessage()).pure[F]
       case e: SocketException =>
         if (disconnect) send(command, args)(result)
-        else ev.raiseError(e)
+        else Left(e.getMessage()).pure[F]
+      case e: Exception =>
+        Left(e.getMessage()).pure[F]
     }
   }
 
-  def send[F[_]: Concurrent: ContextShift, A](command: String)(result: => A)(implicit blocker: Blocker): F[A] =
+  def send[A](command: String)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
-      val ev = implicitly[Concurrent[F]]
       try {
+        // val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+        // println(s"sending ${new String(cmd)}")
+
         write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
-        result.pure[F]
+        Right(Right(result)).pure[F]
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command)(result)
-          else ev.raiseError(e)
+          else Left(e.getMessage()).pure[F]
         case e: SocketException =>
           if (disconnect) send(command)(result)
-          else ev.raiseError(e)
+          else Left(e.getMessage()).pure[F]
+        case e: Exception =>
+          Left(e.getMessage()).pure[F]
       }
     }
-
-  var handlers: Vector[() => Any] = Vector.empty
-
-  def sendPipeline[F[_]: Concurrent: ContextShift, A](command: String, args: Seq[Any])(
-      result: => A
-  )(implicit format: Format, blocker: Blocker): F[A] = blocker.blockOn {
-    write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-    handlers :+= (() => result)
-    receive(singleLineReply).map(Parse.parseDefault)
-    null.asInstanceOf[F[A]]
-  }
-
-  def sendPipeline[F[_]: Concurrent: ContextShift, A](command: String)(result: => A)(implicit blocker: Blocker): F[A] =
-    blocker.blockOn {
-      write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
-      handlers :+= (() => result)
-      receive(singleLineReply).map(Parse.parseDefault)
-      null.asInstanceOf[F[A]]
-    }
-
-  def pipeline[F[_]: Concurrent: ContextShift](client: RedisClient[F], f: RedisClient[F] => Any)(
-      implicit blocker: Blocker
-  ): F[Option[List[Any]]] = {
-    val ev = implicitly[Concurrent[F]]
-    sendPipeline("MULTI")(asString).flatMap { _ =>
-      try {
-        try {
-          f(client)
-        } catch {
-          case e: Exception =>
-            sendPipeline("DISCARD")(asString)
-            ev.raiseError(e)
-        }
-        sendPipeline("EXEC")(asExec(handlers))
-      } catch {
-        case th: RedisMultiExecException =>
-          ev.raiseError(th)
-      }
-    }
-  }
 
   def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
 
@@ -146,8 +135,8 @@ trait Redis extends RedisIO with Protocol {
     in.iterator.flatMap(x => Iterator(x._1, x._2)).toList
 }
 
-trait RedisCommand[F[_]]
-    extends Redis
+trait RedisCommand[F[+_]]
+    extends Redis[F]
     with StringOperations[F]
     with BaseOperations[F]
     with ListOperations[F]
@@ -175,7 +164,7 @@ trait RedisCommand[F[_]]
   }
 }
 
-class RedisClient[F[_]: Concurrent: ContextShift](
+class RedisClient[F[+_]: Concurrent: ContextShift](
     override val host: String,
     override val port: Int,
     override val database: Int = 0,
@@ -202,4 +191,76 @@ class RedisClient[F[_]: Concurrent: ContextShift](
   )
   override def toString: String = host + ":" + String.valueOf(port) + "/" + database
   override def close(): Unit    = { disconnect; () }
+
+  def transaction(
+      client: PipelineClient[F]
+  )(f: PipelineClient[F] => Any): F[RedisResponse[Option[List[Any]]]] = {
+    implicit val b = blocker
+    send("MULTI")(asString).flatMap { _ =>
+      try {
+        try {
+          f(client)
+        } catch {
+          case e: Exception =>
+            Left(e.getMessage()).pure[F]
+        }
+        send("EXEC")(asExec(client.handlers.map(_._2)))
+      } catch {
+        case th: RedisMultiExecException =>
+          Left(th.getMessage()).pure[F]
+        case e: Exception =>
+          Left(e.getMessage()).pure[F]
+      }
+    }
+  }
+}
+
+class PipelineClient[F[+_]: Concurrent: ContextShift](parent: RedisClient[F]) extends RedisCommand[F] {
+
+  def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
+  def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
+  def blocker: Blocker                 = parent.blocker
+
+  var handlers: Vector[(String, () => Any)] = Vector.empty
+
+  override def send[A](command: String, args: Seq[Any])(
+      result: => A
+  )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
+    try {
+      write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
+      handlers :+= ((command, () => result))
+      Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+    } catch {
+      case e: Exception => Left(e.getMessage()).pure[F]
+    }
+  }
+
+  override def send[A](command: String)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
+    blocker.blockOn {
+      try {
+        write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
+        handlers :+= ((command, () => result))
+        Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+      } catch {
+        case e: Exception => Left(e.getMessage()).pure[F]
+      }
+    }
+
+  val host              = parent.host
+  val port              = parent.port
+  val timeout           = parent.timeout
+  override val secret   = parent.secret
+  override val database = parent.database
+
+  // TODO: Find a better abstraction
+  override def connected                = parent.connected
+  override def connect                  = parent.connect
+  override def disconnect               = parent.disconnect
+  override def clearFd                  = parent.clearFd
+  override def write(data: Array[Byte]) = parent.write(data)
+  override def readLine                 = parent.readLine
+  override def readCounted(count: Int)  = parent.readCounted(count)
+  override def onConnect()              = parent.onConnect()
+
+  override def close(): Unit = parent.close()
 }

@@ -15,22 +15,23 @@
  */
 
 package effredis
-package algebra
 
-trait HyperLogLogApi[F[+_]] {
+// import java.net.URI
+import cats.effect._
 
-  /**
-    * Add a value to the hyperloglog (>= 2.8.9)
-    */
-  def pfadd(key: Any, value: Any, values: Any*): F[RedisResponse[Option[Long]]]
+object Pipeline extends IOApp {
+  override def run(args: List[String]): IO[ExitCode] = ???
+  /*
+    RedisClient.makePipelineClientWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
+      import cmd._
 
-  /**
-    * Get the estimated cardinality from one or more keys (>= 2.8.9)
-    */
-  def pfcount(keys: Any*): F[RedisResponse[Option[Long]]]
+      val result = for {
+        d <- pipe()
 
-  /**
-    * Merge existing keys (>= 2.8.9)
-    */
-  def pfmerge(destination: Any, sources: Any*): F[RedisResponse[Boolean]]
+      } yield (d)
+
+      println(result.unsafeRunSync())
+      IO(ExitCode.Success)
+    }
+ */
 }

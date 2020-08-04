@@ -27,7 +27,7 @@ object Bench extends IOApp {
       val s     = System.currentTimeMillis()
       val x = (0 to nKeys).map { i =>
         for {
-          a <- set(s"key$i", s"debasish ghosh $i")
+          a <- set(s"ley$i", s"debasish ghosh $i")
         } yield a
       }
       x.foreach(_.unsafeRunSync)

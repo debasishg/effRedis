@@ -60,7 +60,7 @@ case class RedisMultiExecException(message: String) extends RuntimeException(mes
 
 private[effredis] trait Reply {
 
-  type Reply[T]         = PartialFunction[(Char, Array[Byte]), T]
+  type Reply[+T]        = PartialFunction[(Char, Array[Byte]), T]
   type SingleReply      = Reply[Option[Array[Byte]]]
   type MultiReply       = Reply[Option[List[Option[Array[Byte]]]]]
   type MultiNestedReply = Reply[Option[List[Option[List[Option[Array[Byte]]]]]]]
@@ -127,7 +127,15 @@ private[effredis] trait Reply {
       Parsers.parseInt(str) match {
         case -1 => None
         case n if n == handlers.size =>
-          Some(handlers.map(_.apply).toList)
+          Some(
+            handlers.map { h =>
+              try {
+                h.apply
+              } catch {
+                case e: Exception => e.getMessage()
+              }
+            }.toList
+          )
         case n => throw new Exception("Protocol error: Expected " + handlers.size + " results, but got " + n)
       }
   }
@@ -299,7 +307,8 @@ private[effredis] trait R extends Reply {
       case _                     => None
     }
 
-  def asAny = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
+  def asAny                     = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
+  def asPipelinedResult(n: Int) = List.fill(n)(asAny)
 }
 
 trait Protocol extends R

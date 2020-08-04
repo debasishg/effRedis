@@ -18,30 +18,32 @@ package effredis
 
 import java.net.URI
 import cats.effect._
+import cats.implicits._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
+      /*
       val result = for {
 
-        _ <- set("key1", "debasish ghosh")
-        _ <- set("key2", 100)
-        _ <- set("key3", true)
-        d <- get("key2")
-        p <- incrby("key2", 12)
-        a <- mget("key1", "key2", "key3")
-        l <- lpush("list1", "debasish", "paramita", "aarush")
+        a <- set("k1", "v1")
+        b <- set("k2", "v2")
+        c <- lpop("k1")
 
-      } yield (d, p, a, l)
+      } yield (a, b, c)
+       */
+
+      val r = (set("k1", "v1"), get("k1"), lpop("k1")).mapN((a, b, c) => List(a, b, c))
+      // val r = (set("k1", "v1"), get("k1")).mapN{ (a, b) => List(a, b)}
+      println(r.unsafeRunSync()) // .unsafeRunSync())
 
       // println(result.unsafeRunSync())
-      result.unsafeRunAsync {
-        case Left(ex)    => ex.printStackTrace
-        case Right(vals) => println(vals)
-      }
-      Thread.sleep(1000)
+      // result.unsafeRunAsync {
+      // case Left(ex)    => ex.printStackTrace
+      // case Right(vals) => println(vals)
+      // }
       IO(ExitCode.Success)
     }
 }
