@@ -313,7 +313,7 @@ private[effredis] trait R extends Reply {
       case _                     => None
     }
 
-  def asAny                     = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
+  def asAny = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
 }
 
 trait Protocol extends R

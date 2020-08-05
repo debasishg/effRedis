@@ -20,7 +20,7 @@ import java.net.URI
 import cats.effect._
 
 object Pipeline extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = 
+  override def run(args: List[String]): IO[ExitCode] =
     RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cli =>
       RedisClient.makeTransactionClientWithURI[IO](cli, true).use { txnClient =>
         import txnClient._

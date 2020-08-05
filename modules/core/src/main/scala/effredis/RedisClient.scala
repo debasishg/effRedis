@@ -87,7 +87,7 @@ object RedisClient {
 
   def makeTransactionClientWithURI[F[+_]: ContextShift: Concurrent](
       parent: RedisClient[F],
-      pipelineMode: Boolean = false,
+      pipelineMode: Boolean = false
   ): Resource[F, TransactionClient[F]] =
     for {
       blocker <- RedisBlocker.make
@@ -119,7 +119,9 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
     }
   }
 
-  def send[A](command: String, pipelineMode: Boolean = false)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
+  def send[A](command: String, pipelineMode: Boolean = false)(
+      result: => A
+  )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
         // val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
@@ -211,8 +213,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
     implicit val b = blocker
     try {
       val _ = f(client)
-      client
-        .parent
+      client.parent
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
       case e: Exception => Left(e.getMessage).pure[F]
@@ -232,12 +233,11 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
               .map(_._1)
               .filter(_ == "DISCARD")
               .isEmpty) {
-          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap {_ => 
+          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
             client.handlers = Vector.empty
             ().pure[F]
           }
-        }
-        else {
+        } else {
           client.handlers = Vector.empty
           Left(TxnDiscarded).pure[F]
         }
@@ -251,8 +251,8 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
 }
 
 class TransactionClient[F[+_]: Concurrent: ContextShift](
-  val parent: RedisClient[F],
-  pipelineMode: Boolean = false
+    val parent: RedisClient[F],
+    pipelineMode: Boolean = false
 ) extends RedisCommand[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
@@ -260,14 +260,14 @@ class TransactionClient[F[+_]: Concurrent: ContextShift](
   def blocker: Blocker                 = parent.blocker
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
-  val commandBuffer: StringBuffer = new StringBuffer
+  val commandBuffer: StringBuffer           = new StringBuffer
 
   override def send[A](command: String, args: Seq[Any])(
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
     try {
       val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      val q = "\r\n"
+      val q   = "\r\n"
       if (!pipelineMode) {
         write(cmd)
         handlers :+= ((command, () => result))
@@ -282,11 +282,13 @@ class TransactionClient[F[+_]: Concurrent: ContextShift](
     }
   }
 
-  override def send[A](command: String, pipeline: Boolean = false)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
+  override def send[A](command: String, pipeline: Boolean = false)(
+      result: => A
+  )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
         val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        val q = "\r\n"
+        val q   = "\r\n"
         if (!pipelineMode) {
           write(cmd)
           handlers :+= ((command, () => result))
