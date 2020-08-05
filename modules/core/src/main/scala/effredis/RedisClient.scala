@@ -65,11 +65,12 @@ object RedisClient {
 
   private[effredis] def acquireAndReleaseTransactionClient[F[+_]: Concurrent: ContextShift](
       parent: RedisClient[F],
+      pipelineMode: Boolean,
       blocker: Blocker
   ): Resource[F, TransactionClient[F]] = {
 
     val acquire: F[TransactionClient[F]] = {
-      blocker.blockOn((new TransactionClient[F](parent)).pure[F])
+      blocker.blockOn((new TransactionClient[F](parent, pipelineMode)).pure[F])
     }
     val release: TransactionClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
 
@@ -85,11 +86,12 @@ object RedisClient {
     } yield client
 
   def makeTransactionClientWithURI[F[+_]: ContextShift: Concurrent](
-      parent: RedisClient[F]
+      parent: RedisClient[F],
+      pipelineMode: Boolean = false,
   ): Resource[F, TransactionClient[F]] =
     for {
       blocker <- RedisBlocker.make
-      client <- acquireAndReleaseTransactionClient(parent, blocker)
+      client <- acquireAndReleaseTransactionClient(parent, pipelineMode, blocker)
     } yield client
 }
 
@@ -117,13 +119,18 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
     }
   }
 
-  def send[A](command: String)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
+  def send[A](command: String, pipelineMode: Boolean = false)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
         // val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
         // println(s"sending ${new String(cmd)}")
 
-        write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
+        if (!pipelineMode) {
+          write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
+        } else {
+          write(command.getBytes("UTF-8"))
+        }
+
         Right(Right(result)).pure[F]
       } catch {
         case e: RedisConnectionException =>
@@ -200,6 +207,18 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
   override def toString: String = host + ":" + String.valueOf(port) + "/" + database
   override def close(): Unit    = { disconnect; () }
 
+  def pipeline(client: TransactionClient[F])(f: TransactionClient[F] => Any): F[RedisResponse[Option[List[Any]]]] = {
+    implicit val b = blocker
+    try {
+      val _ = f(client)
+      client
+        .parent
+        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+    } catch {
+      case e: Exception => Left(e.getMessage).pure[F]
+    }
+  }
+
   def transaction(
       client: TransactionClient[F]
   )(f: TransactionClient[F] => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
@@ -212,8 +231,12 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
         if (client.handlers
               .map(_._1)
               .filter(_ == "DISCARD")
-              .isEmpty)
-          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_))
+              .isEmpty) {
+          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap {_ => 
+            client.handlers = Vector.empty
+            ().pure[F]
+          }
+        }
         else {
           client.handlers = Vector.empty
           Left(TxnDiscarded).pure[F]
@@ -227,32 +250,52 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
   }
 }
 
-class TransactionClient[F[+_]: Concurrent: ContextShift](parent: RedisClient[F]) extends RedisCommand[F] {
+class TransactionClient[F[+_]: Concurrent: ContextShift](
+  val parent: RedisClient[F],
+  pipelineMode: Boolean = false
+) extends RedisCommand[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
   def blocker: Blocker                 = parent.blocker
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
+  val commandBuffer: StringBuffer = new StringBuffer
 
   override def send[A](command: String, args: Seq[Any])(
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
     try {
-      write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-      handlers :+= ((command, () => result))
-      Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      val q = "\r\n"
+      if (!pipelineMode) {
+        write(cmd)
+        handlers :+= ((command, () => result))
+        Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+      } else {
+        handlers :+= ((command, () => result))
+        commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ q)
+        Right(Left(Some("Buffered"))).pure[F]
+      }
     } catch {
       case e: Exception => Left(e.getMessage()).pure[F]
     }
   }
 
-  override def send[A](command: String)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
+  override def send[A](command: String, pipeline: Boolean = false)(result: => A)(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
-        write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
-        handlers :+= ((command, () => result))
-        Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+        val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+        val q = "\r\n"
+        if (!pipelineMode) {
+          write(cmd)
+          handlers :+= ((command, () => result))
+          Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+        } else {
+          handlers :+= ((command, () => result))
+          commandBuffer.append(command ++ q)
+          Right(Left(Some("Buffered"))).pure[F]
+        }
       } catch {
         case e: Exception => Left(e.getMessage()).pure[F]
       }

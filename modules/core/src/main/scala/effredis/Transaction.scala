@@ -22,8 +22,8 @@ import cats.implicits._
 
 object Transaction extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { parent =>
-      RedisClient.makeTransactionClientWithURI[IO](parent).use { txnClient =>
+    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cli =>
+      RedisClient.makeTransactionClientWithURI[IO](cli).use { txnClient =>
         import txnClient._
 
         val r1 = parent.transaction(txnClient) { _ =>

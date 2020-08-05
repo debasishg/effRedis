@@ -39,6 +39,12 @@ private[effredis] object Commands {
 
   val LS = "\r\n".getBytes("UTF-8")
 
+  def makeString(command: String, args: List[Any] = List.empty): String = {
+    val q = s""""\r\n""""
+    // s"$command ${args.map(_.toString).mkString("""\r\n""")}"""\r\n""""
+    s"$command ${args.map(_.toString).mkString(" ")}$q"
+  }
+
   def multiBulk(args: Seq[Array[Byte]]): Array[Byte] = {
     val b = new scala.collection.mutable.ArrayBuilder.ofByte
     b ++= "*%d".format(args.size).getBytes
@@ -308,7 +314,6 @@ private[effredis] trait R extends Reply {
     }
 
   def asAny                     = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
-  def asPipelinedResult(n: Int) = List.fill(n)(asAny)
 }
 
 trait Protocol extends R

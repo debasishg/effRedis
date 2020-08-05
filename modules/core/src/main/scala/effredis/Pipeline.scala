@@ -16,22 +16,23 @@
 
 package effredis
 
-// import java.net.URI
+import java.net.URI
 import cats.effect._
 
 object Pipeline extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = ???
-  /*
-    RedisClient.makePipelineClientWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
-      import cmd._
+  override def run(args: List[String]): IO[ExitCode] = 
+    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cli =>
+      RedisClient.makeTransactionClientWithURI[IO](cli, true).use { txnClient =>
+        import txnClient._
 
-      val result = for {
-        d <- pipe()
-
-      } yield (d)
-
-      println(result.unsafeRunSync())
-      IO(ExitCode.Success)
+        val r1 = parent.pipeline(txnClient) { _ =>
+          List(
+            set("k1", "v1"),
+            get("k1")
+          )
+        }
+        println(r1.unsafeRunSync)
+        IO(ExitCode.Success)
+      }
     }
- */
 }
