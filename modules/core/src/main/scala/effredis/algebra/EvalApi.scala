@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package effredis.algebra
+package effredis
+package algebra
 
-import effredis.codecs.{ Format, Parse }
+import codecs.{ Format, Parse }
 
-trait EvalApi[F[_]] {
+trait EvalApi[F[+_]] {
 
   /**
     * evaluates lua code on the server.
@@ -26,34 +27,33 @@ trait EvalApi[F[_]] {
   def evalMultiBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Option[List[Option[A]]]]
+  ): F[RedisResponse[Option[List[Option[A]]]]]
 
   def evalBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Option[A]]
+  ): F[RedisResponse[Option[A]]]
 
-  def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Option[Int]]
+  def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[RedisResponse[Option[Int]]]
 
   def evalMultiSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Option[List[Option[A]]]]
+  ): F[RedisResponse[Option[List[Option[A]]]]]
 
   def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Option[A]]
+  ): F[RedisResponse[Option[A]]]
 
   def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Option[A]]
+  ): F[RedisResponse[Option[A]]]
 
-  def scriptLoad(luaCode: String): F[Option[String]]
+  def scriptLoad(luaCode: String): F[RedisResponse[Option[String]]]
 
-  def scriptExists(shahash: String): F[Option[Int]]
+  def scriptExists(shahash: String): F[RedisResponse[Option[Int]]]
 
-  def scriptFlush: F[Option[String]]
-
+  def scriptFlush: F[RedisResponse[Option[String]]]
 }

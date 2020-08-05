@@ -39,6 +39,12 @@ private[effredis] object Commands {
 
   val LS = "\r\n".getBytes("UTF-8")
 
+  def makeString(command: String, args: List[Any] = List.empty): String = {
+    val q = s""""\r\n""""
+    // s"$command ${args.map(_.toString).mkString("""\r\n""")}"""\r\n""""
+    s"$command ${args.map(_.toString).mkString(" ")}$q"
+  }
+
   def multiBulk(args: Seq[Array[Byte]]): Array[Byte] = {
     val b = new scala.collection.mutable.ArrayBuilder.ofByte
     b ++= "*%d".format(args.size).getBytes
@@ -60,7 +66,7 @@ case class RedisMultiExecException(message: String) extends RuntimeException(mes
 
 private[effredis] trait Reply {
 
-  type Reply[T]         = PartialFunction[(Char, Array[Byte]), T]
+  type Reply[+T]        = PartialFunction[(Char, Array[Byte]), T]
   type SingleReply      = Reply[Option[Array[Byte]]]
   type MultiReply       = Reply[Option[List[Option[Array[Byte]]]]]
   type MultiNestedReply = Reply[Option[List[Option[List[Option[Array[Byte]]]]]]]
@@ -127,7 +133,15 @@ private[effredis] trait Reply {
       Parsers.parseInt(str) match {
         case -1 => None
         case n if n == handlers.size =>
-          Some(handlers.map(_.apply).toList)
+          Some(
+            handlers.map { h =>
+              try {
+                h.apply
+              } catch {
+                case e: Exception => e.getMessage()
+              }
+            }.toList
+          )
         case n => throw new Exception("Protocol error: Expected " + handlers.size + " results, but got " + n)
       }
   }
