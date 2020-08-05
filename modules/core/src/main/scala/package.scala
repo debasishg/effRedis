@@ -16,5 +16,6 @@
 
 package object effredis {
   type Error            = String
-  type RedisResponse[A] = Either[Error, Either[Option[String], A]]
+  type Queued           = Option[String]
+  type RedisResponse[A] = Either[Error, Either[Queued, A]]
 }

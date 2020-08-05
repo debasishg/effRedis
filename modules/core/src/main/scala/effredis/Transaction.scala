@@ -23,33 +23,31 @@ import cats.implicits._
 object Transaction extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { parent =>
-      RedisClient.makePipelineClientWithURI[IO](parent).use { c =>
-        import c._
+      RedisClient.makeTransactionClientWithURI[IO](parent).use { txnClient =>
+        import txnClient._
 
-        val r1 = parent.transaction(c) { _ =>
-          val t1 =
-            (
-              set("k11", "v11"),
-              set("k12", true),
-              lpop("k12"),
-              get("k12")
-            ).mapN { case (a, b, c, d) => List(a, b, c, d) }
-
-          val t2 =
-            (
-              set("k13", "v13"),
-              get("k13")
-            ).mapN { case (a, b) => List(a, b) }
-
-          t1.combine(t2)
+        val r1 = parent.transaction(txnClient) { _ =>
+          List(
+            set("k1", "v1"),
+            set("k2", 100),
+            incrby("k2", 12),
+            get("k1"),
+            get("k2"),
+            lpop("k1")
+            // discard,
+            // get("k2"),
+          ).sequence
         }
 
         r1.unsafeRunSync() match {
 
-          case Right(Right(ls)) => ls.foreach(println)
-          case Left(err)        => println(err)
-          case _                => println("oops!")
-
+          case Right(Right(ls)) => { println("success!"); ls.foreach(println) }
+          case Left(state) =>
+            state match {
+              case TxnDiscarded      => println("Transaction discarded")
+              case TxnError(message) => println(message)
+            }
+          case err => println(s"oops! $err")
         }
         IO(ExitCode.Success)
       }

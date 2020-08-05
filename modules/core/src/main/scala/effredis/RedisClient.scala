@@ -24,6 +24,14 @@ import codecs.{ Format, Parse }
 import cats.effect._
 import cats.implicits._
 
+// sealed trait RedisResp
+// case class NormalResp[A](a: A) extends RedisResp
+// case object QueuedResp extends RedisResp
+// case class ErrorResp(message: String) extends RedisResp
+sealed trait TransactionState
+case object TxnDiscarded extends TransactionState
+case class TxnError(message: String) extends TransactionState
+
 object RedisClient {
   sealed trait SortOrder
   case object ASC extends SortOrder
@@ -55,15 +63,15 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
-  private[effredis] def acquireAndReleasePipelineClient[F[+_]: Concurrent: ContextShift](
+  private[effredis] def acquireAndReleaseTransactionClient[F[+_]: Concurrent: ContextShift](
       parent: RedisClient[F],
       blocker: Blocker
-  ): Resource[F, PipelineClient[F]] = {
+  ): Resource[F, TransactionClient[F]] = {
 
-    val acquire: F[PipelineClient[F]] = {
-      blocker.blockOn((new PipelineClient[F](parent)).pure[F])
+    val acquire: F[TransactionClient[F]] = {
+      blocker.blockOn((new TransactionClient[F](parent)).pure[F])
     }
-    val release: PipelineClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
+    val release: TransactionClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
 
     Resource.make(acquire)(release)
   }
@@ -76,12 +84,12 @@ object RedisClient {
       client <- acquireAndRelease(uri, blocker)
     } yield client
 
-  def makePipelineClientWithURI[F[+_]: ContextShift: Concurrent](
+  def makeTransactionClientWithURI[F[+_]: ContextShift: Concurrent](
       parent: RedisClient[F]
-  ): Resource[F, PipelineClient[F]] =
+  ): Resource[F, TransactionClient[F]] =
     for {
       blocker <- RedisBlocker.make
-      client <- acquireAndReleasePipelineClient(parent, blocker)
+      client <- acquireAndReleaseTransactionClient(parent, blocker)
     } yield client
 }
 
@@ -193,29 +201,33 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
   override def close(): Unit    = { disconnect; () }
 
   def transaction(
-      client: PipelineClient[F]
-  )(f: PipelineClient[F] => Any): F[RedisResponse[Option[List[Any]]]] = {
+      client: TransactionClient[F]
+  )(f: TransactionClient[F] => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
+
     implicit val b = blocker
+
     send("MULTI")(asString).flatMap { _ =>
       try {
-        try {
-          f(client)
-        } catch {
-          case e: Exception =>
-            Left(e.getMessage()).pure[F]
+        val _ = f(client)
+        if (client.handlers
+              .map(_._1)
+              .filter(_ == "DISCARD")
+              .isEmpty)
+          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_))
+        else {
+          client.handlers = Vector.empty
+          Left(TxnDiscarded).pure[F]
         }
-        send("EXEC")(asExec(client.handlers.map(_._2)))
+
       } catch {
-        case th: RedisMultiExecException =>
-          Left(th.getMessage()).pure[F]
         case e: Exception =>
-          Left(e.getMessage()).pure[F]
+          Left(TxnError(e.getMessage())).pure[F]
       }
     }
   }
 }
 
-class PipelineClient[F[+_]: Concurrent: ContextShift](parent: RedisClient[F]) extends RedisCommand[F] {
+class TransactionClient[F[+_]: Concurrent: ContextShift](parent: RedisClient[F]) extends RedisCommand[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
