@@ -24,10 +24,6 @@ import codecs.{ Format, Parse }
 import cats.effect._
 import cats.implicits._
 
-// sealed trait RedisResp
-// case class NormalResp[A](a: A) extends RedisResp
-// case object QueuedResp extends RedisResp
-// case class ErrorResp(message: String) extends RedisResp
 sealed trait TransactionState
 case object TxnDiscarded extends TransactionState
 case class TxnError(message: String) extends TransactionState
@@ -56,9 +52,14 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] = {
 
     val acquire: F[RedisClient[F]] = {
+      println("Acquiring RedisClient")
       blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
     }
-    val release: RedisClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
+    val release: RedisClient[F] => F[Unit] = { c => 
+      println("Releasing RedisClient")
+      c.disconnect
+      ().pure[F] 
+    }
 
     Resource.make(acquire)(release)
   }
@@ -70,14 +71,19 @@ object RedisClient {
   ): Resource[F, TransactionClient[F]] = {
 
     val acquire: F[TransactionClient[F]] = {
+      println("Acquiring TransactionClient")
       blocker.blockOn((new TransactionClient[F](parent, pipelineMode)).pure[F])
     }
-    val release: TransactionClient[F] => F[Unit] = { c => c.disconnect; ().pure[F] }
+    val release: TransactionClient[F] => F[Unit] = { c => 
+      println("Releasing TransactionClient")
+      c.disconnect
+      ().pure[F] 
+    }
 
     Resource.make(acquire)(release)
   }
 
-  def makeWithURI[F[+_]: ContextShift: Concurrent](
+  def make[F[+_]: ContextShift: Concurrent](
       uri: URI
   ): Resource[F, RedisClient[F]] =
     for {
@@ -85,7 +91,7 @@ object RedisClient {
       client <- acquireAndRelease(uri, blocker)
     } yield client
 
-  def makeTransactionClientWithURI[F[+_]: ContextShift: Concurrent](
+  def withDecorator[F[+_]: ContextShift: Concurrent](
       parent: RedisClient[F],
       pipelineMode: Boolean = false
   ): Resource[F, TransactionClient[F]] =

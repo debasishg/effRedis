@@ -22,8 +22,8 @@ import cats.implicits._
 
 object Transaction extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.makeTransactionClientWithURI[IO](cli).use { txnClient =>
+    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
+      RedisClient.withDecorator[IO](cli).use { txnClient =>
         import txnClient._
 
         val r1 = parent.transaction(txnClient) { _ =>
@@ -41,7 +41,7 @@ object Transaction extends IOApp {
 
         r1.unsafeRunSync() match {
 
-          case Right(Right(ls)) => { println("success!"); ls.foreach(println) }
+          case Right(Right(ls)) => ls.foreach(println)
           case Left(state) =>
             state match {
               case TxnDiscarded      => println("Transaction discarded")

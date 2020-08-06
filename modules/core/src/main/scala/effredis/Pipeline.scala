@@ -21,14 +21,17 @@ import cats.effect._
 
 object Pipeline extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.makeTransactionClientWithURI[IO](cli, true).use { txnClient =>
+    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
+      RedisClient.withDecorator[IO](cli, true).use { txnClient =>
         import txnClient._
 
         val r1 = parent.pipeline(txnClient) { _ =>
           List(
             set("k1", "v1"),
-            get("k1")
+            get("k1"),
+            set("k2", 100),
+            incrby("k2", 12),
+            get("k2")
           )
         }
         println(r1.unsafeRunSync)

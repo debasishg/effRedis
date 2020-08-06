@@ -22,7 +22,7 @@ import cats.implicits._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
+    RedisClient.make[IO](new URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
       /*

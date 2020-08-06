@@ -20,7 +20,7 @@ import cats.effect._
 
 object Bench extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
+    RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
       val nKeys = 100000
