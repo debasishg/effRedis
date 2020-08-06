@@ -23,10 +23,10 @@ import cats.implicits._
 object Transaction extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.withDecorator[IO](cli).use { txnClient =>
+      RedisClient.withSequencingDecorator[IO](cli).use { txnClient =>
         import txnClient._
 
-        val r1 = parent.transaction(txnClient) { _ =>
+        val r1 = parent.transaction(txnClient) { () =>
           List(
             set("k1", "v1"),
             set("k2", 100),
