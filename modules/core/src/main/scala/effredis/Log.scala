@@ -16,33 +16,55 @@
 
 package effredis
 
-import org.slf4j.LoggerFactory
+import cats.Applicative
+import cats.effect.Sync
 
-trait Log {
-  private val log = LoggerFactory.getLogger(getClass)
+/**
+  * Typeclass used for internal logging such as acquiring and releasing connections.
+  *
+  * It is recommended to use `log4cats` for production usage but if you do not want
+  * the extra dependency, you can opt to use either of the simple instances provided.
+  *
+  * If you don't need logging at all, you can use [[Log.NoOp]]
+  *
+  * {{{
+  * import dev.profunktor.redis4cats.effect.Log.NoOp._
+  * }}}
+  *
+  * If you need simple logging to STDOUT for quick debugging, you can use [[Log.Stdout]]
+  *
+  * {{{
+  * import dev.profunktor.redis4cats.effect.Log.Stdout._
+  * }}}
+  * */
+trait Log[F[_]] {
+  def debug(msg: => String): F[Unit]
+  def error(msg: => String): F[Unit]
+  def info(msg: => String): F[Unit]
+}
 
-  def ifTrace(message: => String): Unit = if (log.isTraceEnabled) trace(message)
-  def trace(message: String, values: AnyRef*): Unit =
-    log.trace(message, values: _*)
-  def trace(message: String, error: Throwable): Unit = log.trace(message, error)
+object Log {
+  def apply[F[_]](implicit ev: Log[F]): Log[F] = ev
 
-  def ifDebug(message: => String): Unit = if (log.isDebugEnabled) debug(message)
-  def debug(message: String, values: AnyRef*): Unit =
-    log.debug(message, values: _*)
-  def debug(message: String, error: Throwable): Unit = log.debug(message, error)
+  object NoOp {
+    implicit def instance[F[_]: Applicative]: Log[F] =
+      new Log[F] {
+        def debug(msg: => String): F[Unit] = F.unit
+        def error(msg: => String): F[Unit] = F.unit
+        def info(msg: => String): F[Unit]  = F.unit
+      }
+  }
 
-  def ifInfo(message: => String): Unit = if (log.isInfoEnabled) info(message)
-  def info(message: String, values: AnyRef*): Unit =
-    log.info(message, values: _*)
-  def info(message: String, error: Throwable): Unit = log.info(message, error)
+  object Stdout {
+    implicit def instance[F[_]: Sync]: Log[F] =
+      new Log[F] {
+        def debug(msg: => String): F[Unit] =
+          F.delay(Console.out.println(msg))
+        def error(msg: => String): F[Unit] =
+          F.delay(Console.err.println(msg))
+        def info(msg: => String): F[Unit] =
+          F.delay(Console.out.println(msg))
+      }
+  }
 
-  def ifWarn(message: => String): Unit = if (log.isWarnEnabled) warn(message)
-  def warn(message: String, values: AnyRef*): Unit =
-    log.warn(message, values: _*)
-  def warn(message: String, error: Throwable): Unit = log.warn(message, error)
-
-  def ifError(message: => String): Unit = if (log.isErrorEnabled) error(message)
-  def error(message: String, values: AnyRef*): Unit =
-    log.error(message, values: _*)
-  def error(message: String, error: Throwable): Unit = log.error(message, error)
 }

@@ -20,9 +20,9 @@ import java.io._
 import java.net.{ InetSocketAddress, Socket, SocketTimeoutException }
 import javax.net.ssl.SSLContext
 
-import codecs.Parse.parseStringSafe
+// import codecs.Parse.parseStringSafe
 
-trait RedisIO extends Log {
+trait RedisIO { // extends Log {
   val host: String
   val port: Int
   val timeout: Int
@@ -85,7 +85,7 @@ trait RedisIO extends Log {
 
   // Writes data to a socket using the specified block.
   def write(data: Array[Byte]): Unit = {
-    ifDebug("C: " + parseStringSafe(data))
+    // ifDebug("C: " + parseStringSafe(data))
     if (!connected) connect
     write_to_socket { os =>
       try {

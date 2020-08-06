@@ -52,11 +52,9 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] = {
 
     val acquire: F[RedisClient[F]] = {
-      println("Acquiring RedisClient")
       blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
     }
     val release: RedisClient[F] => F[Unit] = { c =>
-      println("Releasing RedisClient")
       c.disconnect
       ().pure[F]
     }
@@ -71,11 +69,9 @@ object RedisClient {
   ): Resource[F, SequencingDecorator[F]] = {
 
     val acquire: F[SequencingDecorator[F]] = {
-      println("Acquiring SequencingDecorator")
       blocker.blockOn((new SequencingDecorator[F](parent, pipelineMode)).pure[F])
     }
     val release: SequencingDecorator[F] => F[Unit] = { c =>
-      println("Releasing SequencingDecorator")
       c.disconnect
       ().pure[F]
     }
@@ -236,11 +232,13 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
     send("MULTI")(asString).flatMap { _ =>
       try {
         val _ = f()
-        // val _ = client.handlers.map(_._2).map(_())
+
+        // no exec if discard
         if (client.handlers
               .map(_._1)
               .filter(_ == "DISCARD")
               .isEmpty) {
+
           send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
             client.handlers = Vector.empty
             ().pure[F]

@@ -61,7 +61,8 @@ lazy val noPublish = Seq(
 lazy val `effredis-root` = project
   .in(file("."))
   .aggregate(
-    `effredis-core`
+    `effredis-core`,
+    `effredis-log4cats`
   )
   .settings(noPublish)
 
@@ -70,3 +71,11 @@ lazy val `effredis-core` = project
   .settings(commonSettings: _*)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
+
+lazy val `effredis-log4cats` = project
+  .in(file("modules/log4cats"))
+  .settings(commonSettings: _*)
+  .settings(libraryDependencies += Libraries.log4CatsCore)
+  .settings(parallelExecution in Test := false)
+  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(`effredis-core`)
