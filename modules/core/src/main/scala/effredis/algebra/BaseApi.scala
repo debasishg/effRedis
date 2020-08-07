@@ -197,6 +197,8 @@ trait BaseApi[F[+_]] {
     * discard transaction
     */
   def discard: F[RedisResponse[Boolean]]
+  def multi: F[RedisResponse[Option[String]]]
+  def exec(hs: Seq[() => Any]): F[RedisResponse[Option[List[Any]]]]
 
   def echo(message: Any)(implicit format: Format): F[RedisResponse[Option[String]]]
 }

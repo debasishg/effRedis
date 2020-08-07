@@ -24,6 +24,8 @@ import codecs.{ Format, Parse }
 import cats.effect._
 import cats.implicits._
 
+import util.hlist._
+
 sealed trait TransactionState
 case object TxnDiscarded extends TransactionState
 case class TxnError(message: String) extends TransactionState
@@ -104,8 +106,8 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
 
     try {
-      // val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      // println(s"sending ${new String(cmd)}")
+      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      println(s"sending ${new String(cmd)}")
 
       write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
       Right(Right(result)).pure[F]
@@ -127,8 +129,8 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
   )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
-        // val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        // println(s"sending ${new String(cmd)}")
+        val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+        println(s"sending ${new String(cmd)}")
 
         if (!pipelineMode) {
           write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
@@ -223,6 +225,44 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
     }
   }
 
+  def htxn1[In <: HList](client: SequencingDecorator[F])(commands: In) = {
+    implicit val b = blocker
+    send("MULTI")(asString).flatMap { _ =>
+      val _ = evaluate(commands, HNil)
+      send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
+        client.handlers = Vector.empty
+        ().pure[F]
+      }
+    }
+  }
+
+  def htxn2[In <: HList](client: SequencingDecorator[F])(commands: () => In) = {
+    multi.flatMap { _ =>
+      val _ = commands()
+      exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+        client.handlers = Vector.empty
+        ().pure[F]
+      }
+    }
+  }
+
+  def htxn3[In <: HList](client: SequencingDecorator[F])(commands: () => In) = {
+    multi.flatMap { _ =>
+      val _ = commands()
+      exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+        client.handlers = Vector.empty
+        ().pure[F]
+      }
+    }
+  }
+
+  def evaluate[In <: HList, Out <: HList](commands: In, res: Out): F[Any] = {
+    commands match {
+      case HNil                           => F.pure(res)
+      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res)) 
+    }
+  }
+
   def transaction(
       client: SequencingDecorator[F]
   )(f: () => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
@@ -272,13 +312,15 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift](
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
     try {
+      println(s"command = $command ${args} pipeline: $pipelineMode")
       val cmd  = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
       val crlf = "\r\n"
-      if (!pipelineMode) {
+      if (!pipelineMode) { // transaction mode
         write(cmd)
         handlers :+= ((command, () => result))
         Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
-      } else {
+
+      } else { // pipeline mode
         handlers :+= ((command, () => result))
         commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
         Right(Left(Some("Buffered"))).pure[F]
