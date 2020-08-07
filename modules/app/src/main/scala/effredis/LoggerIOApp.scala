@@ -16,26 +16,20 @@
 
 package effredis
 
-import java.net.URI
-import cats.effect._
+import io.chrisdavenport.log4cats.Logger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import cats.effect.{ ExitCode, IO, IOApp }
 
-object Pipeline extends IOApp {
+/**
+  * Provides an instance of `Log` given an instance of `Logger`.
+  *
+  * For simplicity and re-usability in all the examples.
+  * */
+trait LoggerIOApp extends IOApp {
+
+  implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.withSequencingDecorator[IO](cli, true).use { txnClient =>
-        import txnClient._
+    IO(ExitCode.Success)
 
-        val r1 = parent.pipeline(txnClient) { () =>
-          List(
-            set("k1", "v1"),
-            get("k1"),
-            set("k2", 100),
-            incrby("k2", 12),
-            get("k2")
-          )
-        }
-        println(r1.unsafeRunSync)
-        IO(ExitCode.Success)
-      }
-    }
 }

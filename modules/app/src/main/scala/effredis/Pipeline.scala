@@ -18,32 +18,25 @@ package effredis
 
 import java.net.URI
 import cats.effect._
-import cats.implicits._
+import log4cats._
 
-object Main extends IOApp {
+object Pipeline extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cmd =>
-      import cmd._
+    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
+      RedisClient.withSequencingDecorator[IO](cli, true).use { txnClient =>
+        import txnClient._
 
-      /*
-      val result = for {
-
-        a <- set("k1", "v1")
-        b <- set("k2", "v2")
-        c <- lpop("k1")
-
-      } yield (a, b, c)
-       */
-
-      val r = (set("k1", "v1"), get("k1"), lpop("k1")).mapN((a, b, c) => List(a, b, c))
-      // val r = (set("k1", "v1"), get("k1")).mapN{ (a, b) => List(a, b)}
-      println(r.unsafeRunSync()) // .unsafeRunSync())
-
-      // println(result.unsafeRunSync())
-      // result.unsafeRunAsync {
-      // case Left(ex)    => ex.printStackTrace
-      // case Right(vals) => println(vals)
-      // }
-      IO(ExitCode.Success)
+        val r1 = parent.pipeline(txnClient) { () =>
+          List(
+            set("k1", "v1"),
+            get("k1"),
+            set("k2", 100),
+            incrby("k2", 12),
+            get("k2")
+          )
+        }
+        println(r1.unsafeRunSync)
+        IO(ExitCode.Success)
+      }
     }
 }
