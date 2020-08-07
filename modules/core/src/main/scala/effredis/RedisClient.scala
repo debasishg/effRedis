@@ -26,6 +26,14 @@ import cats.implicits._
 
 import util.hlist._
 
+/*
+sealed trait RedisResp[A]
+case class Resp[A](resp: A) extends RedisResp[A]
+case object Queued extends RedisResp[Nothing]
+case object Bufferred extends RedisResp[Nothing]
+case class Err(cause: String) extends RedisResp[Nothing]
+ */
+
 sealed trait TransactionState
 case object TxnDiscarded extends TransactionState
 case class TxnError(message: String) extends TransactionState
@@ -106,21 +114,21 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
 
     try {
-      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      println(s"sending ${new String(cmd)}")
+      // val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      // println(s"sending ${new String(cmd)}")
 
       write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-      Right(Right(result)).pure[F]
+      Right(result).pure[F]
 
     } catch {
       case e: RedisConnectionException =>
         if (disconnect) send(command, args)(result)
-        else Left(e.getMessage()).pure[F]
+        else Left(Left(e.getMessage())).pure[F]
       case e: SocketException =>
         if (disconnect) send(command, args)(result)
-        else Left(e.getMessage()).pure[F]
+        else Left(Left(e.getMessage())).pure[F]
       case e: Exception =>
-        Left(e.getMessage()).pure[F]
+        Left(Left(e.getMessage())).pure[F]
     }
   }
 
@@ -129,8 +137,8 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
   )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
-        val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        println(s"sending ${new String(cmd)}")
+        // val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+        // println(s"sending ${new String(cmd)}")
 
         if (!pipelineMode) {
           write(Commands.multiBulk(List(command.getBytes("UTF-8"))))
@@ -138,16 +146,16 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
           write(command.getBytes("UTF-8"))
         }
 
-        Right(Right(result)).pure[F]
+        Right(result).pure[F]
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command)(result)
-          else Left(e.getMessage()).pure[F]
+          else Left(Left(e.getMessage())).pure[F]
         case e: SocketException =>
           if (disconnect) send(command)(result)
-          else Left(e.getMessage()).pure[F]
+          else Left(Left(e.getMessage())).pure[F]
         case e: Exception =>
-          Left(e.getMessage()).pure[F]
+          Left(Left(e.getMessage())).pure[F]
       }
     }
 
@@ -221,47 +229,42 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
       client.parent
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
-      case e: Exception => Left(e.getMessage).pure[F]
+      case e: Exception => Left(Left(e.getMessage)).pure[F]
     }
   }
 
-  def htxn1[In <: HList](client: SequencingDecorator[F])(commands: In) = {
-    implicit val b = blocker
-    send("MULTI")(asString).flatMap { _ =>
-      val _ = evaluate(commands, HNil)
-      send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
-        client.handlers = Vector.empty
-        ().pure[F]
-      }
-    }
-  }
-
-  def htxn2[In <: HList](client: SequencingDecorator[F])(commands: () => In) = {
+  def htxn3[In <: HList](client: SequencingDecorator[F])(commands: () => In) =
     multi.flatMap { _ =>
-      val _ = commands()
-      exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
-        client.handlers = Vector.empty
-        ().pure[F]
+      try {
+        val _ = commands()
+
+        if (client.handlers
+              .map(_._1)
+              .filter(_ == "DISCARD")
+              .isEmpty) {
+
+          // exec only if no discard
+          exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+            client.handlers = Vector.empty
+            ().pure[F]
+          }
+
+        } else {
+          // no exec if discard
+          client.handlers = Vector.empty
+          Left(TxnDiscarded).pure[F]
+        }
+      } catch {
+        case e: Exception =>
+          Left(TxnError(e.getMessage())).pure[F]
       }
     }
-  }
 
-  def htxn3[In <: HList](client: SequencingDecorator[F])(commands: () => In) = {
-    multi.flatMap { _ =>
-      val _ = commands()
-      exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
-        client.handlers = Vector.empty
-        ().pure[F]
-      }
-    }
-  }
-
-  def evaluate[In <: HList, Out <: HList](commands: In, res: Out): F[Any] = {
+  def evaluate[In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
     commands match {
       case HNil                           => F.pure(res)
-      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res)) 
+      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res))
     }
-  }
 
   def transaction(
       client: SequencingDecorator[F]
@@ -312,21 +315,20 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift](
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
     try {
-      println(s"command = $command ${args} pipeline: $pipelineMode")
       val cmd  = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
       val crlf = "\r\n"
       if (!pipelineMode) { // transaction mode
         write(cmd)
         handlers :+= ((command, () => result))
-        Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+        Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
 
       } else { // pipeline mode
         handlers :+= ((command, () => result))
         commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
-        Right(Left(Some("Buffered"))).pure[F]
+        Left(Right(Some("Buffered"))).pure[F]
       }
     } catch {
-      case e: Exception => Left(e.getMessage()).pure[F]
+      case e: Exception => Left(Left(e.getMessage())).pure[F]
     }
   }
 
@@ -340,14 +342,14 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift](
         if (!pipelineMode) {
           write(cmd)
           handlers :+= ((command, () => result))
-          Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+          Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
         } else {
           handlers :+= ((command, () => result))
           commandBuffer.append(command ++ crlf)
-          Right(Left(Some("Buffered"))).pure[F]
+          Left(Right(Some("Buffered"))).pure[F]
         }
       } catch {
-        case e: Exception => Left(e.getMessage()).pure[F]
+        case e: Exception => Left(Left(e.getMessage())).pure[F]
       }
     }
 

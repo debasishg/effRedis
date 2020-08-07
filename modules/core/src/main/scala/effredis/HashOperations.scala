@@ -90,8 +90,8 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F] =>
     val fa = send("HGETALL", List(key))(asListPairs[K, V].map(_.flatten.toMap))
     val ev = implicitly[Concurrent[F]]
     ev.fmap(fa) {
-      case s @ Right(Right(Some(m))) if m.nonEmpty => s
-      case _                                       => Right(Right(None))
+      case s @ Right(Some(m)) if m.nonEmpty => s
+      case _                                => Right(None)
     }
   }
 

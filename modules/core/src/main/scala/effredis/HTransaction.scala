@@ -31,19 +31,19 @@ object HTransaction extends IOApp {
         // val cmds = txnClient.parent.multi :: set("k1", "v1") :: set("k2", "v2") :: get("k1") :: get("k2") :: HNil
         // val r = cli.htxn1(txnClient)(cmds)
 
-        val cmds = { () => 
-          set("k1", "v1") :: 
-          set("k2", "v2") :: 
-          get("k1")       :: 
-          get("k2")       :: 
-          HNil 
+        val cmds = { () =>
+          set("k1", "v1") ::
+            set("k2", "v2") ::
+            get("k1") ::
+            get("k2") ::
+            HNil
         }
 
-        val r = cli.htxn2(txnClient)(cmds)
+        val r = cli.htxn3(txnClient)(cmds)
 
         r.unsafeRunSync() match {
 
-          case Right(Right(Right(Some(ls)))) => { println("in success"); ls.foreach(println) }
+          case Right(Right(Some(ls))) => { println("in success"); ls.foreach(println) }
           // case Some(Right(Right(Right(Some(ls))))) => { println("in success"); println(ls.unsafeRunSync) }
 //           case Left(state) =>
 //             state match {

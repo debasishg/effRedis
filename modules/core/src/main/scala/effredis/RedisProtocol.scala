@@ -150,12 +150,16 @@ private[effredis] trait Reply {
   }
 
   def execReply2[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](handlers: In) =
-    evaluate(handlers, HNil).map { _ match {
-      case HNil => None
-      case x => Some(x)
-    }}
+    evaluate(handlers, HNil).map {
+      _ match {
+        case HNil => None
+        case x    => Some(x)
+      }
+    }
 
-  def execReply1[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](handlers: In): PartialFunction[(Char, Array[Byte]), Option[F[Any]]] = {
+  def execReply1[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](
+      handlers: In
+  ): PartialFunction[(Char, Array[Byte]), Option[F[Any]]] = {
     case (MULTI, str) =>
       Parsers.parseInt(str) match {
         case -1 => None
@@ -166,12 +170,11 @@ private[effredis] trait Reply {
       }
   }
 
-  def evaluate[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](commands: In, res: Out): F[Any] = {
+  def evaluate[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
     commands match {
       case HNil                           => F.pure(res)
-      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res)) 
+      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res))
     }
-  }
 
   val errReply: Reply[Nothing] = {
     case (ERR, s) => throw new Exception(Parsers.parseString(s))
