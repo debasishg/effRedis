@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
-package object effredis {
-  type Error            = String
-  type Queued           = Option[String]
-  type RedisResponse[A] = Either[Either[Error, Queued], A]
+package effredis
+
+import io.chrisdavenport.log4cats.Logger
+
+object log4cats {
+
+  implicit def log4CatsInstance[F[_]: Logger]: Log[F] =
+    new Log[F] {
+      def debug(msg: => String): F[Unit] = F.debug(msg)
+      def error(msg: => String): F[Unit] = F.error(msg)
+      def info(msg: => String): F[Unit]  = F.info(msg)
+    }
+
 }

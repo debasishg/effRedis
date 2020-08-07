@@ -24,6 +24,16 @@ import codecs.{ Format, Parse }
 import cats.effect._
 import cats.implicits._
 
+import util.hlist._
+
+/*
+sealed trait RedisResp[A]
+case class Resp[A](resp: A) extends RedisResp[A]
+case object Queued extends RedisResp[Nothing]
+case object Bufferred extends RedisResp[Nothing]
+case class Err(cause: String) extends RedisResp[Nothing]
+ */
+
 sealed trait TransactionState
 case object TxnDiscarded extends TransactionState
 case class TxnError(message: String) extends TransactionState
@@ -52,32 +62,28 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] = {
 
     val acquire: F[RedisClient[F]] = {
-      println("Acquiring RedisClient")
       blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
     }
-    val release: RedisClient[F] => F[Unit] = { c => 
-      println("Releasing RedisClient")
+    val release: RedisClient[F] => F[Unit] = { c =>
       c.disconnect
-      ().pure[F] 
+      ().pure[F]
     }
 
     Resource.make(acquire)(release)
   }
 
-  private[effredis] def acquireAndReleaseTransactionClient[F[+_]: Concurrent: ContextShift](
+  private[effredis] def acquireAndReleaseSequencingDecorator[F[+_]: Concurrent: ContextShift](
       parent: RedisClient[F],
       pipelineMode: Boolean,
       blocker: Blocker
-  ): Resource[F, TransactionClient[F]] = {
+  ): Resource[F, SequencingDecorator[F]] = {
 
-    val acquire: F[TransactionClient[F]] = {
-      println("Acquiring TransactionClient")
-      blocker.blockOn((new TransactionClient[F](parent, pipelineMode)).pure[F])
+    val acquire: F[SequencingDecorator[F]] = {
+      blocker.blockOn((new SequencingDecorator[F](parent, pipelineMode)).pure[F])
     }
-    val release: TransactionClient[F] => F[Unit] = { c => 
-      println("Releasing TransactionClient")
+    val release: SequencingDecorator[F] => F[Unit] = { c =>
       c.disconnect
-      ().pure[F] 
+      ().pure[F]
     }
 
     Resource.make(acquire)(release)
@@ -91,13 +97,13 @@ object RedisClient {
       client <- acquireAndRelease(uri, blocker)
     } yield client
 
-  def withDecorator[F[+_]: ContextShift: Concurrent](
+  def withSequencingDecorator[F[+_]: ContextShift: Concurrent](
       parent: RedisClient[F],
       pipelineMode: Boolean = false
-  ): Resource[F, TransactionClient[F]] =
+  ): Resource[F, SequencingDecorator[F]] =
     for {
       blocker <- RedisBlocker.make
-      client <- acquireAndReleaseTransactionClient(parent, pipelineMode, blocker)
+      client <- acquireAndReleaseSequencingDecorator(parent, pipelineMode, blocker)
     } yield client
 }
 
@@ -112,16 +118,17 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
       // println(s"sending ${new String(cmd)}")
 
       write(Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply))))
-      Right(Right(result)).pure[F]
+      Right(result).pure[F]
+
     } catch {
       case e: RedisConnectionException =>
         if (disconnect) send(command, args)(result)
-        else Left(e.getMessage()).pure[F]
+        else Left(Left(e.getMessage())).pure[F]
       case e: SocketException =>
         if (disconnect) send(command, args)(result)
-        else Left(e.getMessage()).pure[F]
+        else Left(Left(e.getMessage())).pure[F]
       case e: Exception =>
-        Left(e.getMessage()).pure[F]
+        Left(Left(e.getMessage())).pure[F]
     }
   }
 
@@ -139,16 +146,16 @@ abstract class Redis[F[+_]: Concurrent: ContextShift] extends RedisIO with Proto
           write(command.getBytes("UTF-8"))
         }
 
-        Right(Right(result)).pure[F]
+        Right(result).pure[F]
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command)(result)
-          else Left(e.getMessage()).pure[F]
+          else Left(Left(e.getMessage())).pure[F]
         case e: SocketException =>
           if (disconnect) send(command)(result)
-          else Left(e.getMessage()).pure[F]
+          else Left(Left(e.getMessage())).pure[F]
         case e: Exception =>
-          Left(e.getMessage()).pure[F]
+          Left(Left(e.getMessage())).pure[F]
       }
     }
 
@@ -215,30 +222,66 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
   override def toString: String = host + ":" + String.valueOf(port) + "/" + database
   override def close(): Unit    = { disconnect; () }
 
-  def pipeline(client: TransactionClient[F])(f: TransactionClient[F] => Any): F[RedisResponse[Option[List[Any]]]] = {
+  def pipeline(client: SequencingDecorator[F])(f: () => Any): F[RedisResponse[Option[List[Any]]]] = {
     implicit val b = blocker
     try {
-      val _ = f(client)
+      val _ = f()
       client.parent
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
-      case e: Exception => Left(e.getMessage).pure[F]
+      case e: Exception => Left(Left(e.getMessage)).pure[F]
     }
   }
 
+  def htxn3[In <: HList](client: SequencingDecorator[F])(commands: () => In) =
+    multi.flatMap { _ =>
+      try {
+        val _ = commands()
+
+        if (client.handlers
+              .map(_._1)
+              .filter(_ == "DISCARD")
+              .isEmpty) {
+
+          // exec only if no discard
+          exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+            client.handlers = Vector.empty
+            ().pure[F]
+          }
+
+        } else {
+          // no exec if discard
+          client.handlers = Vector.empty
+          Left(TxnDiscarded).pure[F]
+        }
+      } catch {
+        case e: Exception =>
+          Left(TxnError(e.getMessage())).pure[F]
+      }
+    }
+
+  def evaluate[In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
+    commands match {
+      case HNil                           => F.pure(res)
+      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res))
+    }
+
   def transaction(
-      client: TransactionClient[F]
-  )(f: TransactionClient[F] => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
+      client: SequencingDecorator[F]
+  )(f: () => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
 
     implicit val b = blocker
 
     send("MULTI")(asString).flatMap { _ =>
       try {
-        val _ = f(client)
+        val _ = f()
+
+        // no exec if discard
         if (client.handlers
               .map(_._1)
               .filter(_ == "DISCARD")
               .isEmpty) {
+
           send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
             client.handlers = Vector.empty
             ().pure[F]
@@ -256,7 +299,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift](
   }
 }
 
-class TransactionClient[F[+_]: Concurrent: ContextShift](
+class SequencingDecorator[F[+_]: Concurrent: ContextShift](
     val parent: RedisClient[F],
     pipelineMode: Boolean = false
 ) extends RedisCommand[F] {
@@ -272,19 +315,20 @@ class TransactionClient[F[+_]: Concurrent: ContextShift](
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
     try {
-      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      val q   = "\r\n"
-      if (!pipelineMode) {
+      val cmd  = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      val crlf = "\r\n"
+      if (!pipelineMode) { // transaction mode
         write(cmd)
         handlers :+= ((command, () => result))
-        Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
-      } else {
+        Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+
+      } else { // pipeline mode
         handlers :+= ((command, () => result))
-        commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ q)
-        Right(Left(Some("Buffered"))).pure[F]
+        commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
+        Left(Right(Some("Buffered"))).pure[F]
       }
     } catch {
-      case e: Exception => Left(e.getMessage()).pure[F]
+      case e: Exception => Left(Left(e.getMessage())).pure[F]
     }
   }
 
@@ -293,19 +337,19 @@ class TransactionClient[F[+_]: Concurrent: ContextShift](
   )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
       try {
-        val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        val q   = "\r\n"
+        val cmd  = Commands.multiBulk(List(command.getBytes("UTF-8")))
+        val crlf = "\r\n"
         if (!pipelineMode) {
           write(cmd)
           handlers :+= ((command, () => result))
-          Right(Left(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+          Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
         } else {
           handlers :+= ((command, () => result))
-          commandBuffer.append(command ++ q)
-          Right(Left(Some("Buffered"))).pure[F]
+          commandBuffer.append(command ++ crlf)
+          Left(Right(Some("Buffered"))).pure[F]
         }
       } catch {
-        case e: Exception => Left(e.getMessage()).pure[F]
+        case e: Exception => Left(Left(e.getMessage())).pure[F]
       }
     }
 

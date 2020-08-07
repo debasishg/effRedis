@@ -65,14 +65,14 @@ trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F] =>
     val fa = send("SCRIPT", List("EXISTS", shahash))(asList[String])
     val ev = implicitly[Concurrent[F]]
     ev.fmap(fa) {
-      case Right(Right(Some(list))) => {
+      case Right(Some(list)) => {
         if (list.size > 0 && list(0).isDefined) {
-          Right(Right(Some(list(0).get.toInt)))
+          Right(Some(list(0).get.toInt))
         } else {
-          Right(Right(None))
+          Right(None)
         }
       }
-      case _ => Right(Right(None))
+      case _ => Right(None)
     }
   }
 

@@ -23,11 +23,11 @@ object Bench extends IOApp {
     RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
-      val nKeys = 100000
+      val nKeys = 1000000
       val s     = System.currentTimeMillis()
       val x = (0 to nKeys).map { i =>
         for {
-          a <- set(s"ley$i", s"debasish ghosh $i")
+          a <- set(s"mey$i", s"debasish ghosh $i")
         } yield a
       }
       x.foreach(_.unsafeRunSync)
@@ -44,14 +44,15 @@ object Bench extends IOApp {
       println(s"Rate = ${nKeys / timeElapsedSet} sets per second")
 
       val t = System.currentTimeMillis()
-      for (i <- 0 to 10000) {
+      for (i <- 0 to nKeys) {
         val r = for {
-          a <- get(s"key$i")
+          a <- get(s"mey$i")
         } yield a
         r.unsafeRunSync()
       }
-      val timeElapsed = System.currentTimeMillis() - t
-      println(s"Time elapsed in getting 10000 values = $timeElapsed")
+      val timeElapsed = (System.currentTimeMillis() - t) / 1000
+      println(s"Time elapsed in getting $nKeys values = $timeElapsed seconds")
+      println(s"Rate = ${nKeys / timeElapsed} gets per second")
 
       IO(ExitCode.Success)
     }

@@ -17,36 +17,39 @@
 package effredis
 
 import java.net.URI
-import cats.effect._
-import cats.implicits._
+import util.hlist._
 
-object Transaction extends IOApp {
+import cats.effect._
+// import cats.implicits._
+
+object HTransaction extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
       RedisClient.withSequencingDecorator[IO](cli).use { txnClient =>
         import txnClient._
 
-        val r1 = parent.transaction(txnClient) { () =>
-          List(
-            set("k1", "v1"),
-            set("k2", 100),
-            incrby("k2", 12),
-            get("k1"),
-            get("k2"),
-            lpop("k1")
-            // discard,
-            // get("k2"),
-          ).sequence
+        // val cmds = txnClient.parent.multi :: set("k1", "v1") :: set("k2", "v2") :: get("k1") :: get("k2") :: HNil
+        // val r = cli.htxn1(txnClient)(cmds)
+
+        val cmds = { () =>
+          set("k1", "v1") ::
+            set("k2", "v2") ::
+            get("k1") ::
+            get("k2") ::
+            HNil
         }
 
-        r1.unsafeRunSync() match {
+        val r = cli.htxn3(txnClient)(cmds)
 
-          case Right(Right(ls)) => ls.foreach(println)
-          case Left(state) =>
-            state match {
-              case TxnDiscarded      => println("Transaction discarded")
-              case TxnError(message) => println(message)
-            }
+        r.unsafeRunSync() match {
+
+          case Right(Right(Some(ls))) => { println("in success"); ls.foreach(println) }
+          // case Some(Right(Right(Right(Some(ls))))) => { println("in success"); println(ls.unsafeRunSync) }
+//           case Left(state) =>
+//             state match {
+//               case TxnDiscarded      => println("Transaction discarded")
+//               case TxnError(message) => println(message)
+//             }
           case err => println(s"oops! $err")
         }
         IO(ExitCode.Success)
