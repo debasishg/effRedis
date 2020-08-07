@@ -62,7 +62,8 @@ lazy val `effredis-root` = project
   .in(file("."))
   .aggregate(
     `effredis-core`,
-    `effredis-log4cats`
+    `effredis-log4cats`,
+    `effredis-app`
   )
   .settings(noPublish)
 
@@ -79,3 +80,13 @@ lazy val `effredis-log4cats` = project
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
+
+lazy val `effredis-app` = project
+  .in(file("modules/app"))
+  .settings(commonSettings: _*)
+  .settings(libraryDependencies += Libraries.log4CatsSlf4j)
+  .settings(libraryDependencies += Libraries.logback % "runtime")
+  .settings(parallelExecution in Test := false)
+  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(`effredis-core`)
+  .dependsOn(`effredis-log4cats`)

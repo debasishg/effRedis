@@ -19,8 +19,9 @@ package effredis
 import java.net.URI
 import cats.effect._
 import cats.implicits._
+import log4cats._
 
-object Transaction extends IOApp {
+object Transaction extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
       RedisClient.withSequencingDecorator[IO](cli).use { txnClient =>

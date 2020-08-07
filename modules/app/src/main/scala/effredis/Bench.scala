@@ -17,8 +17,9 @@
 package effredis
 
 import cats.effect._
+import log4cats._
 
-object Bench extends IOApp {
+object Bench extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
