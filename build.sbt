@@ -63,7 +63,8 @@ lazy val `effredis-root` = project
   .aggregate(
     `effredis-core`,
     `effredis-log4cats`,
-    `effredis-app`
+    `effredis-app`,
+    `effredis-tests`
   )
   .settings(noPublish)
 
@@ -90,3 +91,10 @@ lazy val `effredis-app` = project
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
   .dependsOn(`effredis-log4cats`)
+
+lazy val `effredis-tests` = project
+  .in(file("modules/tests"))
+  .settings(commonSettings: _*)
+  .settings(noPublish)
+  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(`effredis-core`)
