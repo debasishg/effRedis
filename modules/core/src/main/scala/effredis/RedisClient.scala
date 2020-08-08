@@ -249,26 +249,24 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
               .isEmpty) {
 
           // exec only if no discard
-          exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
-            client.handlers = Vector.empty
-            ().pure[F]
+          F.debug(s"Executing transaction ..") >> {
+            exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+              client.handlers = Vector.empty
+              ().pure[F]
+            }
           }
 
         } else {
           // no exec if discard
-          client.handlers = Vector.empty
-          Left(TxnDiscarded).pure[F]
+          F.debug(s"Got discard .. discarding transaction") >> {
+            client.handlers = Vector.empty
+            Left(TxnDiscarded).pure[F]
+          }
         }
       } catch {
         case e: Exception =>
           Left(TxnError(e.getMessage())).pure[F]
       }
-    }
-
-  def evaluate[In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
-    commands match {
-      case HNil                           => F.pure(res)
-      case HCons((h: F[_] @unchecked), t) => h.flatMap(fb => evaluate(t, fb :: res))
     }
 
   def transaction(
