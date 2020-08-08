@@ -105,22 +105,23 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
       result: => A
   )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
 
-    try {
-      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      F.debug(s"Sending ${new String(cmd)}") >> {
+    val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+    F.debug(s"Sending ${new String(cmd)}") >> {
+      try {
+
         write(cmd)
         Right(result).pure[F]
-      }
 
-    } catch {
-      case e: RedisConnectionException =>
-        if (disconnect) send(command, args)(result)
-        else Left(Left(e.getMessage())).pure[F]
-      case e: SocketException =>
-        if (disconnect) send(command, args)(result)
-        else Left(Left(e.getMessage())).pure[F]
-      case e: Exception =>
-        Left(Left(e.getMessage())).pure[F]
+      } catch {
+        case e: RedisConnectionException =>
+          if (disconnect) send(command, args)(result)
+          else Left(Left(e.getMessage())).pure[F]
+        case e: SocketException =>
+          if (disconnect) send(command, args)(result)
+          else Left(Left(e.getMessage())).pure[F]
+        case e: Exception =>
+          Left(Left(e.getMessage())).pure[F]
+      }
     }
   }
 
@@ -128,24 +129,25 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
       result: => A
   )(implicit blocker: Blocker): F[RedisResponse[A]] =
     blocker.blockOn {
-      try {
-        val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        F.debug(s"Sending ${new String(cmd)}") >> {
+      val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+      F.debug(s"Sending ${new String(cmd)}") >> {
+
+        try {
 
           if (!pipelineMode) write(cmd)
           else write(command.getBytes("UTF-8"))
-
           Right(result).pure[F]
+
+        } catch {
+          case e: RedisConnectionException =>
+            if (disconnect) send(command)(result)
+            else Left(Left(e.getMessage())).pure[F]
+          case e: SocketException =>
+            if (disconnect) send(command)(result)
+            else Left(Left(e.getMessage())).pure[F]
+          case e: Exception =>
+            Left(Left(e.getMessage())).pure[F]
         }
-      } catch {
-        case e: RedisConnectionException =>
-          if (disconnect) send(command)(result)
-          else Left(Left(e.getMessage())).pure[F]
-        case e: SocketException =>
-          if (disconnect) send(command)(result)
-          else Left(Left(e.getMessage())).pure[F]
-        case e: Exception =>
-          Left(Left(e.getMessage())).pure[F]
       }
     }
 

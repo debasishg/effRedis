@@ -36,7 +36,7 @@ object Main extends LoggerIOApp {
       // Use as applicative
       case class Foo(str: String, num: Long)
 
-      val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).mapN { (_, _, k1val, k2val) =>
+      val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).parMapN { (_, _, k1val, k2val) =>
         (k1val, k2val) match {
           case (Right(Some(k1)), Right(Some(k2))) => Foo(k1, k2)
           case err                                => println(s"Error $err")
@@ -58,17 +58,24 @@ object Main extends LoggerIOApp {
       // monadic with fail
       val rsult = for {
 
-        a <- set("k1", "v1")
+        a <- set("k1", "vnew")
         b <- set("k2", "v2")
         c <- lpop("k1")
         d <- get("k1")
 
-      } yield (a, b, c, d)
+      } yield List(a, b, c, d)
 
-      rsult.unsafeRunAsync {
-        case Right(value) => println(value)
-        case Left(err)    => println(err.getMessage())
-      }
+      println(rsult.unsafeRunSync)
+
+      // applicative
+      val rs = (
+        set("k1", "vnew"),
+        set("k2", "v2"),
+        lpop("k1"),
+        get("k1")
+      ).parMapN((a, b, c, d) => List(a, b, c, d))
+
+      println(rs.unsafeRunSync())
 
       IO(ExitCode.Success)
     }
