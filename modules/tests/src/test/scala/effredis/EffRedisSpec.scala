@@ -16,7 +16,7 @@
 
 package effredis
 
-class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios {
+class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios with TestListScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
   test("strings api getset")(withRedis(stringsGetSet))
@@ -30,4 +30,14 @@ class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios {
   test("strings api strlen")(withRedis(stringsStrlen))
   test("strings api append")(withRedis(stringsAppend))
   test("strings api bit manipulation")(withRedis(stringsBitManip))
+  test("list api lpush")(withRedis(listsLPush))
+  test("list api rpush")(withRedis(listsRPush))
+  test("list api llen")(withRedis(listsLlen))
+  test("list api lrange")(withRedis(listsLrange))
+  test("list api ltrim")(withRedis(listsLtrim))
+  test("list api lindex")(withRedis(listsLIndex))
+  test("list api lset")(withRedis(listsLSet))
+  test("list api lrem")(withRedis(listsLRem))
+  test("list api lpop")(withRedis(listsLPop))
+  test("list api rpop")(withRedis(listsRPop))
 }
