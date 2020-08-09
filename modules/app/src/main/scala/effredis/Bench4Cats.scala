@@ -27,7 +27,7 @@ object Bench4cats extends IOApp {
         val x = for {
           _ <- cmd.set(s"key-$i", s"debasish ghosh $i ")
         } yield ()
-        x.unsafeRunSync
+        x.unsafeRunSync()
       }
       val timeElapsedSet = (System.currentTimeMillis() - s) / 1000
       println(s"Time elapsed in setting $nKeys keys = $timeElapsedSet seconds")

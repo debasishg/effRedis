@@ -35,7 +35,7 @@ object Pipeline extends LoggerIOApp {
             get("k2")
           )
         }
-        println(r1.unsafeRunSync)
+        println(r1.unsafeRunSync())
         IO(ExitCode.Success)
       }
     }

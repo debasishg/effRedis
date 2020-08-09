@@ -16,10 +16,10 @@
 
 package effredis
 
+import util.hlist._
 import cats.effect._
 import cats.implicits._
 import codecs.Parse
-import util.hlist._
 import Parse.{ Implicits => Parsers }
 
 case class GeoRadiusMember(
@@ -58,7 +58,7 @@ private[effredis] object Commands {
       b ++= arg
       b ++= LS
     }
-    b.result
+    b.result()
   }
 }
 
@@ -139,7 +139,7 @@ private[effredis] trait Reply {
           Some(
             handlers.map { h =>
               try {
-                h.apply
+                h.apply()
               } catch {
                 case e: Exception => e.getMessage()
               }
