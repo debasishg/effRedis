@@ -61,21 +61,7 @@ object EffRedisFunSuite {
   def getResp(resp: RedisResponse[_]): Option[_] = resp match {
     case Right(s @ Some(_)) => s
     case Right(None)        => None
+    case Left(err)          => Some(err)
     case _                  => None
   }
-
-  /*
-  def contains(resp: RedisResponse[Option[String]], str: String): Option[Boolean] =
-    resp match {
-      case Right(value) if value.isDefined => value.get == str
-      case _                               => false
-    }
-
-  def contains(resp: RedisResponse[Option[Long]], l: Long): Boolean =
-    resp match {
-      case Right(value) if value.isDefined => value.get == l
-      case _                               => false
-    }
- */
-
 }

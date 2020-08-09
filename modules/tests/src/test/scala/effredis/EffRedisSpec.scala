@@ -19,5 +19,12 @@ package effredis
 class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
-
+  test("strings api getset")(withRedis(stringsGetSet))
+  test("strings api setnx setex")(withRedis(stringsSetNxEx))
+  test("strings api incr")(withRedis(stringsIncr))
+  test("strings api decr")(withRedis(stringsDecr))
+  test("strings api mget")(withRedis(stringsMget))
+  test("strings api mset")(withRedis(stringsMset))
+  test("strings api with spaces in keys")(withRedis(stringsWithSpacesInKeys))
+  test("strings api get set range")(withRedis(stringsGetSetRange))
 }

@@ -32,7 +32,7 @@ trait StringApi[F[+_]] {
     * XX -- Only set the key if it already exist.
     * PX milliseconds -- Set the specified expire time, in milliseconds.
     */
-  def set(key: Any, value: Any, whenSet: SetBehaviour = Always, expire: Duration = null)(
+  def set(key: Any, value: Any, whenSet: SetBehaviour = Always, expire: Duration = null, keepTTL: Boolean = false)(
       implicit format: Format
   ): F[RedisResponse[Boolean]]
 
@@ -143,5 +143,5 @@ object StringApi {
   case object NX extends SetBehaviour(List("NX"))
   case object XX extends SetBehaviour(List("XX"))
   case object Always extends SetBehaviour(List.empty)
-
+  case object KeepTTL
 }

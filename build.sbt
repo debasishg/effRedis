@@ -96,5 +96,6 @@ lazy val `effredis-tests` = project
   .in(file("modules/tests"))
   .settings(commonSettings: _*)
   .settings(noPublish)
+  .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)

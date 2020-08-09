@@ -33,7 +33,8 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F] =>
       key: Any,
       value: Any,
       whenSet: SetBehaviour = Always,
-      expire: Duration = null
+      expire: Duration = null,
+      keepTTL: Boolean = false
   )(implicit format: Format): F[RedisResponse[Boolean]] = {
 
     val expireCmd = if (expire != null) {
@@ -41,7 +42,7 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F] =>
     } else {
       List.empty
     }
-    val cmd = List(key, value) ::: expireCmd ::: whenSet.command
+    val cmd = List(key, value) ::: expireCmd ::: whenSet.command ::: (if (keepTTL) List("KEEPTTL") else List.empty)
     send("SET", cmd)(asBoolean)
   }
 
