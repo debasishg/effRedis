@@ -27,11 +27,11 @@ object Main extends LoggerIOApp {
       import cmd._
 
       // just 1 command
-      println(set("k1", "v1").unsafeRunSync)
+      println(set("k1", "v1").unsafeRunSync())
 
       // List of commands
-      println(List(set("k1", "v1"), get("k1")).sequence.unsafeRunSync)
-      println(List(set("k1", "v1"), get("k1"), set("k2", 100), incrby("k2", 12)).sequence.unsafeRunSync)
+      println(List(set("k1", "v1"), get("k1")).sequence.unsafeRunSync())
+      println(List(set("k1", "v1"), get("k1"), set("k2", 100), incrby("k2", 12)).sequence.unsafeRunSync())
 
       // Use as applicative
       case class Foo(str: String, num: Long)
@@ -42,7 +42,7 @@ object Main extends LoggerIOApp {
           case err                                => println(s"Error $err")
         }
       }
-      println(res.unsafeRunSync)
+      println(res.unsafeRunSync())
 
       // monadic
       val result = for {
@@ -65,7 +65,7 @@ object Main extends LoggerIOApp {
 
       } yield List(a, b, c, d)
 
-      println(rsult.unsafeRunSync)
+      println(rsult.unsafeRunSync())
 
       // applicative
       val rs = (

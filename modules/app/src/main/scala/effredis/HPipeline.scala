@@ -38,7 +38,7 @@ object HPipeline extends LoggerIOApp {
 
         val r = cli.hpipeline(txnClient)(cmds)
 
-        println(r.unsafeRunSync)
+        println(r.unsafeRunSync())
         IO(ExitCode.Success)
       }
     }

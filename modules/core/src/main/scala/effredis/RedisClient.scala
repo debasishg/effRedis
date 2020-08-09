@@ -19,12 +19,11 @@ package effredis
 import java.net.{ SocketException, URI }
 import javax.net.ssl.SSLContext
 
+import util.hlist._
 import codecs.{ Format, Parse }
 
 import cats.effect._
 import cats.implicits._
-
-import util.hlist._
 
 sealed trait TransactionState
 case object TxnDiscarded extends TransactionState
@@ -175,7 +174,7 @@ trait RedisCommand[F[+_]]
   val database: Int       = 0
   val secret: Option[Any] = None
 
-  override def onConnect: Unit = {
+  override def onConnect(): Unit = {
     secret.foreach(s => auth(s))
     selectDatabase()
   }
@@ -368,7 +367,7 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
   override def connected                = parent.connected
   override def connect                  = parent.connect
   override def disconnect               = parent.disconnect
-  override def clearFd                  = parent.clearFd
+  override def clearFd()                = parent.clearFd()
   override def write(data: Array[Byte]) = parent.write(data)
   override def readLine                 = parent.readLine
   override def readCounted(count: Int)  = parent.readCounted(count)

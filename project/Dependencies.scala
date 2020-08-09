@@ -25,12 +25,12 @@ object Dependencies {
     def cats(artifact: String): ModuleID     = "org.typelevel"     %% s"cats-$artifact"     % V.cats
     def log4cats(artifact: String): ModuleID = "io.chrisdavenport" %% s"log4cats-$artifact" % V.log4cats
 
-    val catsEffect = "org.typelevel" %% "cats-effect" % V.catsEffect
-    val fs2Core    = "co.fs2"        %% "fs2-core"    % V.fs2
+    val catsEffect = "org.typelevel" %% "cats-effect"        % V.catsEffect
+    val fs2Core    = "co.fs2"        %% "fs2-core"           % V.fs2
 
-    val slf4jApi   = "org.slf4j"               %  "slf4j-api"               % "1.7.29"
-    val slf4jLog4j   = "org.slf4j"               %  "slf4j-log4j12"           % "1.7.29"      % "provided"
-    val log4j   = "log4j"                   %  "log4j"                   % "1.2.17"      % "provided"
+    val slf4jApi   = "org.slf4j"      %  "slf4j-api"         % "1.7.29"
+    val slf4jLog4j = "org.slf4j"      %  "slf4j-log4j12"     % "1.7.29"      % "provided"
+    val log4j      = "log4j"          %  "log4j"             % "1.2.17"      % "provided"
 
     val log4CatsCore = log4cats("core")
 

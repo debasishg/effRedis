@@ -31,7 +31,7 @@ object Bench extends LoggerIOApp {
           a <- set(s"mey$i", s"debasish ghosh $i")
         } yield a
       }
-      x.foreach(_.unsafeRunSync)
+      x.foreach(_.unsafeRunSync())
       /*
       for (i <- 0 to nKeys) {
         val r = for {

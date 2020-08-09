@@ -27,4 +27,7 @@ class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios {
   test("strings api mset")(withRedis(stringsMset))
   test("strings api with spaces in keys")(withRedis(stringsWithSpacesInKeys))
   test("strings api get set range")(withRedis(stringsGetSetRange))
+  test("strings api strlen")(withRedis(stringsStrlen))
+  test("strings api append")(withRedis(stringsAppend))
+  test("strings api bit manipulation")(withRedis(stringsBitManip))
 }

@@ -126,7 +126,7 @@ trait RedisIO { // extends Log {
         disconnect
         throw ex
     }
-    build.result
+    build.result()
   }
 
   def readCounted(count: Int): Array[Byte] = {

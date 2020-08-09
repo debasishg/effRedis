@@ -252,6 +252,103 @@ trait TestStringScenarios {
       _ <- IO(assert(getResp(x).get.toString.trim == "redis"))
       x <- get("key2")
       _ <- IO(assert(getResp(x).get.toString.length == 11))
+
+      x <- set("mykey", "This is a string")
+      _ <- IO(assert(getBoolean(x)))
+      x <- getrange[String]("mykey", 0, 3)
+      _ <- IO(assert(getResp(x).get == "This"))
+      x <- getrange[String]("mykey", -3, -1)
+      _ <- IO(assert(getResp(x).get == "ing"))
+      x <- getrange[String]("mykey", 0, -1)
+      _ <- IO(assert(getResp(x).get == "This is a string"))
+      x <- getrange[String]("mykey", 10, 100)
+      _ <- IO(assert(getResp(x).get == "string"))
+    } yield ()
+  }
+
+  def stringsStrlen(cmd: RedisCommand[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      x <- set("mykey", "Hello World")
+      _ <- IO(assert(getBoolean(x)))
+      x <- strlen("mykey")
+      _ <- IO(assert(getResp(x).get == 11))
+      x <- strlen("nonexisting")
+      _ <- IO(assert(getResp(x).get == 0))
+    } yield ()
+  }
+
+  def stringsAppend(cmd: RedisCommand[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      x <- exists("mykey")
+      _ <- IO(assert(!getBoolean(x)))
+      x <- append("mykey", "Hello")
+      _ <- IO(assert(getResp(x).get == 5))
+      x <- append("mykey", " World")
+      _ <- IO(assert(getResp(x).get == 11))
+      x <- get[String]("mykey")
+      _ <- IO(assert(getResp(x).get == "Hello World"))
+    } yield ()
+  }
+
+  def stringsBitManip(cmd: RedisCommand[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      // should set of clear the bit at offset in the string value stored at the key
+      x <- setbit("mykey", 7, 1)
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- setbit("mykey", 7, 0)
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- get("mykey")
+      _ <- IO(assert(String.format("%x", new java.math.BigInteger(getResp(x).get.toString.getBytes("UTF-8"))) == "0"))
+
+      // should return the bit value at offset in the string
+      x <- setbit("mykey", 7, 1)
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- getbit("mykey", 0)
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- getbit("mykey", 7)
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- getbit("mykey", 100)
+      _ <- IO(assert(getResp(x).get == 0))
+
+      // should do a population count
+      _ <- setbit("mykey", 7, 1)
+      x <- bitcount("mykey")
+      _ <- IO(assert(getResp(x).get == 1))
+      _ <- setbit("mykey", 8, 1)
+      x <- bitcount("mykey")
+      _ <- IO(assert(getResp(x).get == 2))
+
+      // should apply logical operators to the srckeys and store the results in destKey
+      // key1: 101
+      // key2:  10
+      _ <- setbit("key1", 0, 1)
+      _ <- setbit("key1", 2, 1)
+      _ <- setbit("key2", 1, 1)
+      x <- bitop("AND", "destKey", "key1", "key2")
+      _ <- IO(assert(getResp(x).get == 1))
+      // 101 AND 010 = 000
+      _ <- IO {
+            (0 to 2).foreach(bit => getbit("destKey", bit).flatMap(a => IO(getResp(a).get == 0)))
+          }
+
+      x <- bitop("OR", "destKey", "key1", "key2")
+      _ <- IO(assert(getResp(x).get == 1))
+      // 101 OR 010 = 111
+      _ <- IO {
+            (0 to 2).foreach(bit => getbit("destKey", bit).flatMap(a => IO(getResp(a).get == 1)))
+          }
+
+      x <- bitop("NOT", "destKey", "key1")
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- getbit("destKey", 0)
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- getbit("destKey", 1)
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- getbit("destKey", 2)
+      _ <- IO(assert(getResp(x).get == 0))
     } yield ()
   }
 }
