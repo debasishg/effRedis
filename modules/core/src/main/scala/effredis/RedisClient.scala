@@ -231,7 +231,11 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
     try {
       val _ = commands()
       client.parent
-        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList)).flatTap {r =>
+          client.handlers = Vector.empty
+          client.commandBuffer = new StringBuffer
+          r.pure[F]
+        }
     } catch {
       case e: Exception => Left(Left(e.getMessage)).pure[F]
     }
@@ -313,7 +317,7 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
   def blocker: Blocker                 = parent.blocker
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
-  val commandBuffer: StringBuffer           = new StringBuffer
+  var commandBuffer: StringBuffer           = new StringBuffer
 
   override def send[A](command: String, args: Seq[Any])(
       result: => A
