@@ -45,7 +45,7 @@ object Transaction extends LoggerIOApp {
           case Right(Right(ls)) => ls.foreach(println)
           case Left(state) =>
             state match {
-              case TxnDiscarded      => println("Transaction discarded")
+              case TxnDiscarded(cs)      => println(s"Transaction discarded $cs")
               case TxnError(message) => println(message)
             }
           case err => println(s"oops! $err")

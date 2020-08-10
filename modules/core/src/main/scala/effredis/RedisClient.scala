@@ -26,7 +26,7 @@ import cats.effect._
 import cats.implicits._
 
 sealed trait TransactionState
-case object TxnDiscarded extends TransactionState
+case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends TransactionState
 case class TxnError(message: String) extends TransactionState
 
 object RedisClient {
@@ -255,17 +255,24 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
 
           // exec only if no discard
           F.debug(s"Executing transaction ..") >> {
-            exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
-              client.handlers = Vector.empty
-              ().pure[F]
+            try {
+              exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+                client.handlers = Vector.empty
+                ().pure[F]
+              }
+            } catch {
+              case e: Exception =>
+                Left(TxnError(e.getMessage())).pure[F]
             }
           }
 
         } else {
           // no exec if discard
-          F.debug(s"Got discard .. discarding transaction") >> {
-            client.handlers = Vector.empty
-            Left(TxnDiscarded).pure[F]
+          F.debug(s"Got DISCARD .. discarding transaction") >> {
+            Left(TxnDiscarded(client.handlers)).pure[F].flatTap {r =>
+              client.handlers = Vector.empty
+              r.pure[F]
+            }
           }
         }
       } catch {
@@ -295,8 +302,10 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
             ().pure[F]
           }
         } else {
-          client.handlers = Vector.empty
-          Left(TxnDiscarded).pure[F]
+          Left(TxnDiscarded(client.handlers)).pure[F].flatTap {r =>
+            client.handlers = Vector.empty
+            r.pure[F]
+          }
         }
 
       } catch {
