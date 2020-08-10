@@ -231,7 +231,8 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
     try {
       val _ = commands()
       client.parent
-        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList)).flatTap {r =>
+        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+        .flatTap { r =>
           client.handlers = Vector.empty
           client.commandBuffer = new StringBuffer
           r.pure[F]
@@ -269,7 +270,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
         } else {
           // no exec if discard
           F.debug(s"Got DISCARD .. discarding transaction") >> {
-            Left(TxnDiscarded(client.handlers)).pure[F].flatTap {r =>
+            Left(TxnDiscarded(client.handlers)).pure[F].flatTap { r =>
               client.handlers = Vector.empty
               r.pure[F]
             }
@@ -302,7 +303,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
             ().pure[F]
           }
         } else {
-          Left(TxnDiscarded(client.handlers)).pure[F].flatTap {r =>
+          Left(TxnDiscarded(client.handlers)).pure[F].flatTap { r =>
             client.handlers = Vector.empty
             r.pure[F]
           }
