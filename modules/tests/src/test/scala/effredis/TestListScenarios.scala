@@ -309,4 +309,161 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x) == None))
     } yield ()
   }
+
+  def listsRPopLPush(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- rpush("list-1", "a")
+      _ <- rpush("list-1", "b")
+      _ <- rpush("list-1", "c")
+
+      _ <- rpush("list-2", "foo")
+      _ <- rpush("list-2", "bar")
+      x <- rpoplpush("list-1", "list-2")
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-2", 0)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- llen("list-1")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- llen("list-2")
+      _ <- IO(assert(getResp(x).get == 3))
+
+      // should rotate the list when src and dest are the same
+      _ <- rpush("list-3", "a")
+      _ <- rpush("list-3", "b")
+      _ <- rpush("list-3", "c")
+      x <- rpoplpush("list-3", "list-3")
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-3", 0)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-3", 2)
+      _ <- IO(assert(getResp(x).get == "b"))
+      x <- llen("list-3")
+      _ <- IO(assert(getResp(x).get == 3))
+
+      // should give None for non-existent key
+      x <- rpoplpush("list-4", "list-5")
+      _ <- IO(assert(getResp(x) == None))
+      x <- rpush("list-4", "a")
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- rpush("list-4", "b")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- rpoplpush("list-4", "list-5")
+      _ <- IO(assert(getResp(x).get == "b"))
+    } yield ()
+  }
+
+  def listsLPushPopWithNL(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      // lpush with newlines
+      x <- lpush("list-1", "foo\nbar\nbaz")
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- lpush("list-1", "bar\nfoo\nbaz")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- lpop("list-1")
+      _ <- IO(assert(getResp(x).get == "bar\nfoo\nbaz"))
+      x <- lpop("list-1")
+      _ <- IO(assert(getResp(x).get == "foo\nbar\nbaz"))
+    } yield ()
+  }
+
+  def listsLPushPopWithArrayBytes(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      x <- lpush("list-1", "foo\nbar\nbaz".getBytes("UTF-8"))
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- lpop("list-1")
+      _ <- IO(assert(getResp(x).get == "foo\nbar\nbaz"))
+    } yield ()
+  }
+
+  def listsBRPoplPush(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- rpush("list-1", "a")
+      _ <- rpush("list-1", "b")
+      _ <- rpush("list-1", "c")
+
+      _ <- rpush("list-2", "foo")
+      _ <- rpush("list-2", "bar")
+      x <- brpoplpush("list-1", "list-2", 2)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-2", 0)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- llen("list-1")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- llen("list-2")
+      _ <- IO(assert(getResp(x).get == 3))
+
+      // should rotate the list when src and dest are the same
+      _ <- rpush("list-3", "a")
+      _ <- rpush("list-3", "b")
+      _ <- rpush("list-3", "c")
+      x <- brpoplpush("list-3", "list-3", 2)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-3", 0)
+      _ <- IO(assert(getResp(x).get == "c"))
+      x <- lindex("list-3", 2)
+      _ <- IO(assert(getResp(x).get == "b"))
+      x <- llen("list-3")
+      _ <- IO(assert(getResp(x).get == 3))
+
+      // should time out and give None for non-existent key
+      x <- brpoplpush("test-1", "test-2", 2)
+      _ <- IO(assert(getResp(x) == None))
+      _ <- rpush("test-1", "a")
+      _ <- rpush("test-1", "b")
+      x <- brpoplpush("test-1", "test-2", 2)
+      _ <- IO(assert(getResp(x).get == "b"))
+    } yield ()
+  }
+
+  def listsBRPoplPushWithBlockingPop(cmds: (RedisClient[IO], RedisClient[IO])): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.brpoplpush("l1", "l2", 3)
+      y <- cmd1.lpop("l2")
+    } yield (x, y)
+
+    val r2 = for {
+      z <- cmd2.llen("l1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.lpush("l1", "a")
+    } yield ()
+
+    r2 *> r1.flatMap { r =>
+      val r1 = r._1
+      val r2 = r._2
+      IO(assert(getResp(r1).get == "a"))
+      IO(assert(getResp(r2).get == "a"))
+    }
+  }
+
+  def listsBLPop(cmds: (RedisClient[IO], RedisClient[IO])): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.blpop(3, "l1", "l2")
+    } yield x
+
+    val r2 = for {
+      z <- cmd2.llen("l1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.lpush("l1", "a")
+    } yield ()
+
+    // start r1 and r2 in fibers and then
+    // then join : r1 blocks but then gets
+    // the valie as soon as r2 ends
+    val f = for {
+      a <- r1.start
+      b <- r2.start
+      c <- a.join
+      _ <- b.join
+    } yield c
+
+    f.map(r => assert(getResp(r) == Some(("l1", "a"))))
+  }
 }

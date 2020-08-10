@@ -95,7 +95,10 @@ lazy val `effredis-app` = project
 lazy val `effredis-tests` = project
   .in(file("modules/tests"))
   .settings(commonSettings: _*)
+  .settings(libraryDependencies += Libraries.log4CatsSlf4j)
+  .settings(libraryDependencies += Libraries.logback % "runtime")
   .settings(noPublish)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
+  .dependsOn(`effredis-log4cats`)

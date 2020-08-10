@@ -40,4 +40,10 @@ class EffRedisSpec extends EffRedisFunSuite with TestStringScenarios with TestLi
   test("list api lrem")(withRedis(listsLRem))
   test("list api lpop")(withRedis(listsLPop))
   test("list api rpop")(withRedis(listsRPop))
+  test("list api rpoplpush")(withRedis(listsRPopLPush))
+  test("list api push pop with nl")(withRedis(listsLPushPopWithNL))
+  test("list api push pop with array bytes")(withRedis(listsLPushPopWithArrayBytes))
+  test("list api brpoplpush")(withRedis(listsBRPoplPush))
+  test("list api brpoplpush with blocking")(withRedis2(listsBRPoplPushWithBlockingPop))
+  test("list api blocking with blpop")(withRedis2(listsBLPop))
 }
