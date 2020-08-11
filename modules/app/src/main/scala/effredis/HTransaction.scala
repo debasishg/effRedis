@@ -33,7 +33,7 @@ object HTransaction extends LoggerIOApp {
             set("k2", "v2") ::
             get("k1") ::
             get("k2") ::
-            discard ::
+            // discard ::
             HNil
         }
 
@@ -41,14 +41,14 @@ object HTransaction extends LoggerIOApp {
 
         r.unsafeRunSync() match {
 
-          case Right(Right(Some(ls))) => ls.foreach(println)
+          case Right(Value(Some(ls))) => ls.foreach(println)
           case Left(state) =>
             state match {
               case TxnDiscarded(cs)  => println(s"Transaction discarded $cs")
               case TxnError(message) => println(message)
             }
-          case Right(Left(ex)) => println(s"Error $ex")
-          case err             => println(s"oops! $err")
+          case Right(RedisError(ex)) => println(s"Error $ex")
+          case err                   => println(s"oops! $err")
 
         }
         IO(ExitCode.Success)

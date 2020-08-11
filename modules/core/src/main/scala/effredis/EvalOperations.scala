@@ -28,55 +28,55 @@ trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F] =>
   override def evalMultiBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[Option[A]]]]] =
+  ): F[Resp[Option[List[Option[A]]]]] =
     send("EVAL", argsForEval(luaCode, keys, args))(asList[A])
 
   override def evalBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[A]]] =
+  ): F[Resp[Option[A]]] =
     send("EVAL", argsForEval(luaCode, keys, args))(asBulk)
 
-  override def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[RedisResponse[Option[Int]]] =
+  override def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Resp[Option[Int]]] =
     send("EVAL", argsForEval(luaCode, keys, args))(asInt)
 
   override def evalMultiSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[Option[A]]]]] =
+  ): F[Resp[Option[List[Option[A]]]]] =
     send("EVALSHA", argsForEval(shahash, keys, args))(asList[A])
 
   override def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[A]]] =
+  ): F[Resp[Option[A]]] =
     send("EVALSHA", argsForEval(shahash, keys, args))(asAny.asInstanceOf[Option[A]])
 
   override def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[A]]] =
+  ): F[Resp[Option[A]]] =
     send("EVALSHA", argsForEval(shahash, keys, args))(asBulk)
 
-  override def scriptLoad(luaCode: String): F[RedisResponse[Option[String]]] =
+  override def scriptLoad(luaCode: String): F[Resp[Option[String]]] =
     send("SCRIPT", List("LOAD", luaCode))(asBulk)
 
-  override def scriptExists(shahash: String): F[RedisResponse[Option[Int]]] = {
+  override def scriptExists(shahash: String): F[Resp[Option[Int]]] = {
     val fa = send("SCRIPT", List("EXISTS", shahash))(asList[String])
     val ev = implicitly[Concurrent[F]]
     ev.fmap(fa) {
-      case Right(Some(list)) => {
+      case Value(Some(list)) => {
         if (list.size > 0 && list(0).isDefined) {
-          Right(Some(list(0).get.toInt))
+          Value(Some(list(0).get.toInt))
         } else {
-          Right(None)
+          Value(None)
         }
       }
-      case _ => Right(None)
+      case _ => Value(None)
     }
   }
 
-  override def scriptFlush: F[RedisResponse[Option[String]]] =
+  override def scriptFlush: F[Resp[Option[String]]] =
     send("SCRIPT", List("FLUSH"))(asString)
 
   private def argsForEval(luaCode: String, keys: List[Any], args: List[Any]): List[Any] =

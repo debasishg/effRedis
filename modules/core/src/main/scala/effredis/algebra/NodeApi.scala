@@ -22,37 +22,37 @@ trait NodeApi[F[+_]] {
   /**
     * save the DB on disk now.
     */
-  def save: F[RedisResponse[Boolean]]
+  def save: F[Resp[Boolean]]
 
   /**
     * save the DB in the background.
     */
-  def bgsave: F[RedisResponse[Boolean]]
+  def bgsave: F[Resp[Boolean]]
 
   /**
     * return the UNIX TIME of the last DB SAVE executed with success.
     */
-  def lastsave: F[RedisResponse[Option[Long]]]
+  def lastsave: F[Resp[Option[Long]]]
 
   /**
     * Stop all the clients, save the DB, then quit the server.
     */
-  def shutdown: F[RedisResponse[Boolean]]
+  def shutdown: F[Resp[Boolean]]
 
-  def bgrewriteaof: F[RedisResponse[Boolean]]
+  def bgrewriteaof: F[Resp[Boolean]]
 
   /**
     * The info command returns different information and statistics about the server.
     */
-  def info: F[RedisResponse[Option[String]]]
+  def info: F[Resp[Option[String]]]
 
   /**
     * is a debugging command that outputs the whole sequence of commands received by the Redis server.
     */
-  def monitor: F[RedisResponse[Boolean]]
+  def monitor: F[Resp[Boolean]]
 
   /**
     * The SLAVEOF command can change the replication settings of a slave on the fly.
     */
-  def slaveof(options: Any): F[RedisResponse[Boolean]]
+  def slaveof(options: Any): F[Resp[Boolean]]
 }

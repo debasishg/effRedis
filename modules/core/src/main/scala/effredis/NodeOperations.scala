@@ -24,37 +24,37 @@ trait NodeOperations[F[+_]] extends NodeApi[F] { self: Redis[F] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
-  override def save: F[RedisResponse[Boolean]] =
+  override def save: F[Resp[Boolean]] =
     send("SAVE")(asBoolean)
 
-  override def bgsave: F[RedisResponse[Boolean]] =
+  override def bgsave: F[Resp[Boolean]] =
     send("BGSAVE")(asBoolean)
 
-  override def lastsave: F[RedisResponse[Option[Long]]] =
+  override def lastsave: F[Resp[Option[Long]]] =
     send("LASTSAVE")(asLong)
 
-  override def shutdown: F[RedisResponse[Boolean]] =
+  override def shutdown: F[Resp[Boolean]] =
     send("SHUTDOWN")(asBoolean)
 
-  override def bgrewriteaof: F[RedisResponse[Boolean]] =
+  override def bgrewriteaof: F[Resp[Boolean]] =
     send("BGREWRITEAOF")(asBoolean)
 
-  override def info: F[RedisResponse[Option[String]]] =
+  override def info: F[Resp[Option[String]]] =
     send("INFO")(asBulk)
 
-  override def monitor: F[RedisResponse[Boolean]] =
+  override def monitor: F[Resp[Boolean]] =
     send("MONITOR")(asBoolean)
 
-  override def slaveof(options: Any): F[RedisResponse[Boolean]] = options match {
+  override def slaveof(options: Any): F[Resp[Boolean]] = options match {
     case (h: String, p: Int) =>
       send("SLAVEOF", List(h, p))(asBoolean)
     case _ => setAsMaster()
   }
 
   @deprecated("use slaveof", "1.2.0")
-  def slaveOf(options: Any): F[RedisResponse[Boolean]] =
+  def slaveOf(options: Any): F[Resp[Boolean]] =
     slaveof(options)
 
-  private def setAsMaster(): F[RedisResponse[Boolean]] =
+  private def setAsMaster(): F[Resp[Boolean]] =
     send("SLAVEOF", List("NO", "ONE"))(asBoolean)
 }

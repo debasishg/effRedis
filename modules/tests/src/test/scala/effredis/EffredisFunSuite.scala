@@ -63,16 +63,16 @@ abstract class EffRedisFunSuite extends FunSuite {
 }
 
 object EffRedisFunSuite {
-  def getBoolean(resp: RedisResponse[Boolean]): Boolean =
+  def getBoolean(resp: Resp[Boolean]): Boolean =
     resp match {
-      case Right(value) => value == true
+      case Value(value) => value == true
       case _            => false
     }
 
-  def getResp(resp: RedisResponse[_]): Option[_] = resp match {
-    case Right(s @ Some(_)) => s
-    case Right(None)        => None
-    case Left(err)          => Some(err)
+  def getResp(resp: Resp[_]): Option[_] = resp match {
+    case Value(s @ Some(_)) => s
+    case Value(None)        => None
+    case RedisError(err)    => Some(err)
     case _                  => None
   }
 }

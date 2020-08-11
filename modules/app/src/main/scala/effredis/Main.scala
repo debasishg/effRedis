@@ -38,7 +38,7 @@ object Main extends LoggerIOApp {
 
       val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).parMapN { (_, _, k1val, k2val) =>
         (k1val, k2val) match {
-          case (Right(Some(k1)), Right(Some(k2))) => Foo(k1, k2)
+          case (Value(Some(k1)), Value(Some(k2))) => Foo(k1, k2)
           case err                                => println(s"Error $err")
         }
       }

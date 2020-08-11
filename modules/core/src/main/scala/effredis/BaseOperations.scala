@@ -32,7 +32,7 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
       alpha: Boolean = false,
       by: Option[String] = None,
       get: List[String] = Nil
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[Option[A]]]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] = {
 
     val commands: List[Any] = makeSortArgs(key, limit, desc, alpha, by, get)
     send("SORT", commands)(asList)
@@ -63,7 +63,7 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
       by: Option[String] = None,
       get: List[String] = Nil,
       storeAt: String
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[Long]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Long]]] = {
 
     val commands = makeSortArgs(key, limit, desc, alpha, by, get) ::: List("STORE", storeAt)
     send("SORT", commands)(asLong)
@@ -71,56 +71,56 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
 
   override def keys[A](
       pattern: Any = "*"
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
     send("KEYS", List(pattern))(asList)
 
-  override def time[A](implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[Option[A]]]]] =
+  override def time[A](implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
     send("TIME")(asList)
 
   @deprecated("use randomkey", "2.8")
-  def randkey[A](implicit parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  def randkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
     send("RANDOMKEY")(asBulk)
 
-  override def randomkey[A](implicit parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  override def randomkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
     send("RANDOMKEY")(asBulk)
 
-  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("RENAME", List(oldkey, newkey))(asBoolean)
 
-  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("RENAMENX", List(oldkey, newkey))(asBoolean)
 
-  override def dbsize: F[RedisResponse[Option[Long]]] =
+  override def dbsize: F[Resp[Option[Long]]] =
     send("DBSIZE")(asLong)
 
-  override def exists(key: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def exists(key: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("EXISTS", List(key))(asBoolean)
 
-  override def del(key: Any, keys: Any*)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
     send("DEL", key :: keys.toList)(asLong)
 
-  override def getType(key: Any)(implicit format: Format): F[RedisResponse[Option[String]]] =
+  override def getType(key: Any)(implicit format: Format): F[Resp[Option[String]]] =
     send("TYPE", List(key))(asString)
 
-  override def expire(key: Any, ttl: Int)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[Boolean]] =
     send("EXPIRE", List(key, ttl))(asBoolean)
 
-  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[Boolean]] =
     send("PEXPIRE", List(key, ttlInMillis))(asBoolean)
 
-  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[Boolean]] =
     send("EXPIREAT", List(key, timestamp))(asBoolean)
 
-  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[Boolean]] =
     send("PEXPIREAT", List(key, timestampInMillis))(asBoolean)
 
-  override def ttl(key: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def ttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("TTL", List(key))(asLong)
 
-  override def pttl(key: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def pttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("PTTL", List(key))(asLong)
 
-  override def select(index: Int): F[RedisResponse[Boolean]] =
+  override def select(index: Int): F[Resp[Boolean]] =
     send("SELECT", List(index))(if (asBoolean) {
       db = index
       true
@@ -128,28 +128,28 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
       false
     })
 
-  override def flushdb: F[RedisResponse[Boolean]] =
+  override def flushdb: F[Resp[Boolean]] =
     send("FLUSHDB")(asBoolean)
 
-  override def flushall: F[RedisResponse[Boolean]] =
+  override def flushall: F[Resp[Boolean]] =
     send("FLUSHALL")(asBoolean)
 
-  override def move(key: Any, db: Int)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def move(key: Any, db: Int)(implicit format: Format): F[Resp[Boolean]] =
     send("MOVE", List(key, db))(asBoolean)
 
-  override def quit: F[RedisResponse[Boolean]] =
+  override def quit: F[Resp[Boolean]] =
     send("QUIT")(disconnect)
 
-  override def auth(secret: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def auth(secret: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("AUTH", List(secret))(asBoolean)
 
-  override def persist(key: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def persist(key: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("PERSIST", List(key))(asBoolean)
 
   override def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[(Option[Int], Option[List[Option[A]]])]]] =
+  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
     send(
       "SCAN",
       cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(
@@ -157,18 +157,18 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
           )
     )(asPair)
 
-  override def ping: F[RedisResponse[Option[String]]] =
+  override def ping: F[Resp[Option[String]]] =
     send("PING")(asString)
 
-  override def watch(key: Any, keys: Any*)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[Boolean]] =
     send("WATCH", key :: keys.toList)(asBoolean)
 
-  override def unwatch(): F[RedisResponse[Boolean]] =
+  override def unwatch(): F[Resp[Boolean]] =
     send("UNWATCH")(asBoolean)
 
   override def getConfig(key: Any = "*")(
       implicit format: Format
-  ): F[RedisResponse[Option[Map[String, Option[String]]]]] = ??? // {
+  ): F[Resp[Option[Map[String, Option[String]]]]] = ??? // {
 //     val fa = send("CONFIG", List("GET", key))(asList)
 //     val ev = implicitly[Concurrent[F]]
 //     ev.fmap(fa) { ls =>
@@ -176,18 +176,18 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
 //     }
 //   }
 
-  override def setConfig(key: Any, value: Any)(implicit format: Format): F[RedisResponse[Option[String]]] =
+  override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Option[String]]] =
     send("CONFIG", List("SET", key, value))(asString)
 
-  override def discard: F[RedisResponse[Boolean]] =
+  override def discard: F[Resp[Boolean]] =
     send("DISCARD")(asBoolean)
 
-  override def multi: F[RedisResponse[Option[String]]] =
+  override def multi: F[Resp[Option[String]]] =
     send("MULTI")(asString)
 
-  override def exec(hs: Seq[() => Any]): F[RedisResponse[Option[List[Any]]]] =
+  override def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]] =
     send("EXEC")(asExec(hs))
 
-  override def echo(message: Any)(implicit format: Format): F[RedisResponse[Option[String]]] =
+  override def echo(message: Any)(implicit format: Format): F[Resp[Option[String]]] =
     send("ECHO", List(message))(asString)
 }

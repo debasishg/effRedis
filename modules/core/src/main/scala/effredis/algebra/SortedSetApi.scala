@@ -27,33 +27,33 @@ trait SortedSetApi[F[+_]] {
     */
   def zadd(key: Any, score: Double, member: Any, scoreVals: (Double, Any)*)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   /**
     * Remove the specified members from the sorted set value stored at key. (Variadic: >= 2.4)
     */
-  def zrem(key: Any, member: Any, members: Any*)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def zrem(key: Any, member: Any, members: Any*)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def zincrby(key: Any, incr: Double, member: Any)(implicit format: Format): F[RedisResponse[Option[Double]]]
+  def zincrby(key: Any, incr: Double, member: Any)(implicit format: Format): F[Resp[Option[Double]]]
 
-  def zcard(key: Any)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def zcard(key: Any)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def zscore(key: Any, element: Any)(implicit format: Format): F[RedisResponse[Option[Double]]]
+  def zscore(key: Any, element: Any)(implicit format: Format): F[Resp[Option[Double]]]
 
   def zrange[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[A]]]]
+  ): F[Resp[Option[List[A]]]]
 
   def zrangeWithScore[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[(A, Double)]]]]
+  ): F[Resp[Option[List[(A, Double)]]]]
 
   def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[A]]]]
+  ): F[Resp[Option[List[A]]]]
 
   def zrangebyscore[A](
       key: Any,
@@ -63,7 +63,7 @@ trait SortedSetApi[F[+_]] {
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[A]]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[A]]]]
 
   def zrangebyscoreWithScore[A](
       key: Any,
@@ -73,31 +73,31 @@ trait SortedSetApi[F[+_]] {
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[(A, Double)]]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[(A, Double)]]]]
 
-  def zrank(key: Any, member: Any, reverse: Boolean = false)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def zrank(key: Any, member: Any, reverse: Boolean = false)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def zremrangebyrank(key: Any, start: Int = 0, end: Int = -1)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def zremrangebyrank(key: Any, start: Int = 0, end: Int = -1)(implicit format: Format): F[Resp[Option[Long]]]
 
   def zremrangebyscore(key: Any, start: Double = Double.NegativeInfinity, end: Double = Double.PositiveInfinity)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   def zunionstore(dstKey: Any, keys: Iterable[Any], aggregate: Aggregate = SUM)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   def zunionstoreWeighted(dstKey: Any, kws: Iterable[Product2[Any, Double]], aggregate: Aggregate = SUM)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   def zinterstore(dstKey: Any, keys: Iterable[Any], aggregate: Aggregate = SUM)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   def zinterstoreWeighted(dstKey: Any, kws: Iterable[Product2[Any, Double]], aggregate: Aggregate = SUM)(
       implicit format: Format
-  ): F[RedisResponse[Option[Long]]]
+  ): F[Resp[Option[Long]]]
 
   def zcount(
       key: Any,
@@ -105,7 +105,7 @@ trait SortedSetApi[F[+_]] {
       max: Double = Double.PositiveInfinity,
       minInclusive: Boolean = true,
       maxInclusive: Boolean = true
-  )(implicit format: Format): F[RedisResponse[Option[Long]]]
+  )(implicit format: Format): F[Resp[Option[Long]]]
 
   /**
     * Incrementally iterate sorted sets elements and associated scores (since 2.8)
@@ -113,5 +113,5 @@ trait SortedSetApi[F[+_]] {
   def zscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[(Option[Int], Option[List[Option[A]]])]]]
+  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]]
 }
