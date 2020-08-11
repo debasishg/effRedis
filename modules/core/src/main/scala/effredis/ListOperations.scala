@@ -25,62 +25,62 @@ trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
-  override def lpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def lpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
     send("LPUSH", List(key, value) ::: values.toList)(asLong)
 
-  override def lpushx(key: Any, value: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def lpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("LPUSHX", List(key, value))(asLong)
 
-  override def rpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def rpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
     send("RPUSH", List(key, value) ::: values.toList)(asLong)
 
-  override def rpushx(key: Any, value: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def rpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("RPUSHX", List(key, value))(asLong)
 
-  override def llen(key: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def llen(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("LLEN", List(key))(asLong)
 
   override def lrange[A](key: Any, start: Int, end: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[Option[A]]]]] =
+  ): F[Resp[Option[List[Option[A]]]]] =
     send("LRANGE", List(key, start, end))(asList)
 
-  override def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[Boolean]] =
     send("LTRIM", List(key, start, end))(asBoolean)
 
-  override def lindex[A](key: Any, index: Int)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  override def lindex[A](key: Any, index: Int)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("LINDEX", List(key, index))(asBulk)
 
-  override def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[RedisResponse[Boolean]] =
+  override def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("LSET", List(key, index, value))(asBoolean)
 
-  override def lrem(key: Any, count: Int, value: Any)(implicit format: Format): F[RedisResponse[Option[Long]]] =
+  override def lrem(key: Any, count: Int, value: Any)(implicit format: Format): F[Resp[Option[Long]]] =
     send("LREM", List(key, count, value))(asLong)
 
-  override def lpop[A](key: Any)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  override def lpop[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("LPOP", List(key))(asBulk)
 
-  override def rpop[A](key: Any)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  override def rpop[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("RPOP", List(key))(asBulk)
 
   override def rpoplpush[A](
       srcKey: Any,
       dstKey: Any
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("RPOPLPUSH", List(srcKey, dstKey))(asBulk)
 
   override def brpoplpush[A](srcKey: Any, dstKey: Any, timeoutInSeconds: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[A]]] =
+  ): F[Resp[Option[A]]] =
     send("BRPOPLPUSH", List(srcKey, dstKey, timeoutInSeconds))(asBulkWithTime)
 
   override def blpop[K, V](
       timeoutInSeconds: Int,
       key: K,
       keys: K*
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[RedisResponse[Option[(K, V)]]] =
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[(K, V)]]] =
     send("BLPOP", key :: keys.foldRight(List[Any](timeoutInSeconds))(_ :: _))(
       asListPairs[K, V].flatMap(_.flatten.headOption)
     )
@@ -89,7 +89,7 @@ trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F] =>
       timeoutInSeconds: Int,
       key: K,
       keys: K*
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[RedisResponse[Option[(K, V)]]] =
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[(K, V)]]] =
     send("BRPOP", key :: keys.foldRight(List[Any](timeoutInSeconds))(_ :: _))(
       asListPairs[K, V].flatMap(_.flatten.headOption)
     )

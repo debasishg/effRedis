@@ -42,7 +42,7 @@ object Transaction extends LoggerIOApp {
 
         r1.unsafeRunSync() match {
 
-          case Right(Right(ls)) => ls.foreach(println)
+          case Right(Value(ls)) => ls.foreach(println)
           case Left(state) =>
             state match {
               case TxnDiscarded(cs)  => println(s"Transaction discarded $cs")

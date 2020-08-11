@@ -20,10 +20,16 @@ import java.net.{ SocketException, URI }
 import javax.net.ssl.SSLContext
 
 import util.hlist._
-import codecs.{ Format, Parse }
+import codecs.Format
 
 import cats.effect._
 import cats.implicits._
+
+sealed trait Resp[+A]
+case class Value[A](value: A) extends Resp[A]
+case object RedisQueued extends Resp[Nothing]
+case object Bufferred extends Resp[Nothing]
+case class RedisError(cause: String) extends Resp[Nothing]
 
 sealed trait TransactionState
 case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends TransactionState
@@ -102,31 +108,31 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
+  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
 
     val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
     F.debug(s"Sending ${new String(cmd)}") >> {
       try {
 
         write(cmd)
-        Right(result).pure[F]
+        Value(result).pure[F]
 
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command, args)(result)
-          else Left(Left(e.getMessage())).pure[F]
+          else RedisError(e.getMessage()).pure[F]
         case e: SocketException =>
           if (disconnect) send(command, args)(result)
-          else Left(Left(e.getMessage())).pure[F]
+          else RedisError(e.getMessage()).pure[F]
         case e: Exception =>
-          Left(Left(e.getMessage())).pure[F]
+          RedisError(e.getMessage()).pure[F]
       }
     }
   }
 
   def send[A](command: String, pipelineMode: Boolean = false)(
       result: => A
-  )(implicit blocker: Blocker): F[RedisResponse[A]] =
+  )(implicit blocker: Blocker): F[Resp[A]] =
     blocker.blockOn {
       val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
       F.debug(s"Sending ${new String(cmd)}") >> {
@@ -135,17 +141,17 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
 
           if (!pipelineMode) write(cmd)
           else write(command.getBytes("UTF-8"))
-          Right(result).pure[F]
+          Value(result).pure[F]
 
         } catch {
           case e: RedisConnectionException =>
             if (disconnect) send(command)(result)
-            else Left(Left(e.getMessage())).pure[F]
+            else RedisError(e.getMessage()).pure[F]
           case e: SocketException =>
             if (disconnect) send(command)(result)
-            else Left(Left(e.getMessage())).pure[F]
+            else RedisError(e.getMessage()).pure[F]
           case e: Exception =>
-            Left(Left(e.getMessage())).pure[F]
+            RedisError(e.getMessage()).pure[F]
         }
       }
     }
@@ -213,20 +219,20 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
   override def toString: String = host + ":" + String.valueOf(port) + "/" + database
   override def close(): Unit    = { disconnect; () }
 
-  def pipeline(client: SequencingDecorator[F])(f: () => Any): F[RedisResponse[Option[List[Any]]]] = {
+  def pipeline(client: SequencingDecorator[F])(f: () => Any): F[Resp[Option[List[Any]]]] = {
     implicit val b = blocker
     try {
       val _ = f()
       client.parent
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
-      case e: Exception => Left(Left(e.getMessage)).pure[F]
+      case e: Exception => RedisError(e.getMessage).pure[F]
     }
   }
 
   def hpipeline[In <: HList](
       client: SequencingDecorator[F]
-  )(commands: () => In): F[RedisResponse[Option[List[Any]]]] = {
+  )(commands: () => In): F[Resp[Option[List[Any]]]] = {
     implicit val b = blocker
     try {
       val _ = commands()
@@ -238,13 +244,13 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
           r.pure[F]
         }
     } catch {
-      case e: Exception => Left(Left(e.getMessage)).pure[F]
+      case e: Exception => RedisError(e.getMessage).pure[F]
     }
   }
 
   def htransaction[In <: HList](
       client: SequencingDecorator[F]
-  )(commands: () => In): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] =
+  )(commands: () => In): F[Either[TransactionState, Resp[Option[List[Any]]]]] =
     multi.flatMap { _ =>
       try {
         val _ = commands()
@@ -284,7 +290,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
 
   def transaction(
       client: SequencingDecorator[F]
-  )(f: () => Any): F[Either[TransactionState, RedisResponse[Option[List[Any]]]]] = {
+  )(f: () => Any): F[Either[TransactionState, Resp[Option[List[Any]]]]] = {
 
     implicit val b = blocker
 
@@ -331,28 +337,29 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
 
   override def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[RedisResponse[A]] = blocker.blockOn {
+  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
     try {
       val cmd  = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
       val crlf = "\r\n"
       if (!pipelineMode) { // transaction mode
         write(cmd)
         handlers :+= ((command, () => result))
-        Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+        val _ = receive(singleLineReply)
+        RedisQueued.pure[F]
 
       } else { // pipeline mode
         handlers :+= ((command, () => result))
         commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
-        Left(Right(Some("Buffered"))).pure[F]
+        Bufferred.pure[F]
       }
     } catch {
-      case e: Exception => Left(Left(e.getMessage())).pure[F]
+      case e: Exception => RedisError(e.getMessage()).pure[F]
     }
   }
 
   override def send[A](command: String, pipeline: Boolean = false)(
       result: => A
-  )(implicit blocker: Blocker): F[RedisResponse[A]] =
+  )(implicit blocker: Blocker): F[Resp[A]] =
     blocker.blockOn {
       try {
         val cmd  = Commands.multiBulk(List(command.getBytes("UTF-8")))
@@ -360,14 +367,15 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
         if (!pipelineMode) {
           write(cmd)
           handlers :+= ((command, () => result))
-          Left(Right(receive(singleLineReply).map(Parse.parseDefault))).pure[F]
+          val _ = receive(singleLineReply)
+          RedisQueued.pure[F]
         } else {
           handlers :+= ((command, () => result))
           commandBuffer.append(command ++ crlf)
-          Left(Right(Some("Buffered"))).pure[F]
+          Bufferred.pure[F]
         }
       } catch {
-        case e: Exception => Left(Left(e.getMessage())).pure[F]
+        case e: Exception => RedisError(e.getMessage()).pure[F]
       }
     }
 

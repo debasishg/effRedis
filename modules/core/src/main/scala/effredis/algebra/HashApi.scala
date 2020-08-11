@@ -33,7 +33,7 @@ trait HashApi[F[+_]] {
     *         <code>False</code> if <code>field</code> already exists in the hash and the value was updated.
     *
     */
-  def hset(key: Any, field: Any, value: Any)(implicit format: Format): F[RedisResponse[Boolean]]
+  def hset(key: Any, field: Any, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * Sets <code>field</code> in the hash stored at <code>key</code> to <code>value</code>.
@@ -44,7 +44,7 @@ trait HashApi[F[+_]] {
     * @return <code>Some(0)</code> if <code>field</code> is a new field in the hash and value was set,
     *         <code>Some(1)</code> if <code>field</code> already exists in the hash and the value was updated.
     */
-  def hset1(key: Any, field: Any, value: Any)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def hset1(key: Any, field: Any, value: Any)(implicit format: Format): F[Resp[Option[Long]]]
 
   /**
     * Sets <code>field</code> in the hash stored at <code>key</code> to <code>value</code>, only if field does not yet exist.
@@ -55,9 +55,9 @@ trait HashApi[F[+_]] {
     * @return <code>True</code> if <code>field</code> is a new field in the hash and value was set.
     *         </code>False</code> if <code>field</code> exists in the hash and no operation was performed.
     */
-  def hsetnx(key: Any, field: Any, value: Any)(implicit format: Format): F[RedisResponse[Boolean]]
+  def hsetnx(key: Any, field: Any, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
-  def hget[A](key: Any, field: Any)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[A]]]
+  def hget[A](key: Any, field: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]]
 
   /**
     * Sets the specified fields to their respective values in the hash stored at key.
@@ -69,23 +69,23 @@ trait HashApi[F[+_]] {
     * @return <code>True</code> if operation completed successfully,
     *         <code>False</code> otherwise.
     */
-  def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[RedisResponse[Boolean]]
+  def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[Resp[Boolean]]
 
-  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[RedisResponse[Option[Map[K, V]]]]
+  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[Option[Map[K, V]]]]
 
-  def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def hincrbyfloat(key: Any, field: Any, value: Float)(implicit format: Format): F[RedisResponse[Option[Float]]]
+  def hincrbyfloat(key: Any, field: Any, value: Float)(implicit format: Format): F[Resp[Option[Float]]]
 
-  def hexists(key: Any, field: Any)(implicit format: Format): F[RedisResponse[Boolean]]
+  def hexists(key: Any, field: Any)(implicit format: Format): F[Resp[Boolean]]
 
-  def hdel(key: Any, field: Any, fields: Any*)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def hdel(key: Any, field: Any, fields: Any*)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def hlen(key: Any)(implicit format: Format): F[RedisResponse[Option[Long]]]
+  def hlen(key: Any)(implicit format: Format): F[Resp[Option[Long]]]
 
-  def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[A]]]]
+  def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[A]]]]
 
-  def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[A]]]]
+  def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[A]]]]
 
   @deprecated(
     "Use the more idiomatic variant hgetall1, which has the returned Map behavior more consistent. See issue https://github.com/debasishg/scala-redis/issues/122",
@@ -93,11 +93,11 @@ trait HashApi[F[+_]] {
   )
   def hgetall[K, V](
       key: Any
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[RedisResponse[Option[Map[K, V]]]]
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[Map[K, V]]]]
 
   def hgetall1[K, V](
       key: Any
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[RedisResponse[Option[Map[K, V]]]]
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[Map[K, V]]]]
 
   /**
     * Incrementally iterate hash fields and associated values (since 2.8)
@@ -105,5 +105,5 @@ trait HashApi[F[+_]] {
   def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[(Option[Int], Option[List[Option[A]]])]]]
+  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]]
 }

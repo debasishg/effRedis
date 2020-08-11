@@ -28,7 +28,7 @@ trait GeoApi[F[+_]] {
     * @param members The members to be added. Format is (longitude, latitude, member)
     * @return The number of elements added to the index. Repeated elements are not added.
     */
-  def geoadd(key: Any, members: Iterable[Product3[Any, Any, Any]]): F[RedisResponse[Option[Int]]]
+  def geoadd(key: Any, members: Iterable[Product3[Any, Any, Any]]): F[Resp[Option[Int]]]
 
   /**
     * Retrieve the position of the members in the key geo sorted set. Note that if a member is not part of the set, None
@@ -44,7 +44,7 @@ trait GeoApi[F[+_]] {
   def geopos[A](key: Any, members: Iterable[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[Option[List[Option[A]]]]]]]
+  ): F[Resp[Option[List[Option[List[Option[A]]]]]]]
 
   /**
     * Get the geohash for each member in the key geo index.
@@ -59,9 +59,9 @@ trait GeoApi[F[+_]] {
   def geohash[A](key: Any, members: Iterable[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[RedisResponse[Option[List[Option[A]]]]]
+  ): F[Resp[Option[List[Option[A]]]]]
 
-  def geodist(key: Any, m1: Any, m2: Any, unit: Option[Any]): F[RedisResponse[Option[String]]]
+  def geodist(key: Any, m1: Any, m2: Any, unit: Option[Any]): F[Resp[Option[String]]]
 
   /**
     * Search for members around an origin point in the key geo sorted set
@@ -93,7 +93,7 @@ trait GeoApi[F[+_]] {
       sort: Option[Any],
       store: Option[Any],
       storeDist: Option[Any]
-  ): F[RedisResponse[Option[List[Option[GeoRadiusMember]]]]]
+  ): F[Resp[Option[List[Option[GeoRadiusMember]]]]]
 
   /**
     * Search for members around a specific memberin the key geo sorted set
@@ -123,5 +123,5 @@ trait GeoApi[F[+_]] {
       sort: Option[Any],
       store: Option[Any],
       storeDist: Option[Any]
-  )(implicit format: Format, parse: Parse[A]): F[RedisResponse[Option[List[Option[GeoRadiusMember]]]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[GeoRadiusMember]]]]]
 }
