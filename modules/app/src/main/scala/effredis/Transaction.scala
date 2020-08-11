@@ -42,13 +42,10 @@ object Transaction extends LoggerIOApp {
 
         r1.unsafeRunSync() match {
 
-          case Right(Value(ls)) => ls.foreach(println)
-          case Left(state) =>
-            state match {
-              case TxnDiscarded(cs)  => println(s"Transaction discarded $cs")
-              case TxnError(message) => println(message)
-            }
-          case err => println(s"oops! $err")
+          case Value(ls)        => ls.foreach(println)
+          case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+          case Error(err)       => println(s"oops! $err")
+          case err              => println(err)
         }
         IO(ExitCode.Success)
       }

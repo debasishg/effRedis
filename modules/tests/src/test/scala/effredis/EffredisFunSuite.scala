@@ -72,7 +72,7 @@ object EffRedisFunSuite {
   def getResp(resp: Resp[_]): Option[_] = resp match {
     case Value(s @ Some(_)) => s
     case Value(None)        => None
-    case RedisError(err)    => Some(err)
+    case Error(err)         => Some(err)
     case _                  => None
   }
 }

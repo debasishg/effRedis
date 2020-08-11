@@ -110,12 +110,12 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
       } catch {
         case e: RedisConnectionException =>
           if (disconnect) send(command, args)(result)
-          else RedisError(e.getMessage()).pure[F]
+          else Error(e.getMessage()).pure[F]
         case e: SocketException =>
           if (disconnect) send(command, args)(result)
-          else RedisError(e.getMessage()).pure[F]
+          else Error(e.getMessage()).pure[F]
         case e: Exception =>
-          RedisError(e.getMessage()).pure[F]
+          Error(e.getMessage()).pure[F]
       }
     }
   }
@@ -136,12 +136,12 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
         } catch {
           case e: RedisConnectionException =>
             if (disconnect) send(command)(result)
-            else RedisError(e.getMessage()).pure[F]
+            else Error(e.getMessage()).pure[F]
           case e: SocketException =>
             if (disconnect) send(command)(result)
-            else RedisError(e.getMessage()).pure[F]
+            else Error(e.getMessage()).pure[F]
           case e: Exception =>
-            RedisError(e.getMessage()).pure[F]
+            Error(e.getMessage()).pure[F]
         }
       }
     }
@@ -217,7 +217,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
       client.parent
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
-      case e: Exception => RedisError(e.getMessage).pure[F]
+      case e: Exception => Error(e.getMessage).pure[F]
     }
   }
 
@@ -235,13 +235,13 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
           r.pure[F]
         }
     } catch {
-      case e: Exception => RedisError(e.getMessage).pure[F]
+      case e: Exception => Error(e.getMessage).pure[F]
     }
   }
 
   def htransaction[In <: HList](
       client: SequencingDecorator[F]
-  )(commands: () => In): F[Either[TransactionState, Resp[Option[List[Any]]]]] =
+  )(commands: () => In): F[Resp[Option[List[Any]]]] =
     multi.flatMap { _ =>
       try {
         val _ = commands()
@@ -254,20 +254,20 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
           // exec only if no discard
           F.debug(s"Executing transaction ..") >> {
             try {
-              exec(client.handlers.map(_._2)).map(Right(_)).flatTap { _ =>
+              exec(client.handlers.map(_._2)).flatTap { _ =>
                 client.handlers = Vector.empty
                 ().pure[F]
               }
             } catch {
               case e: Exception =>
-                Left(TxnError(e.getMessage())).pure[F]
+                Error(e.getMessage()).pure[F]
             }
           }
 
         } else {
           // no exec if discard
           F.debug(s"Got DISCARD .. discarding transaction") >> {
-            Left(TxnDiscarded(client.handlers)).pure[F].flatTap { r =>
+            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
               client.handlers = Vector.empty
               r.pure[F]
             }
@@ -275,13 +275,13 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
         }
       } catch {
         case e: Exception =>
-          Left(TxnError(e.getMessage())).pure[F]
+          Error(e.getMessage()).pure[F]
       }
     }
 
   def transaction(
       client: SequencingDecorator[F]
-  )(f: () => Any): F[Either[TransactionState, Resp[Option[List[Any]]]]] = {
+  )(f: () => Any): F[Resp[Option[List[Any]]]] = {
 
     implicit val b = blocker
 
@@ -295,12 +295,12 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
               .filter(_ == "DISCARD")
               .isEmpty) {
 
-          send("EXEC")(asExec(client.handlers.map(_._2))).map(Right(_)).flatTap { _ =>
+          send("EXEC")(asExec(client.handlers.map(_._2))).flatTap { _ =>
             client.handlers = Vector.empty
             ().pure[F]
           }
         } else {
-          Left(TxnDiscarded(client.handlers)).pure[F].flatTap { r =>
+          TxnDiscarded(client.handlers).pure[F].flatTap { r =>
             client.handlers = Vector.empty
             r.pure[F]
           }
@@ -308,7 +308,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
 
       } catch {
         case e: Exception =>
-          Left(TxnError(e.getMessage())).pure[F]
+          Error(e.getMessage()).pure[F]
       }
     }
   }
@@ -336,15 +336,15 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
         write(cmd)
         handlers :+= ((command, () => result))
         val _ = receive(singleLineReply)
-        RedisQueued.pure[F]
+        Queued.pure[F]
 
       } else { // pipeline mode
         handlers :+= ((command, () => result))
         commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
-        Bufferred.pure[F]
+        Buffered.pure[F]
       }
     } catch {
-      case e: Exception => RedisError(e.getMessage()).pure[F]
+      case e: Exception => Error(e.getMessage()).pure[F]
     }
   }
 
@@ -359,14 +359,14 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
           write(cmd)
           handlers :+= ((command, () => result))
           val _ = receive(singleLineReply)
-          RedisQueued.pure[F]
+          Queued.pure[F]
         } else {
           handlers :+= ((command, () => result))
           commandBuffer.append(command ++ crlf)
-          Bufferred.pure[F]
+          Buffered.pure[F]
         }
       } catch {
-        case e: Exception => RedisError(e.getMessage()).pure[F]
+        case e: Exception => Error(e.getMessage()).pure[F]
       }
     }
 
