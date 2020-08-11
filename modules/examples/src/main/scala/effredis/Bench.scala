@@ -17,6 +17,7 @@
 package effredis
 
 import cats.effect._
+import cats.implicits._
 import log4cats._
 
 object Bench extends LoggerIOApp {
@@ -28,29 +29,23 @@ object Bench extends LoggerIOApp {
       val s     = System.currentTimeMillis()
       val x = (0 to nKeys).map { i =>
         for {
-          a <- set(s"mey$i", s"debasish ghosh $i")
-        } yield a
-      }
-      x.foreach(_.unsafeRunSync())
-      /*
-      for (i <- 0 to nKeys) {
-        val r = for {
           a <- set(s"key$i", s"debasish ghosh $i")
         } yield a
-        r.unsafeRunSync()
-      }
-       */
+      }.toList.sequence
+      x.unsafeRunSync()
+
       val timeElapsedSet = (System.currentTimeMillis() - s) / 1000
       println(s"Time elapsed in setting $nKeys keys = $timeElapsedSet seconds")
       println(s"Rate = ${nKeys / timeElapsedSet} sets per second")
 
       val t = System.currentTimeMillis()
-      for (i <- 0 to nKeys) {
-        val r = for {
-          a <- get(s"mey$i")
+      val y = (0 to nKeys).map { i =>
+        for {
+          a <- get(s"key$i")
         } yield a
-        r.unsafeRunSync()
-      }
+      }.toList.sequence
+      y.unsafeRunSync()
+
       val timeElapsed = (System.currentTimeMillis() - t) / 1000
       println(s"Time elapsed in getting $nKeys values = $timeElapsed seconds")
       println(s"Rate = ${nKeys / timeElapsed} gets per second")

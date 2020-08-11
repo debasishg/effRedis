@@ -3,9 +3,10 @@ import com.scalapenos.sbt.prompt._
 import Dependencies._
 import microsites.ExtraMdFileConfig
 
-ThisBuild / name := """effredis"""
+ThisBuild / name := "effredis"
 ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.3")
 
+// thanks https://github.com/profunktor/redis4cats/blob/master/build.sbt
 promptTheme := PromptTheme(
   List(
     text("[sbt] ", fg(105)),
