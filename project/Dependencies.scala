@@ -47,8 +47,6 @@ object Dependencies {
     val munitCore       = "org.scalameta" %% "munit" % V.munit
     val munitScalacheck = "org.scalameta" %% "munit-scalacheck" % V.munit
 
-    val redisclient     = "net.debasishg" %% "redisclient" % "3.30"
-    val redis4cats      = "dev.profunktor" %% "redis4cats-effects" % "0.10.2"
   }
 
   object CompilerPlugins {
