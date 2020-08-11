@@ -40,16 +40,10 @@ object HTransaction extends LoggerIOApp {
         val r = cli.htransaction(txnClient)(cmds)
 
         r.unsafeRunSync() match {
-
-          case Right(Value(Some(ls))) => ls.foreach(println)
-          case Left(state) =>
-            state match {
-              case TxnDiscarded(cs)  => println(s"Transaction discarded $cs")
-              case TxnError(message) => println(message)
-            }
-          case Right(RedisError(ex)) => println(s"Error $ex")
-          case err                   => println(s"oops! $err")
-
+          case Value(Some(ls))  => ls.foreach(println)
+          case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+          case Error(ex)        => println(s"Error $ex")
+          case err              => println(err)
         }
         IO(ExitCode.Success)
       }

@@ -17,11 +17,18 @@
 package effredis
 
 sealed trait Resp[+A]
-case class Value[A](value: A) extends Resp[A]
-case object RedisQueued extends Resp[Nothing]
-case object Bufferred extends Resp[Nothing]
-case class RedisError(cause: String) extends Resp[Nothing]
 
-sealed trait TransactionState
-case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends TransactionState
-case class TxnError(message: String) extends TransactionState
+// generates a value A
+case class Value[A](value: A) extends Resp[A]
+
+// queued for transaction
+case object Queued extends Resp[Nothing]
+
+// bufferred for pipeline
+case object Buffered extends Resp[Nothing]
+
+// error
+case class Error(cause: String) extends Resp[Nothing]
+
+// transaction discarded
+case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends Resp[Nothing]
