@@ -193,12 +193,5 @@ trait BaseApi[F[+_]] {
     */
   def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Option[String]]]
 
-  /**
-    * discard transaction
-    */
-  def discard: F[Resp[Boolean]]
-  def multi: F[Resp[Option[String]]]
-  def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]]
-
   def echo(message: Any)(implicit format: Format): F[Resp[Option[String]]]
 }

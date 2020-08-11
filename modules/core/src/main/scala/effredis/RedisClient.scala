@@ -25,16 +25,6 @@ import codecs.Format
 import cats.effect._
 import cats.implicits._
 
-sealed trait Resp[+A]
-case class Value[A](value: A) extends Resp[A]
-case object RedisQueued extends Resp[Nothing]
-case object Bufferred extends Resp[Nothing]
-case class RedisError(cause: String) extends Resp[Nothing]
-
-sealed trait TransactionState
-case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends TransactionState
-case class TxnError(message: String) extends TransactionState
-
 object RedisClient {
   sealed trait SortOrder
   case object ASC extends SortOrder
@@ -174,6 +164,7 @@ trait RedisCommand[F[+_]]
     with GeoOperations[F]
     with EvalOperations[F]
     with HyperLogLogOperations[F]
+    with TransactionOperations[F]
 //     with PubOperations
     with AutoCloseable {
 

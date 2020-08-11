@@ -179,15 +179,6 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
   override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Option[String]]] =
     send("CONFIG", List("SET", key, value))(asString)
 
-  override def discard: F[Resp[Boolean]] =
-    send("DISCARD")(asBoolean)
-
-  override def multi: F[Resp[Option[String]]] =
-    send("MULTI")(asString)
-
-  override def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]] =
-    send("EXEC")(asExec(hs))
-
   override def echo(message: Any)(implicit format: Format): F[Resp[Option[String]]] =
     send("ECHO", List(message))(asString)
 }
