@@ -30,6 +30,7 @@ val commonSettings = Seq(
         CompilerPlugins.contextApplied,
         CompilerPlugins.kindProjector,
         Libraries.catsEffect,
+        Libraries.shapeless,
         Libraries.slf4jLog4j,
         Libraries.slf4jApi,
         Libraries.log4j,

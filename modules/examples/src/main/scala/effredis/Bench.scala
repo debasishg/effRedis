@@ -27,11 +27,14 @@ object Bench extends LoggerIOApp {
 
       val nKeys = 1000000
       val s     = System.currentTimeMillis()
-      val x = (0 to nKeys).map { i =>
-        for {
-          a <- set(s"key$i", s"debasish ghosh $i")
-        } yield a
-      }.toList.sequence
+      val x = (0 to nKeys)
+        .map { i =>
+          for {
+            a <- set(s"key$i", s"debasish ghosh $i")
+          } yield a
+        }
+        .toList
+        .sequence
       x.unsafeRunSync()
 
       val timeElapsedSet = (System.currentTimeMillis() - s) / 1000
@@ -39,11 +42,14 @@ object Bench extends LoggerIOApp {
       println(s"Rate = ${nKeys / timeElapsedSet} sets per second")
 
       val t = System.currentTimeMillis()
-      val y = (0 to nKeys).map { i =>
-        for {
-          a <- get(s"key$i")
-        } yield a
-      }.toList.sequence
+      val y = (0 to nKeys)
+        .map { i =>
+          for {
+            a <- get(s"key$i")
+          } yield a
+        }
+        .toList
+        .sequence
       y.unsafeRunSync()
 
       val timeElapsed = (System.currentTimeMillis() - t) / 1000

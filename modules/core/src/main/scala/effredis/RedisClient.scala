@@ -19,7 +19,7 @@ package effredis
 import java.net.{ SocketException, URI }
 import javax.net.ssl.SSLContext
 
-import util.hlist._
+import shapeless.HList
 import codecs.Format
 
 import cats.effect._

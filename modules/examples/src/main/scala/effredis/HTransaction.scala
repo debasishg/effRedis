@@ -17,7 +17,7 @@
 package effredis
 
 import java.net.URI
-import util.hlist._
+import shapeless.HNil
 
 import cats.effect._
 import log4cats._

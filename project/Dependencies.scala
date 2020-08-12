@@ -11,6 +11,7 @@ object Dependencies {
     val circe      = "0.13.0"
     val fs2        = "2.4.2"
     val log4cats   = "1.1.1"
+    val shapeless  = "2.4.0-M1"
 
     val logback = "1.2.3"
 
@@ -27,6 +28,8 @@ object Dependencies {
 
     val catsEffect = "org.typelevel" %% "cats-effect"        % V.catsEffect
     val fs2Core    = "co.fs2"        %% "fs2-core"           % V.fs2
+    val shapeless  = "com.chuusai"   %% "shapeless"          % V.shapeless
+
 
     val slf4jApi   = "org.slf4j"      %  "slf4j-api"         % "1.7.29"
     val slf4jLog4j = "org.slf4j"      %  "slf4j-log4j12"     % "1.7.29"      % "provided"
