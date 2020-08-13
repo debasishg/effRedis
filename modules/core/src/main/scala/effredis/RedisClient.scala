@@ -16,7 +16,7 @@
 
 package effredis
 
-import java.net.{ SocketException, URI }
+import java.net.URI
 import javax.net.ssl.SSLContext
 
 import shapeless.HList
@@ -92,93 +92,6 @@ object RedisClient {
       blocker <- RedisBlocker.make
       client <- acquireAndReleaseSequencingDecorator(parent, pipelineMode, blocker)
     } yield client
-}
-
-abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with Protocol {
-
-  def send[A](command: String, args: Seq[Any])(
-      result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
-
-    val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-    F.debug(s"Sending ${new String(cmd)}") >> {
-      try {
-
-        write(cmd)
-        Value(result).pure[F]
-
-      } catch {
-        case e: RedisConnectionException =>
-          if (disconnect) send(command, args)(result)
-          else Error(e.getMessage()).pure[F]
-        case e: SocketException =>
-          if (disconnect) send(command, args)(result)
-          else Error(e.getMessage()).pure[F]
-        case e: Exception =>
-          Error(e.getMessage()).pure[F]
-      }
-    }
-  }
-
-  def send[A](command: String, pipelineMode: Boolean = false)(
-      result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] =
-    blocker.blockOn {
-      val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-      F.debug(s"Sending ${new String(cmd)}") >> {
-
-        try {
-
-          if (!pipelineMode) write(cmd)
-          else write(command.getBytes("UTF-8"))
-          Value(result).pure[F]
-
-        } catch {
-          case e: RedisConnectionException =>
-            if (disconnect) send(command)(result)
-            else Error(e.getMessage()).pure[F]
-          case e: SocketException =>
-            if (disconnect) send(command)(result)
-            else Error(e.getMessage()).pure[F]
-          case e: Exception =>
-            Error(e.getMessage()).pure[F]
-        }
-      }
-    }
-
-  def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
-
-  protected def flattenPairs(in: Iterable[Product2[Any, Any]]): List[Any] =
-    in.iterator.flatMap(x => Iterator(x._1, x._2)).toList
-}
-
-trait RedisCommand[F[+_]]
-    extends Redis[F]
-    with StringOperations[F]
-    with BaseOperations[F]
-    with ListOperations[F]
-    with SetOperations[F]
-    with HashOperations[F]
-    with SortedSetOperations[F]
-    with NodeOperations[F]
-    with GeoOperations[F]
-    with EvalOperations[F]
-    with HyperLogLogOperations[F]
-    with TransactionOperations[F]
-    with AutoCloseable {
-
-  val database: Int       = 0
-  val secret: Option[Any] = None
-
-  override def onConnect(): Unit = {
-    secret.foreach(s => auth(s))
-    selectDatabase()
-  }
-
-  private def selectDatabase(): Unit = {
-    val _ = if (database != 0) select(database)
-    ()
-  }
 }
 
 class RedisClient[F[+_]: Concurrent: ContextShift: Log](

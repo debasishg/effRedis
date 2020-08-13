@@ -153,7 +153,7 @@ private[effredis] trait Reply {
 
   def evaluate[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
     commands match {
-      case HNil                           => F.pure(res)
+      case HNil                      => F.pure(res)
       case (h: F[_] @unchecked) :: t => h.flatMap(fb => evaluate(t, fb :: res))
     }
 

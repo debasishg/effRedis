@@ -34,7 +34,12 @@ trait TestBaseScenarios {
       _ <- set("key 1", "debasish")
       _ <- set("key 2", "maulindu")
       x <- keys("key*")
-      _ <- IO(assert(getResp(x).get == List(Some("key 2"), Some("key 1"))))
+      _ <- IO(assert {
+            getResp(x).get match {
+              case keys: List[_] => keys.size == 2
+              case _             => false
+            }
+          })
 
       // randomkey
       _ <- set("anshin-1", "debasish")
