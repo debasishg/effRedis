@@ -33,7 +33,12 @@ trait TestBaseScenarios {
       _ <- set("anshin-1", "debasish")
       _ <- set("anshin-2", "maulindu")
       x <- keys("anshin*")
-      _ <- IO(assert(getResp(x).get == List(Some("anshin-2"), Some("anshin-1"))))
+      _ <- IO {
+            getResp(x).get match {
+              case vs: List[_] => vs.size == 2 && vs.contains(Some("anshin-2")) && vs.contains(Some("anshin-1"))
+              case _           => false
+            }
+          }
 
       // fetch keys with spaces
       _ <- set("key 1", "debasish")
