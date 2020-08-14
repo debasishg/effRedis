@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Adopted from :
+// https://github.com/profunktor/redis4cats/blob/master/modules/log4cats/src/main/scala/dev/profunktor/redis4cats/log4cats.scala
+
 package effredis
 
 import io.chrisdavenport.log4cats.Logger

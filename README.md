@@ -9,26 +9,65 @@ Non-blocking, effectful Scala client for Redis implemented using [cats](https://
 ```scala
 import java.net.URI
 import cats.effect._
+import cats.implicits._
+import log4cats._
 
-object Main extends IOApp {
+object Main extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.makeWithURI[IO](new URI("http://localhost:6379")).use { cmd =>
+    RedisClient.make[IO](new URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
+      // just 1 command
+      println(set("k1", "v1").unsafeRunSync())
+
+      // List of commands
+      println(List(set("k1", "v1"), get("k1")).sequence.unsafeRunSync())
+      println(List(set("k1", "v1"), get("k1"), set("k2", 100), incrby("k2", 12)).sequence.unsafeRunSync())
+
+      // Use as applicative
+      case class Foo(str: String, num: Long)
+
+      val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).parMapN { (_, _, k1val, k2val) =>
+        (k1val, k2val) match {
+          case (Value(Some(k1)), Value(Some(k2))) => Foo(k1, k2)
+          case err                                => println(s"Error $err")
+        }
+      }
+      println(res.unsafeRunSync())
+
+      // monadic
       val result = for {
 
-        _ <- set("key1", "debasish ghosh")
-        _ <- set("key2", 100)
-        _ <- set("key3", true)
-        d <- get("key1")
-        p <- incrby("key2", 12)
-        a <- mget("key1", "key2", "key3")
-        l <- lpush("list1", "debasish", "paramita", "aarush")
+        a <- set("k1", "v1")
+        b <- set("k2", "v2")
+        c <- get("k1")
 
-      } yield (d, p, a, l)
+      } yield (a, b, c)
 
       println(result.unsafeRunSync())
-      
+
+      // monadic with fail
+      val rsult = for {
+
+        a <- set("k1", "vnew")
+        b <- set("k2", "v2")
+        c <- lpop("k1")
+        d <- get("k1")
+
+      } yield List(a, b, c, d)
+
+      println(rsult.unsafeRunSync())
+
+      // applicative
+      val rs = (
+        set("k1", "vnew"),
+        set("k2", "v2"),
+        lpop("k1"),
+        get("k1")
+      ).parMapN((a, b, c, d) => List(a, b, c, d))
+
+      println(rs.unsafeRunSync())
+
       IO(ExitCode.Success)
     }
 }

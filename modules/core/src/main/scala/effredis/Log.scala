@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// adopted from:
+// https://github.com/profunktor/redis4cats/blob/master/modules/core/src/main/scala/dev/profunktor/redis4cats/effect/Log.scala
+
 package effredis
 
 import cats.Applicative
