@@ -27,7 +27,6 @@ abstract class EffRedisFunSuite extends FunSuite {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   implicit val timer: Timer[IO]     = IO.timer(ExecutionContext.global)
-  implicit val clock: Clock[IO]     = timer.clock
 
   val flushAllFixture = new Fixture[Unit]("FLUSHALL") {
     def apply(): Unit = ()

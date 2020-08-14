@@ -26,7 +26,7 @@ import EffRedisFunSuite._
 trait TestBaseScenarios {
   implicit def cs: ContextShift[IO]
 
-  def baseMisc(cmd: RedisClient[IO]): IO[Unit] = {
+  def baseMisc1(cmd: RedisClient[IO]): IO[Unit] = {
 
     import cmd._
     for {
@@ -92,7 +92,16 @@ trait TestBaseScenarios {
       x <- dbsize
       _ <- IO(assert(getResp(x).get == 2))
 
+    } yield ()
+  }
+
+  def baseMisc2(cmd: RedisClient[IO]): IO[Unit] = {
+
+    import cmd._
+    for {
       // exists
+      _ <- set("anshin-1", "debasish")
+      _ <- set("anshin-2", "maulindu")
       x <- exists("anshin-2")
       _ <- IO(assert(getBoolean(x)))
       x <- exists("anshin-1")
@@ -120,11 +129,10 @@ trait TestBaseScenarios {
       _ <- IO(assert(getResp(x).get == 1000))
       x <- expire("anshin-3", 1000)
       _ <- IO(assert(!getBoolean(x)))
-
     } yield ()
   }
 
-  def baseMisc1(cmd: RedisClient[IO]): IO[Unit] = {
+  def baseMisc3(cmd: RedisClient[IO]): IO[Unit] = {
     val timeout          = 2.second
     val timeoutTimestamp = System.currentTimeMillis().millis + timeout
 
@@ -189,7 +197,7 @@ trait TestBaseScenarios {
     } yield ()
   }
 
-  def baseMisc2(cmd: RedisClient[IO]): IO[Unit] = {
+  def baseMisc4(cmd: RedisClient[IO]): IO[Unit] = {
 
     import cmd._
     for {
@@ -235,7 +243,7 @@ trait TestBaseScenarios {
   }
 
   import codecs._
-  def baseMisc3(cmd: RedisClient[IO]): IO[Unit] = {
+  def baseMisc5(cmd: RedisClient[IO]): IO[Unit] = {
 
     import cmd._
     for {

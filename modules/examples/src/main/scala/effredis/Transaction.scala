@@ -24,7 +24,7 @@ import log4cats._
 object Transaction extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.withSequencingDecorator[IO](cli).use { txnClient =>
+      RedisClient.transact[IO](cli).use { txnClient =>
         import txnClient._
 
         val r1 = parent.transaction(txnClient) { () =>

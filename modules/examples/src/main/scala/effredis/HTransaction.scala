@@ -25,7 +25,7 @@ import log4cats._
 object HTransaction extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.withSequencingDecorator[IO](cli).use { txnClient =>
+      RedisClient.transact[IO](cli).use { txnClient =>
         import txnClient._
 
         val cmds = { () =>
@@ -33,7 +33,6 @@ object HTransaction extends LoggerIOApp {
             set("k2", "v2") ::
             get("k1") ::
             get("k2") ::
-            // discard ::
             HNil
         }
 
@@ -48,4 +47,16 @@ object HTransaction extends LoggerIOApp {
         IO(ExitCode.Success)
       }
     }
+
+//     RedisClient.transact[IO](new URI("..")).use { txnClient =>
+//       val cmds = { txnClient =>
+//         import txnClient._
+//         set("k1", "v1") ::
+//         set("k2", "v2") ::
+//         get("k1") ::
+//         get("k2") ::
+//         HNil
+//       }
+//       RedisClient.htransaction(txnClient)(cmds)
+//     }
 }

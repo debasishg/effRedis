@@ -24,7 +24,7 @@ object PipelineBench extends LoggerIOApp {
 
   def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] =
     RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cli =>
-      RedisClient.withSequencingDecorator[IO](cli, true).use { txnClient =>
+      RedisClient.pipe[IO](cli).use { txnClient =>
         import txnClient._
 
         val nKeys = 12500
