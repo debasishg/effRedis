@@ -47,16 +47,4 @@ object HTransaction extends LoggerIOApp {
         IO(ExitCode.Success)
       }
     }
-
-//     RedisClient.transact[IO](new URI("..")).use { txnClient =>
-//       val cmds = { txnClient =>
-//         import txnClient._
-//         set("k1", "v1") ::
-//         set("k2", "v2") ::
-//         get("k1") ::
-//         get("k2") ::
-//         HNil
-//       }
-//       RedisClient.htransaction(txnClient)(cmds)
-//     }
 }

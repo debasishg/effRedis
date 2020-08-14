@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// adopted from :
+// https://github.com/profunktor/redis4cats/blob/master/modules/tests/src/test/scala/dev/profunktor/redis4cats/Redis4CatsFunSuite.scala
+
 package effredis
 
 import java.net.URI
