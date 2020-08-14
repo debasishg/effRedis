@@ -71,3 +71,5 @@ tq:q
 .sbtopts
 .metals
 .bloop
+dump.rdb
+effredis.code-workspace
