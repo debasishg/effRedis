@@ -1,7 +1,7 @@
 import com.scalapenos.sbt.prompt.SbtPrompt.autoImport._
 import com.scalapenos.sbt.prompt._
 import Dependencies._
-import microsites.ExtraMdFileConfig
+import sbtrelease.ReleaseStateTransformations._
 
 ThisBuild / name := "effredis"
 ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.3")
@@ -48,7 +48,22 @@ val commonSettings = Seq(
   sources in (Compile, doc) := (sources in (Compile, doc)).value,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   autoAPIMappings := true,
-  scalafmtOnCompile := true
+  scalafmtOnCompile := true,
+  useGpgAgent := false,
+  releaseProcess := Seq[ReleaseStep](
+        checkSnapshotDependencies,
+        inquireVersions,
+        runClean,
+        runTest,
+        setReleaseVersion,
+        commitReleaseVersion,
+        tagRelease,
+        releaseStepCommandAndRemaining("publishSigned"),
+        releaseStepCommand("sonatypeBundleRelease"),
+        setNextVersion,
+        commitNextVersion,
+        pushChanges
+      )
 )
 
 lazy val noPublish = Seq(
@@ -58,41 +73,41 @@ lazy val noPublish = Seq(
   skip in publish := true
 )
 
-lazy val root = project
+lazy val `effredis-root` = project
   .in(file("."))
   .aggregate(
-    core,
-    log4cats,
-    examples,
-    tests
+    `effredis-core`,
+    `effredis-log4cats`,
+    `effredis-examples`,
+    `effredis-tests`
   )
   .settings(noPublish)
 
-lazy val core = project
+lazy val `effredis-core` = project
   .in(file("modules/core"))
   .settings(commonSettings: _*)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
 
-lazy val log4cats = project
+lazy val `effredis-log4cats` = project
   .in(file("modules/log4cats"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsCore)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(core)
+  .dependsOn(`effredis-core`)
 
-lazy val examples = project
+lazy val `effredis-examples` = project
   .in(file("modules/examples"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
   .settings(libraryDependencies += Libraries.logback % "runtime")
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(core)
-  .dependsOn(log4cats)
+  .dependsOn(`effredis-core`)
+  .dependsOn(`effredis-log4cats`)
 
-lazy val tests = project
+lazy val `effredis-tests` = project
   .in(file("modules/tests"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
@@ -100,5 +115,5 @@ lazy val tests = project
   .settings(noPublish)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(core)
-  .dependsOn(log4cats)
+  .dependsOn(`effredis-core`)
+  .dependsOn(`effredis-log4cats`)

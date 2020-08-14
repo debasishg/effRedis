@@ -27,8 +27,8 @@ trait HashApi[F[+_]] {
     * If field already exists in the hash, it is overwritten.
     *
     * @see [[http://redis.io/commands/hset HSET documentation]]
-    * @deprecated return value semantics is inconsistent with [[com.redis.HashOperations#hsetnx]] and
-    *             [[com.redis.HashOperations#hmset]]. Use [[com.redis.HashOperations#hset1]] instead
+    * @deprecated return value semantics is inconsistent with [[effredis.HashOperations#hsetnx]] and
+    *             [[effredis.HashOperations#hmset]]. Use [[effredis.HashOperations#hset1]] instead
     * @return <code>True</code> if <code>field</code> is a new field in the hash and value was set,
     *         <code>False</code> if <code>field</code> already exists in the hash and the value was updated.
     *
