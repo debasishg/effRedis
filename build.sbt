@@ -1,10 +1,23 @@
 import com.scalapenos.sbt.prompt.SbtPrompt.autoImport._
 import com.scalapenos.sbt.prompt._
 import Dependencies._
-import sbtrelease.ReleaseStateTransformations._
 
 ThisBuild / name := "effredis"
 ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.3")
+
+inThisBuild(List(
+  organization := "io.github.debasishg",
+  homepage := Some(url("https://github.com/debasishg/effRedis")),
+  licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  developers := List(
+    Developer(
+      "debasishg",
+      "Debasish Ghosh",
+      "dghosh@acm.org",
+      url("https://debasishg.blogspot.com")
+    )
+  )
+))
 
 // thanks https://github.com/profunktor/redis4cats/blob/master/build.sbt
 promptTheme := PromptTheme(
@@ -48,22 +61,7 @@ val commonSettings = Seq(
   sources in (Compile, doc) := (sources in (Compile, doc)).value,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   autoAPIMappings := true,
-  scalafmtOnCompile := true,
-  useGpgAgent := false,
-  releaseProcess := Seq[ReleaseStep](
-        checkSnapshotDependencies,
-        inquireVersions,
-        runClean,
-        runTest,
-        setReleaseVersion,
-        commitReleaseVersion,
-        tagRelease,
-        releaseStepCommandAndRemaining("publishSigned"),
-        releaseStepCommand("sonatypeBundleRelease"),
-        setNextVersion,
-        commitNextVersion,
-        pushChanges
-      )
+  scalafmtOnCompile := true
 )
 
 lazy val noPublish = Seq(
