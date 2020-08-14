@@ -22,28 +22,21 @@ import log4cats._
 
 object PipelineBench extends LoggerIOApp {
 
-  def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] = {  
+  def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] =
     RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cli =>
       RedisClient.withSequencingDecorator[IO](cli, true).use { txnClient =>
         import txnClient._
 
         val nKeys = 12500
-        parent.pipeline(txnClient) { () =>
-          (0 to nKeys).map { i =>
-            set(s"$keyPrefix$i", s"$valPrefix $i")
-          }
-        }
+        parent.pipeline(txnClient)(() => (0 to nKeys).map(i => set(s"$keyPrefix$i", s"$valPrefix $i")))
       }
     }
-  }
 
   override def run(args: List[String]): IO[ExitCode] = {
 
     val s = System.currentTimeMillis()
 
-    val res = (0 to 7).map { i =>
-      setupPipeline(s"key-$i", s"value-$i")
-    }.toList.sequence
+    val res = (0 to 7).map(i => setupPipeline(s"key-$i", s"value-$i")).toList.sequence
     res.unsafeRunSync()
 
     val timeElapsedSet = (System.currentTimeMillis() - s) / 1000

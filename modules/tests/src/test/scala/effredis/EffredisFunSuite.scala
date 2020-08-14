@@ -69,6 +69,12 @@ object EffRedisFunSuite {
       case _            => false
     }
 
+  def getLong(resp: Resp[Option[Long]]): Option[Long] =
+    resp match {
+      case Value(Some(value)) => Some(value)
+      case _                  => None
+    }
+
   def getResp(resp: Resp[_]): Option[_] = resp match {
     case Value(s @ Some(_)) => s
     case Value(None)        => None
