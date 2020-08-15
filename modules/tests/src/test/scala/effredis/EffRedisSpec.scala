@@ -21,6 +21,7 @@ class EffRedisSpec
     with TestStringScenarios
     with TestBaseScenarios
     with TestListScenarios
+    with TestHyperLogLogScenarios
     with TestSetScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
@@ -62,4 +63,17 @@ class EffRedisSpec
   test("sets api rem variadic")(withRedis(setsRemVariadic))
   test("sets api pop")(withRedis(setsPop))
   test("sets api pop with count")(withRedis(setsPopWithCount))
+  test("sets api move")(withRedis(setsMove))
+  test("sets api card")(withRedis(setsCard))
+  test("sets api ismember")(withRedis(setsIsMember))
+  test("sets api intersection")(withRedis(setsInter))
+  test("sets api intersection")(withRedis(setsInterstore))
+  test("sets api union")(withRedis(setsUnion))
+  test("sets api unionstore")(withRedis(setsUnionstore))
+  test("sets api diff")(withRedis(setsDiff))
+  test("sets api member")(withRedis(setsMember))
+  test("sets api random member")(withRedis(setsRandomMemberWithCount))
+  test("hll pfadd")(withRedis(hllPfAdd))
+  test("hll pfcount")(withRedis(hllPfCount))
+  test("hll pfmerge")(withRedis(hllPfMerge))
 }

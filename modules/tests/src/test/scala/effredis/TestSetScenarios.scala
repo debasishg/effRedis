@@ -137,4 +137,328 @@ trait TestSetScenarios {
           }
     } yield ()
   }
+
+  def setsMove(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "1")
+      _ <- sadd("set-2", "2")
+
+      x <- smove("set-1", "set-2", "baz")
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- sadd("set-2", "baz")
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- sadd("set-1", "baz")
+      _ <- IO(assert(getResp(x).get == 1))
+
+      // should return 0 if the element does not exist in source set
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- smove("set-1", "set-2", "bat")
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- smove("set-3", "set-2", "bat")
+      _ <- IO(assert(getResp(x).get == 0))
+
+      // should give error if the source or destination key is not a set
+      _ <- flushdb
+      _ <- lpush("list-1", "foo")
+      _ <- lpush("list-1", "bar")
+      _ <- lpush("list-1", "baz")
+      x <- sadd("set-1", "foo")
+      _ <- IO(assert(getResp(x).get == 1))
+      x <- smove("list-1", "set-1", "bat")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+    } yield ()
+  }
+
+  def setsCard(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- scard("set-1")
+      _ <- IO(assert(getResp(x).get == 3))
+
+      // should return 0 if key does not exist
+      _ <- flushdb
+      x <- scard("set-1")
+      _ <- IO(assert(getResp(x).get == 0))
+    } yield ()
+  }
+
+  def setsIsMember(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sismember("set-1", "foo")
+      _ <- IO(assert(getBoolean(x)))
+
+      // should return false for no membership
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sismember("set-1", "fo")
+      _ <- IO(assert(!getBoolean(x)))
+
+      // should return false if key does not exist
+      x <- sismember("set-1", "fo")
+      _ <- IO(assert(!getBoolean(x)))
+    } yield ()
+  }
+
+  def setsInter(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "foo")
+      _ <- sadd("set-2", "bat")
+      _ <- sadd("set-2", "baz")
+
+      _ <- sadd("set-3", "for")
+      _ <- sadd("set-3", "bat")
+      _ <- sadd("set-3", "bay")
+
+      x <- sinter("set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("baz"))))
+      x <- sinter("set-1", "set-3")
+      _ <- IO(assert(getResp(x).get == Set.empty))
+
+      // should return empty set for non-existing key
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sinter("set-1", "set-4")
+      _ <- IO(assert(getResp(x).get == Set.empty))
+
+    } yield ()
+  }
+
+  def setsInterstore(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      // should store intersection
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "foo")
+      _ <- sadd("set-2", "bat")
+      _ <- sadd("set-2", "baz")
+
+      _ <- sadd("set-3", "for")
+      _ <- sadd("set-3", "bat")
+      _ <- sadd("set-3", "bay")
+
+      x <- sinterstore("set-r", "set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- scard("set-r")
+      _ <- IO(assert(getResp(x).get == 2))
+      x <- sinterstore("set-s", "set-1", "set-3")
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- scard("set-s")
+      _ <- IO(assert(getResp(x).get == 0))
+
+      // should return empty set for non-existing key
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sinterstore("set-r", "set-1", "set-4")
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- scard("set-r")
+      _ <- IO(assert(getResp(x).get == 0))
+    } yield ()
+  }
+
+  def setsUnion(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "foo")
+      _ <- sadd("set-2", "bat")
+      _ <- sadd("set-2", "baz")
+
+      _ <- sadd("set-3", "for")
+      _ <- sadd("set-3", "bat")
+      _ <- sadd("set-3", "bay")
+
+      x <- sunion("set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"), Some("bat"))))
+      x <- sunion("set-1", "set-3")
+      _ <- IO(
+            assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"), Some("for"), Some("bat"), Some("bay")))
+          )
+
+      // should return empty set for non-existing key
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sunion("set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
+    } yield ()
+  }
+
+  def setsUnionstore(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "foo")
+      _ <- sadd("set-2", "bat")
+      _ <- sadd("set-2", "baz")
+
+      _ <- sadd("set-3", "for")
+      _ <- sadd("set-3", "bat")
+      _ <- sadd("set-3", "bay")
+
+      x <- sunionstore("set-r", "set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == 4))
+      x <- scard("set-r")
+      _ <- IO(assert(getResp(x).get == 4))
+      x <- sunionstore("set-s", "set-1", "set-3")
+      _ <- IO(assert(getResp(x).get == 6))
+      x <- scard("set-s")
+      _ <- IO(assert(getResp(x).get == 6))
+
+      // should treat non-existing keys as empty sets
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sunionstore("set-r", "set-1", "set-4")
+      _ <- IO(assert(getResp(x).get == 3))
+      x <- scard("set-r")
+      _ <- IO(assert(getResp(x).get == 3))
+    } yield ()
+  }
+
+  def setsDiff(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+
+      _ <- sadd("set-2", "foo")
+      _ <- sadd("set-2", "bat")
+      _ <- sadd("set-2", "baz")
+
+      _ <- sadd("set-3", "for")
+      _ <- sadd("set-3", "bat")
+      _ <- sadd("set-3", "bay")
+
+      x <- sdiff("set-1", "set-2", "set-3")
+      _ <- IO(assert(getResp(x).get == Set(Some("bar"))))
+
+      // should treat non-existing keys as empty sets
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- sdiff("set-1", "set-2")
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
+    } yield ()
+  }
+
+  def setsMember(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- smembers("set-1")
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
+
+      // should return None for an empty set
+      _ <- flushdb
+      x <- smembers("set-1")
+      _ <- IO(assert(getResp(x).get == Set()))
+
+      _ <- flushdb
+      _ <- sadd("set-1", "foo")
+      _ <- sadd("set-1", "bar")
+      _ <- sadd("set-1", "baz")
+      x <- srandmember("set-1")
+      _ <- IO {
+            getResp(x).get match {
+              case "foo" => assert(true)
+              case "bar" => assert(true)
+              case "baz" => assert(true)
+              case _     => assert(false)
+            }
+          }
+
+      // should return None for a non-existing key") {
+      _ <- flushdb
+      x <- srandmember("set-1")
+      _ <- IO(assert(getResp(x) == None))
+    } yield ()
+  }
+
+  def setsRandomMemberWithCount(cmd: RedisClient[IO]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- sadd("set-1", "one")
+      _ <- sadd("set-1", "two")
+      _ <- sadd("set-1", "three")
+      _ <- sadd("set-1", "four")
+      _ <- sadd("set-1", "five")
+      _ <- sadd("set-1", "six")
+      _ <- sadd("set-1", "seven")
+      _ <- sadd("set-1", "eight")
+
+      x <- srandmember("set-1", 2)
+      _ <- IO {
+            getResp(x).get match {
+              case s: Set[_] => assert(s.size == 2)
+              case _         => false
+            }
+          }
+
+      // returned elements should be unique
+      x <- srandmember("set-1", 4)
+      _ <- IO {
+            getResp(x).get match {
+              case s: List[_] => s.size == 4
+            }
+          }
+
+      // returned elements may have duplicates
+      x <- srandmember("set-1", -4)
+      _ <- IO {
+            getResp(x).get match {
+              case s: List[_] => s.size <= 4
+            }
+          }
+
+      // if supplied count > size, then whole set is returned
+      x <- srandmember("set-1", 24)
+      _ <- IO {
+            getResp(x).get match {
+              case s: List[_] => s.size == 8
+            }
+          }
+
+    } yield ()
+  }
 }
