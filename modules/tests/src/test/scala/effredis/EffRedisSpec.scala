@@ -21,6 +21,7 @@ class EffRedisSpec
     with TestStringScenarios
     with TestBaseScenarios
     with TestListScenarios
+    with TestHyperLogLogScenarios
     with TestSetScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
@@ -72,4 +73,7 @@ class EffRedisSpec
   test("sets api diff")(withRedis(setsDiff))
   test("sets api member")(withRedis(setsMember))
   test("sets api random member")(withRedis(setsRandomMemberWithCount))
+  test("hll pfadd")(withRedis(hllPfAdd))
+  test("hll pfcount")(withRedis(hllPfCount))
+  test("hll pfmerge")(withRedis(hllPfMerge))
 }
