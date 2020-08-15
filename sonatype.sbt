@@ -1,5 +1,5 @@
 // Your profile name of the sonatype account. The default is the same with the organization value
-ThisBuild / sonatypeProfileName := "net.debasishg"
+ThisBuild / sonatypeProfileName := "io.github.debasishg"
 
 // To sync with Maven central, you need to supply the following information:
 ThisBuild / publishMavenStyle := true
