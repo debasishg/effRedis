@@ -85,7 +85,6 @@ trait RedisIO { // extends Log {
 
   // Writes data to a socket using the specified block.
   def write(data: Array[Byte]): Unit = {
-    // ifDebug("C: " + parseStringSafe(data))
     if (!connected) connect
     write_to_socket { os =>
       try {

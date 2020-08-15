@@ -200,46 +200,6 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
       }
     }
 
-  def htransaction1[In <: HList](
-      client: SequencingDecorator[F]
-  )(commands: () => In): F[Resp[Option[List[Any]]]] =
-    multi.flatMap { _ =>
-      try {
-        val _ = commands()
-
-        if (client.handlers
-              .map(_._1)
-              .filter(_ == "DISCARD")
-              .isEmpty) {
-
-          // exec only if no discard
-          F.debug(s"Executing transaction ..") >> {
-            try {
-              exec(client.handlers.map(_._2)).flatTap { _ =>
-                client.handlers = Vector.empty
-                ().pure[F]
-              }
-            } catch {
-              case e: Exception =>
-                Error(e.getMessage()).pure[F]
-            }
-          }
-
-        } else {
-          // no exec if discard
-          F.debug(s"Got DISCARD .. discarding transaction") >> {
-            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-              client.handlers = Vector.empty
-              r.pure[F]
-            }
-          }
-        }
-      } catch {
-        case e: Exception =>
-          Error(e.getMessage()).pure[F]
-      }
-    }
-
   def transaction(
       client: SequencingDecorator[F]
   )(f: () => Any): F[Resp[Option[List[Any]]]] = {
