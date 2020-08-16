@@ -149,7 +149,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
     try {
       val _ = commands()
       client.parent
-        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+        .send(client.commandBuffer.toString, true)(Option(client.handlers.map(_._2).map(_()).toList))
         .flatTap { r =>
           client.handlers = Vector.empty
           client.commandBuffer = new StringBuffer
