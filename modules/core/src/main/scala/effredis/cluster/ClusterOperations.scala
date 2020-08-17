@@ -16,19 +16,18 @@
 
 package effredis.cluster
 
-import enumeratum._
+import cats.effect.{ Blocker, Concurrent, ContextShift }
+import cats.implicits._
+import algebra.ClusterApi
+import effredis.{ Redis, Resp }
 
-sealed abstract class NodeFlag(override val entryName: String) extends EnumEntry
+trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
+  implicit def blocker: Blocker
+  implicit def conc: Concurrent[F]
+  implicit def ctx: ContextShift[F]
 
-object NodeFlag extends Enum[NodeFlag] {
-  case object NoFlags extends NodeFlag("noflags")
-  case object Upstream extends NodeFlag("master")
-  case object Replica extends NodeFlag("slave")
-  case object Myself extends NodeFlag("myself")
-  case object EventualFail extends NodeFlag("fail?")
-  case object Fail extends NodeFlag("fail")
-  case object NoAddr extends NodeFlag("noaddr")
-  case object Handshake extends NodeFlag("handshake")
-
-  val values = findValues
+  override def clusterNodes: F[Resp[Option[List[RedisClusterNode[F]]]]] = {
+    def toTopology: String => Option[List[RedisClusterNode[F]]] = ???
+    send("CLUSTER NODES")(asBulk[String] >>= toTopology)
+  }
 }

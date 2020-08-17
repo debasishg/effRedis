@@ -44,6 +44,7 @@ val commonSettings = Seq(
         CompilerPlugins.kindProjector,
         Libraries.catsEffect,
         Libraries.shapeless,
+        Libraries.enumeratum,
         Libraries.slf4jLog4j,
         Libraries.slf4jApi,
         Libraries.log4j,

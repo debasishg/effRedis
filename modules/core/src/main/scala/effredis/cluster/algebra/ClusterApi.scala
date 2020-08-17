@@ -15,20 +15,10 @@
  */
 
 package effredis.cluster
+package algebra
 
-import enumeratum._
+import effredis.Resp
 
-sealed abstract class NodeFlag(override val entryName: String) extends EnumEntry
-
-object NodeFlag extends Enum[NodeFlag] {
-  case object NoFlags extends NodeFlag("noflags")
-  case object Upstream extends NodeFlag("master")
-  case object Replica extends NodeFlag("slave")
-  case object Myself extends NodeFlag("myself")
-  case object EventualFail extends NodeFlag("fail?")
-  case object Fail extends NodeFlag("fail")
-  case object NoAddr extends NodeFlag("noaddr")
-  case object Handshake extends NodeFlag("handshake")
-
-  val values = findValues
+trait ClusterApi[F[+_]] {
+  def clusterNodes: F[Resp[Option[List[RedisClusterNode[F]]]]]
 }

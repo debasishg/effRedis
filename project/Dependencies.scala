@@ -20,6 +20,7 @@ object Dependencies {
     val kindProjector    = "0.11.0"
 
     val munit = "0.7.11"
+    val enumeratum = "1.6.1"
   }
 
   object Libraries {
@@ -29,6 +30,7 @@ object Dependencies {
     val catsEffect = "org.typelevel" %% "cats-effect"        % V.catsEffect
     val fs2Core    = "co.fs2"        %% "fs2-core"           % V.fs2
     val shapeless  = "com.chuusai"   %% "shapeless"          % V.shapeless
+    val enumeratum = "com.beachape"  %% "enumeratum"         % V.enumeratum
 
 
     val slf4jApi   = "org.slf4j"      %  "slf4j-api"         % "1.7.30"
