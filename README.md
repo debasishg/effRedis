@@ -1,7 +1,12 @@
 # effRedis
+
+[![Build Status](https://travis-ci.org/debasishg/effRedis.svg?branch=master)](https://travis-ci.org/debasishg/effRedis)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.debasishg/effredis-core_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.debasishg/effredis-core_2.13) <a href="https://typelevel.org/cats/"><img src="https://typelevel.org/cats/img/cats-badge.svg" height="40px" align="right" alt="Cats friendly" /></a>
+[![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-brightgreen.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
+
+
 Non-blocking, effectful Scala client for Redis implemented using [cats](https://github.com/typelevel/cats) and [cats-effect](https://github.com/typelevel/cats-effect). It uses the existing [scala-redis](https://github.com/debasishg/scala-redis) client as the underlying implementation. I have plans of making a few improvements in the underlying implementation as well, but things will take time. I can only afford a couple of hours per week on this.
 
-**This is an exercise that has just started and it will remain WIP for quite some time now. Feedback welcome.**
 
 
 # Sample Usage
@@ -71,4 +76,31 @@ object Main extends LoggerIOApp {
       IO(ExitCode.Success)
     }
 }
+```
+
+### Dependencies
+
+Add this to your `build.sbt` for the Core API (depends on `cats-effect`):
+
+```
+libraryDependencies += "io.github.debasishg" %% "effredis-core" % Version
+```
+
+### Log4cats support
+
+`effredis` uses `log4cats` for internal logging. It is the recommended logging library:
+
+```
+libraryDependencies += "io.github.debasishg" %% "effredis-log4cats" % Version
+```
+
+(Adopted from [redis4cats](https://github.com/profunktor/redis4cats))
+
+## Running the tests locally
+
+Start Redis locally or using `docker-compose`:
+
+```bash
+> docker-compose up
+> sbt +test
 ```

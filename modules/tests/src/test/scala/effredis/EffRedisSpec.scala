@@ -22,6 +22,7 @@ class EffRedisSpec
     with TestBaseScenarios
     with TestListScenarios
     with TestHyperLogLogScenarios
+    with TestSortedSetScenarios
     with TestSetScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
@@ -76,4 +77,15 @@ class EffRedisSpec
   test("hll pfadd")(withRedis(hllPfAdd))
   test("hll pfcount")(withRedis(hllPfCount))
   test("hll pfmerge")(withRedis(hllPfMerge))
+  test("sortedsets zrangebylex")(withRedis(sortedSetsZrangeByLex))
+  test("sortedsets zadd")(withRedis(sortedSetsZAdd))
+  test("sortedsets zrem")(withRedis(sortedSetsZRem))
+  test("sortedsets zrange")(withRedis(sortedSetsZRange))
+  test("sortedsets zrank")(withRedis(sortedSetsZRank))
+  test("sortedsets zremrange")(withRedis(sortedSetsZRemRange))
+  test("sortedsets zunion")(withRedis(sortedSetsZUnion))
+  test("sortedsets zinter")(withRedis(sortedSetsZInter))
+  test("sortedsets zcount")(withRedis(sortedSetsZCount))
+  test("sortedsets zrangebyscore")(withRedis(sortedSetsZRangeByScore))
+  test("sortedsets zrangebyscorewithscore")(withRedis(sortedSetsZRangeByScoreWithScore))
 }
