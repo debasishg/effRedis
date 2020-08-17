@@ -83,4 +83,14 @@ object EffRedisFunSuite {
     case Error(err)         => Some(err)
     case _                  => None
   }
+
+  def getRespListSize(resp: Resp[_]): Option[Int] = resp match {
+    case Value(Some(ls: List[_])) => Some(ls.size)
+    case _                        => None
+  }
+
+  def getRespList[A](resp: Resp[_]): Option[List[A]] = resp match {
+    case Value(Some(ls: List[_])) => Some(ls.asInstanceOf[List[A]])
+    case _                        => None
+  }
 }
