@@ -115,6 +115,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
+  def l: Log[F]                        = implicitly[Log[F]]
 
   def this(b: Blocker) = this("localhost", 6379, blocker = b)
   def this(connectionUri: java.net.URI, b: Blocker) = this(
@@ -243,6 +244,7 @@ class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
   def blocker: Blocker                 = parent.blocker
+  def l: Log[F]                        = implicitly[Log[F]]
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
   var commandBuffer: StringBuffer           = new StringBuffer

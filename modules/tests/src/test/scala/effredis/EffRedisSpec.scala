@@ -23,6 +23,7 @@ class EffRedisSpec
     with TestListScenarios
     with TestHyperLogLogScenarios
     with TestSortedSetScenarios
+    with cluster.TestClusterNodesScenarios
     with TestSetScenarios {
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
@@ -88,4 +89,5 @@ class EffRedisSpec
   test("sortedsets zcount")(withRedis(sortedSetsZCount))
   test("sortedsets zrangebyscore")(withRedis(sortedSetsZRangeByScore))
   test("sortedsets zrangebyscorewithscore")(withRedis(sortedSetsZRangeByScoreWithScore))
+  test("sortedsets zrangebyscorewithscore")(withRedis(parseClusterNodes))
 }

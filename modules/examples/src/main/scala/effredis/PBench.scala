@@ -63,7 +63,7 @@ object PBench extends LoggerIOApp {
     println(s"Rate = ${100000 / timeElapsedSet} sets per second")
 
     // Time elapsed in setting 100000 keys = 2 seconds
-    // Rate = 500000 sets per second
+    // Rate = 50000 sets per second
 
     IO(ExitCode.Success)
   }

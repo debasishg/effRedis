@@ -19,7 +19,7 @@ package effredis.cluster
 import java.net.URI
 import cats.effect._
 import cats.implicits._
-import effredis.{ Log, RedisBlocker, RedisClient, Value }
+import effredis.{ Error, Log, RedisBlocker, RedisClient, Value }
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] private (
     seedURI: URI,
@@ -40,7 +40,10 @@ object RedisClusterClient {
             cl.clusterNodes.flatMap { t =>
               t match {
                 case Value(Some(nodes)) => nodes.pure[F]
-                case _                  => throw new Exception("no data")
+                case Error(err) =>
+                  F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
+                case err =>
+                  F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
               }
             }
           }
