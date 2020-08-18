@@ -53,7 +53,13 @@ trait TestClusterNodesScenarios {
     val ts  = List(ts1, ts2)
     val csv = ts.writeComplete.print(Printer.default)
 
-    fromRedisServer(csv) match {
+    val ssv =
+      "nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004@31004 slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected \n67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1 127.0.0.1:30002@31002 master - 0 1426238316232 2 connected 5461-10922"
+
+    println(csv)
+    println(ssv)
+
+    fromRedisServer(ssv) match {
       case Right(v) => v.toList.foreach(println)
       case Left(e)  => println(e)
     }

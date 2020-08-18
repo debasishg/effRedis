@@ -47,7 +47,7 @@ object ClusterUtils {
   def fromRedisServer(
       csv: String
   ): EitherNec[String, NonEmptyList[TopologyString]] =
-    parseComplete(csv)
+    parseComplete(csv, parser = parsers.SSVParser)
       .leftWiden[Error]
       .flatMap(_.readLabelled[TopologyString].sequence)
       .toValidatedNec
