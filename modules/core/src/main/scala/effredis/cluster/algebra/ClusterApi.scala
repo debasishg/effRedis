@@ -20,5 +20,5 @@ package algebra
 import effredis.Resp
 
 trait ClusterApi[F[+_]] {
-  def clusterNodes: F[Resp[Option[List[RedisClusterNode[F]]]]]
+  def clusterNodes: F[Resp[Option[String]]]
 }

@@ -17,6 +17,7 @@
 package effredis.cluster
 package util
 
+import scala.collection.immutable.BitSet
 import cats.implicits._
 import cats.effect._
 import cats.data.{ EitherNec, NonEmptyList }
@@ -60,6 +61,15 @@ object ClusterUtils {
   ): Option[RedisClusterNode[F]] = {
     println(ts)
     ???
+  }
+
+  def parseNodeFlags(nodeFlagString: String): Set[NodeFlag] =
+    nodeFlagString.split(",").map(NodeFlag.withName).toSet
+
+  def parseSlotString(slotString: String): BitSet = {
+    val parts = slotString.split("-")
+    if (parts.size == 1) BitSet(slotString.toInt)
+    else BitSet((parts(0).toInt to parts(1).toInt).toList: _*)
   }
 
 }

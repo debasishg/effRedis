@@ -17,10 +17,8 @@
 package effredis.cluster
 
 import cats.effect.{ Blocker, Concurrent, ContextShift }
-import cats.implicits._
 import algebra.ClusterApi
 import effredis.{ Log, Redis, Resp }
-import util.ClusterUtils._
 
 trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
   implicit def blocker: Blocker
@@ -28,16 +26,6 @@ trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
   implicit def ctx: ContextShift[F]
   implicit def l: Log[F]
 
-  override def clusterNodes: F[Resp[Option[List[RedisClusterNode[F]]]]] =
-    send("CLUSTER NODES")(asBulk[String] >>= toTopology)
-
-  def toTopology: String => Option[List[RedisClusterNode[F]]] = csv => {
-    fromRedisServer(csv) match {
-      case Right(value) => value.toList.map(ts => toRedisClusterNode(ts)).sequence
-      case Left(err) => {
-        l.error(s"Incompatible topology information from server: $err")
-        None
-      }
-    }
-  }
+  override def clusterNodes: F[Resp[Option[String]]] =
+    send("CLUSTER NODES")(asBulk[String])
 }
