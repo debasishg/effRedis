@@ -23,7 +23,7 @@ import cats.effect._
 import cats.implicits._
 import effredis.{ Log, RedisBlocker, RedisClient }
 
-final private[effredis] case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
+final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
     val client: RedisClient[F],
     nodeId: String,
     connected: Boolean,
