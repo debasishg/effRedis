@@ -52,33 +52,39 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
   /**
     * returns all the keys matching the glob-style pattern.
     */
-  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]]
+  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
+    F.raiseError(new NotAllowedInClusterError(s"KEYS $pattern $format $parse not allowed in cluster mode"))
 
   /**
     * returns the current server time as a two items lists:
     * a Unix timestamp and the amount of microseconds already elapsed in the current second.
     */
-  def time[A](implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]]
+  def time[A](implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
+    onANode(_.client.time[A])
 
   /**
     * returns a randomly selected key from the currently selected DB.
     */
-  def randomkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]]
+  def randomkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
+    onANode(_.client.randomkey[A])
 
   /**
     * atomically renames the key oldkey to newkey.
     */
-  def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]]
+  def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
+    forKeys(oldkey.toString, newkey.toString)(_.client.rename(oldkey, newkey))
 
   /**
     * rename oldkey into newkey but fails if the destination key newkey already exists.
     */
-  def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]]
+  def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
+    forKeys(oldkey.toString, newkey.toString)(_.client.renamenx(oldkey, newkey))
 
   /**
     * returns the size of the db.
     */
-  def dbsize: F[Resp[Option[Long]]]
+  def dbsize: F[Resp[Option[Long]]] =
+    onANode(_.client.dbsize)
 
   /**
     * test if the specified key exists.
@@ -180,8 +186,11 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
   /**
     * Incrementally iterate the keys space (since 2.8)
     */
-  def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)
-  : F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
+  def scan[A](
+      cursor: Int,
+      pattern: Any = "*",
+      count: Int = 10
+  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
     F.raiseError(new NotAllowedInClusterError(s"SCAN $cursor $pattern $count not allowed in cluster mode"))
 
   /**
@@ -190,7 +199,7 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
   def ping: F[Resp[Option[String]]] =
     onANode(_.client.ping)
 
-  protected val pong: Option[String] = Some("PONG") 
+  protected val pong: Option[String] = Some("PONG")
 
   /**
     * Marks the given keys to be watched for conditional execution of a transaction.
@@ -202,7 +211,7 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
     * Flushes all the previously watched keys for a transaction
     */
   def unwatch(): F[Resp[Boolean]] =
-    onAllNodes(_.client.unwatch)
+    onAllNodes(_.client.unwatch())
 
   /**
     * CONFIG GET

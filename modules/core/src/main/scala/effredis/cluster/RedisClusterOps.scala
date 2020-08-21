@@ -21,15 +21,13 @@ import cats.implicits._
 import effredis.{ Log, Resp, Value }
 
 class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisClusterClient[F] =>
-  def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
-    topology
-      .headOption
+  def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
+    topology.headOption
       .map(fn)
       .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
-  }
 
   def onAllNodes(fn: RedisClusterNode[F] => F[Resp[Boolean]]): F[Resp[Boolean]] = {
-    val _ = topology.foreach(fn) 
+    val _ = topology.foreach(fn)
     Value(true).pure[F]
   }
 
