@@ -17,9 +17,22 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.{ Log, Resp }
+import cats.implicits._
+import effredis.{ Log, Resp, Value }
 
 class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisClusterClient[F] =>
+  def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
+    topology
+      .headOption
+      .map(fn)
+      .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
+  }
+
+  def onAllNodes(fn: RedisClusterNode[F] => F[Resp[Boolean]]): F[Resp[Boolean]] = {
+    val _ = topology.foreach(fn) 
+    Value(true).pure[F]
+  }
+
   def forKey[R](key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
     val node = topology.filter(_.hasSlot(slot)).headOption
@@ -56,3 +69,5 @@ class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisCluster
     }
   }
 }
+
+class NotAllowedInClusterError(message: String) extends RuntimeException(message)
