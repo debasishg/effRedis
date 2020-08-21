@@ -20,11 +20,10 @@ import java.io._
 import java.net.{ InetSocketAddress, Socket, SocketTimeoutException }
 import javax.net.ssl.SSLContext
 
-// import codecs.Parse.parseStringSafe
-
-trait RedisIO { // extends Log {
+trait RedisIO {
   val host: String
   val port: Int
+  val clusterPort: Option[Int] = None
   val timeout: Int
 
   val sslContext: Option[SSLContext] = None

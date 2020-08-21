@@ -29,6 +29,7 @@ trait RedisCommand[F[+_]]
     with EvalOperations[F]
     with HyperLogLogOperations[F]
     with TransactionOperations[F]
+    with cluster.ClusterOperations[F]
     with AutoCloseable {
 
   val database: Int       = 0
