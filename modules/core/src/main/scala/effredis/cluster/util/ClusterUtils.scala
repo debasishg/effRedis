@@ -19,10 +19,7 @@ package util
 
 import scala.collection.immutable.BitSet
 import cats.implicits._
-import cats.effect._
 import cats.data.{ EitherNec, NonEmptyList }
-
-import effredis.Log
 
 import io.chrisdavenport.cormorant._
 import io.chrisdavenport.cormorant.generic.semiauto._
@@ -55,13 +52,6 @@ object ClusterUtils {
       .toEither
       .leftMap(_.map(_.toString))
       .map(l => NonEmptyList.fromList(l).get)
-
-  def toRedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
-      ts: TopologyString
-  ): Option[RedisClusterNode[F]] = {
-    println(ts)
-    ???
-  }
 
   def parseNodeFlags(nodeFlagString: String): Set[NodeFlag] =
     nodeFlagString.split(",").map(NodeFlag.withName).toSet
