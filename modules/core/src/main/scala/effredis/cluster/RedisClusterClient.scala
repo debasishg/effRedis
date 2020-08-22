@@ -25,7 +25,17 @@ import cats.implicits._
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] private (
     seedURI: URI,
     topology: List[RedisClusterNode[F]]
-)
+) extends RedisClusterOps[F]
+    with BaseOps[F]
+    with StringOps[F]
+    with ListOps[F]
+    with SetOps[F]
+    with HashOps[F] {
+
+  def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
+  def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
+  def l: Log[F]                        = implicitly[Log[F]]
+}
 
 object RedisClusterClient {
 

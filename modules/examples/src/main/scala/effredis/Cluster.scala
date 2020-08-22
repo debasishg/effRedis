@@ -14,18 +14,24 @@
  * limitations under the License.
  */
 
-package effredis.cluster
+package effredis
+package cluster
 
-import cats.effect.{ Blocker, Concurrent, ContextShift }
-import algebra.ClusterApi
-import effredis.{ Log, Redis, Resp }
+import java.net.URI
+import cats.effect._
+import log4cats._
 
-trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
-  implicit def blocker: Blocker
-  implicit def conc: Concurrent[F]
-  implicit def ctx: ContextShift[F]
-  implicit def l: Log[F]
+object Cluster extends LoggerIOApp {
+  override def run(args: List[String]): IO[ExitCode] =
+    RedisClusterClient.make(new URI("http://127.0.0.1:7000")).use { cl =>
+      println(cl)
 
-  override def clusterNodes: F[Resp[Option[String]]] =
-    send("CLUSTER", List("NODES"))(asBulk[String])
+      val res = for {
+        _ <- cl.set("k1", "v1")
+        y <- cl.get("k1")
+      } yield y
+      println(res.unsafeRunSync())
+
+      IO(ExitCode.Success)
+    }
 }

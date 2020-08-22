@@ -36,6 +36,25 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
 ) {
   def getSlots(): List[Int]       = slots.toList
   def hasSlot(slot: Int): Boolean = slots(slot)
+
+  private def getSlotsString(): String =
+    if (slots.isEmpty) "[](0)"
+    else {
+      val l = slots.toList
+      s"[${l.min}-${l.max}](${l.size})"
+    }
+
+  override def toString() = s"""
+    client: $client,
+    nodeId: $nodeId,
+    connected: $connected,
+    replicaOf: $slaveOf,
+    lastPendingPingSentTimestamp: $lastPendingPingSentTimestamp,
+    lastPongReceivedTimestamp: $lastPongReceivedTimestamp,
+    configEpoch: $configEpoch,
+    slots: ${getSlotsString()},
+    nodeFlags: $nodeFlags
+  """
 }
 
 object RedisClusterNode {

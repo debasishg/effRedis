@@ -17,10 +17,13 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.{ Log, Resp }
+import effredis.Resp
 import effredis.codecs.{ Format, Parse }
 
-class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+trait BaseOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+  // implicit def blocker: Blocker
+  implicit def conc: Concurrent[F]
+  implicit def ctx: ContextShift[F]
 
   /**
     * sort keys in a set, and optionally pull values for them
@@ -53,7 +56,7 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
     * returns all the keys matching the glob-style pattern.
     */
   def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    F.raiseError(new NotAllowedInClusterError(s"KEYS $pattern $format $parse not allowed in cluster mode"))
+    conc.raiseError(new NotAllowedInClusterError(s"KEYS $pattern $format $parse not allowed in cluster mode"))
 
   /**
     * returns the current server time as a two items lists:
@@ -144,7 +147,7 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
     * selects the DB to connect, defaults to 0 (zero).
     */
   def select(index: Int): F[Resp[Boolean]] =
-    F.raiseError(new NotAllowedInClusterError(s"SELECT $index not allowed in cluster mode"))
+    conc.raiseError(new NotAllowedInClusterError(s"SELECT $index not allowed in cluster mode"))
 
   /**
     * removes all the DB data.
@@ -191,7 +194,7 @@ class BaseOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] {
       pattern: Any = "*",
       count: Int = 10
   ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
-    F.raiseError(new NotAllowedInClusterError(s"SCAN $cursor $pattern $count not allowed in cluster mode"))
+    conc.raiseError(new NotAllowedInClusterError(s"SCAN $cursor $pattern $count not allowed in cluster mode"))
 
   /**
     * ping

@@ -17,10 +17,13 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.{ Log, Resp }
+import effredis.Resp
 import effredis.codecs.{ Format, Parse }
 
-class ListOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+trait ListOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+  // implicit def blocker: Blocker
+  implicit def conc: Concurrent[F]
+  implicit def ctx: ContextShift[F]
 
   /**
     * add values to the head of the list stored at key (Variadic: >= 2.4)

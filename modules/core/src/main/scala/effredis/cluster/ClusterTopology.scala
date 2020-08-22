@@ -16,6 +16,8 @@
 
 package effredis.cluster
 
+import java.util.concurrent._
+import scala.concurrent.ExecutionContext
 import util.ClusterUtils
 import scala.collection.immutable.BitSet
 import cats.effect._
@@ -26,12 +28,14 @@ object ClusterTopology {
 
   def create[F[+_]: Concurrent: ContextShift: Log](cl: RedisClient[F]): F[List[RedisClusterNode[F]]] = {
     def toRedisClusterNode(
-        ts: ClusterUtils.TopologyString,
-        cl: RedisClient[F]
+        ts: ClusterUtils.TopologyString
     ): RedisClusterNode[F] = {
       import ts._
+      val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
+      val rc      = new RedisClient[F](new java.net.URI(s"http://${ts.uri.split("@")(0)}"), blocker)
+
       RedisClusterNode[F](
-        cl,
+        rc,
         nodeId,
         if (linkState == "connected") true else false,
         replicaUpstreamNodeId,
@@ -45,8 +49,11 @@ object ClusterTopology {
 
     cl.clusterNodes.flatMap {
       case Value(Some(nodeInfo)) => {
-        ClusterUtils.fromRedisServer(nodeInfo) match {
-          case Right(value) => value.toList.map(ts => toRedisClusterNode(ts, cl)).pure[F]
+        val n = nodeInfo.split("\n").map(e => s"$e ").mkString("\n")
+        ClusterUtils.fromRedisServer(
+          s"nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n$n"
+        ) match {
+          case Right(value) => value.toList.map(ts => toRedisClusterNode(ts)).pure[F]
           case Left(err) =>
             F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
         }

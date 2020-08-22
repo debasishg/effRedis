@@ -17,10 +17,14 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.{ Log, Resp }
+import effredis.Resp
 import effredis.codecs.{ Format, Parse }
 
-class SetOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+trait SetOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+  // implicit def blocker: Blocker
+  implicit def conc: Concurrent[F]
+  implicit def ctx: ContextShift[F]
+
   /**
     * Add the specified members to the set value stored at key. (VARIADIC: >= 2.4)
     */

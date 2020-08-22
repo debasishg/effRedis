@@ -17,10 +17,13 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.{ Log, Resp }
+import effredis.Resp
 import effredis.codecs.{ Format, Parse }
 
-class HashOps[F[+_]: Concurrent: ContextShift: Log] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+trait HashOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
+  // implicit def blocker: Blocker
+  implicit def conc: Concurrent[F]
+  implicit def ctx: ContextShift[F]
 
   /**
     * Sets <code>field</code> in the hash stored at <code>key</code> to <code>value</code>.
