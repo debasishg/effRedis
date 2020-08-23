@@ -22,16 +22,19 @@ object Dependencies {
     val munit = "0.7.11"
     val enumeratum = "1.6.1"
     val cormorant = "0.3.0"
+    val keypool = "0.2.0"
   }
 
   object Libraries {
     def cats(artifact: String): ModuleID     = "org.typelevel"     %% s"cats-$artifact"     % V.cats
     def log4cats(artifact: String): ModuleID = "io.chrisdavenport" %% s"log4cats-$artifact" % V.log4cats
 
-    val catsEffect = "org.typelevel" %% "cats-effect"        % V.catsEffect
-    val fs2Core    = "co.fs2"        %% "fs2-core"           % V.fs2
-    val shapeless  = "com.chuusai"   %% "shapeless"          % V.shapeless
-    val enumeratum = "com.beachape"  %% "enumeratum"         % V.enumeratum
+    val catsEffect = "org.typelevel"     %% "cats-effect"        % V.catsEffect
+    val fs2Core    = "co.fs2"            %% "fs2-core"           % V.fs2
+    val shapeless  = "com.chuusai"       %% "shapeless"          % V.shapeless
+    val enumeratum = "com.beachape"      %% "enumeratum"         % V.enumeratum
+    val keypool    = "io.chrisdavenport" %% "keypool"            % V.keypool
+
 
     object Cormorant {
       val core              = "io.chrisdavenport" %% "cormorant-core"     % V.cormorant

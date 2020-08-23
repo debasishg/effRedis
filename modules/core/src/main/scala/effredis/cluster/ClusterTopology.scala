@@ -16,26 +16,29 @@
 
 package effredis.cluster
 
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-import util.ClusterUtils
 import scala.collection.immutable.BitSet
+import util.ClusterUtils
 import cats.effect._
 import cats.implicits._
 import effredis.{ Error, Log, RedisClient, Value }
 
+final private[effredis] case class ClusterTopology[F[+_]: Concurrent: ContextShift: Log](
+    nodes: List[RedisClusterNode[F]]
+)
+
 object ClusterTopology {
 
-  def create[F[+_]: Concurrent: ContextShift: Log](cl: RedisClient[F]): F[List[RedisClusterNode[F]]] = {
+  def create[F[+_]: Concurrent: ContextShift: Log](
+      cl: RedisClient[F]
+  ): F[ClusterTopology[F]] = {
+
     def toRedisClusterNode(
         ts: ClusterUtils.TopologyString
     ): RedisClusterNode[F] = {
       import ts._
-      val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-      val rc      = new RedisClient[F](new java.net.URI(s"http://${ts.uri.split("@")(0)}"), blocker)
 
       RedisClusterNode[F](
-        rc,
+        new java.net.URI(s"http://${ts.uri.split("@")(0)}"),
         nodeId,
         if (linkState == "connected") true else false,
         replicaUpstreamNodeId,
@@ -49,19 +52,23 @@ object ClusterTopology {
 
     cl.clusterNodes.flatMap {
       case Value(Some(nodeInfo)) => {
+        // TODO: fix csv parser
         val n = nodeInfo.split("\n").map(e => s"$e ").mkString("\n")
         ClusterUtils.fromRedisServer(
           s"nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n$n"
         ) match {
-          case Right(value) => value.toList.map(ts => toRedisClusterNode(ts)).pure[F]
+          case Right(value) => ClusterTopology(value.toList.map(ts => toRedisClusterNode(ts))).pure[F]
           case Left(err) =>
-            F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
+            F.error(s"Error fetching topology $err") *>
+                F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
         }
       }
       case Error(err) =>
-        F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
+        F.error(s"Error fetching topology $err") *>
+            F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
       case err =>
-        F.error(s"Error fetching topology $err") *> List.empty[RedisClusterNode[F]].pure[F]
+        F.error(s"Error fetching topology $err") *>
+            F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
     }
   }
 }

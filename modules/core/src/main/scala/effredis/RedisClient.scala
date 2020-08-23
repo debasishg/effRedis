@@ -80,7 +80,7 @@ object RedisClient {
       uri: URI
   ): Resource[F, RedisClient[F]] =
     for {
-      blocker <- RedisBlocker.make
+      blocker <- RedisBlocker.make()
       client <- acquireAndRelease(uri, blocker)
     } yield client
 
@@ -89,7 +89,7 @@ object RedisClient {
       pipelineMode: Boolean
   ): Resource[F, SequencingDecorator[F]] =
     for {
-      blocker <- RedisBlocker.make
+      blocker <- RedisBlocker.make()
       client <- acquireAndReleaseSequencingDecorator(parent, pipelineMode, blocker)
     } yield client
 

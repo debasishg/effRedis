@@ -14,26 +14,13 @@
  * limitations under the License.
  */
 
-package effredis
-package cluster
+package effredis.cluster
 
 import java.net.URI
 import cats.effect._
-import log4cats._
+import effredis.{ Log, RedisClient }
 
-object Cluster extends LoggerIOApp {
-  override def run(args: List[String]): IO[ExitCode] =
-    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap { cl =>
-      // println(cl)
-
-      val res = for {
-        _ <- cl.set("k1", "v1")
-        y <- cl.get("k1")
-        _ <- IO(println(y))
-      } yield y
-
-      res.unsafeRunSync()
-
-      IO(ExitCode.Success)
-    }
+case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log]() {
+  def getClient(uri: URI): RedisClient[F] = ???
 }
+object RedisClientPool {}

@@ -20,21 +20,23 @@ import cats.effect._
 import cats.implicits._
 import effredis.{ Error, Log, Resp, Value }
 
-class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisClusterClient[F] =>
+abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisClusterClient[F] =>
+  implicit def pool: RedisClientPool[F]
   def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
-    topology.headOption
+    topology.nodes.headOption
       .map(fn)
       .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
 
   def onAllNodes(fn: RedisClusterNode[F] => F[Resp[Boolean]]): F[Resp[Boolean]] = {
-    val _ = topology.foreach(fn)
+    val _ = topology.nodes.foreach(fn)
     Value(true).pure[F]
   }
 
   def forKey[R](key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
-    val node = topology.filter(_.hasSlot(slot)).headOption
-    F.debug(s"Command mapped to slot $slot node port ${node.get.client.host}:${node.get.client.port}") *>
+    val node = topology.nodes.filter(_.hasSlot(slot)).headOption
+
+    F.debug(s"Command mapped to slot $slot node uri ${node.get.uri}") *>
       executeOnNode(node, slot, key)(fn).flatMap {
         case r @ Value(_) => r.pure[F]
         case Error(err) =>
@@ -44,7 +46,7 @@ class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisCluster
       }
   }
 
-  private def executeOnNode[R](node: Option[RedisClusterNode[F]], slot: Int, key: String)(
+  def executeOnNode[R](node: Option[RedisClusterNode[F]], slot: Int, key: String)(
       fn: RedisClusterNode[F] => F[Resp[R]]
   ): F[Resp[R]] =
     node
@@ -57,7 +59,7 @@ class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisCluster
         )
       )
 
-  private def retryForMoved[R](err: String, key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
+  def retryForMoved[R](err: String, key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
     if (err.startsWith("MOVED")) {
       val parts = err.split(" ")
       val slot  = parts(1).toInt
@@ -68,7 +70,7 @@ class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisCluster
             new IllegalStateException(s"Expected error for MOVED to contain 3 parts (MOVED, slot, URI) - found $err")
           )
         } else {
-          val node = topology.filter(_.hasSlot(slot)).headOption
+          val node = topology.nodes.filter(_.hasSlot(slot)).headOption
           executeOnNode(node, slot, key)(fn)
         }
       }
@@ -83,7 +85,7 @@ class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisCluster
   def forKeys[R](key: String, keys: String*)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slots = (key :: keys.toList).map(HashSlot.find(_))
     if (slots.forall(_ == slots.head)) {
-      val node = topology.filter(_.hasSlot(slots.head)).headOption
+      val node = topology.nodes.filter(_.hasSlot(slots.head)).headOption
       node
         .map(fn)
         .getOrElse(

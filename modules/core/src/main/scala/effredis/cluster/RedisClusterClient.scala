@@ -17,14 +17,16 @@
 package effredis.cluster
 
 import java.net.URI
+import java.util.concurrent._
 
-import effredis.{ Log, RedisBlocker, RedisClient }
+import scala.concurrent._
+import effredis.{ Log, RedisClient }
 import cats.effect._
 import cats.implicits._
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] private (
     seedURI: URI,
-    topology: List[RedisClusterNode[F]]
+    topology: ClusterTopology[F]
 ) extends RedisClusterOps[F]
     with BaseOps[F]
     with StringOps[F]
@@ -35,38 +37,17 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] privat
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
   def l: Log[F]                        = implicitly[Log[F]]
+
+  implicit def pool: RedisClientPool[F] = ???
 }
 
 object RedisClusterClient {
-
-  private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift: Log](
-      seedURI: URI,
-      blocker: Blocker
-  ): Resource[F, RedisClusterClient[F]] = {
-
-    val acquire: F[RedisClusterClient[F]] = {
-      F.info(s"Acquiring cluster client with sample seed URI $seedURI") *> {
-        blocker.blockOn {
-          RedisClient.make(seedURI).use(cl => ClusterTopology.create(cl).map(new RedisClusterClient(seedURI, _)))
-        }
+  def make[F[+_]: Concurrent: ContextShift: Log](seedURI: URI): F[RedisClusterClient[F]] = {
+    val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
+    blocker.blockOn {
+      RedisClient.make(seedURI).use { cl =>
+        ClusterTopology.create[F](cl).flatMap(topology => (new RedisClusterClient[F](seedURI, topology)).pure[F])
       }
     }
-
-    val release: RedisClusterClient[F] => F[Unit] = { clusterClient =>
-      F.info(s"Releasing cluster client with topology of ${clusterClient.topology.size} members") *> {
-        clusterClient.topology.foreach(_.client.disconnect)
-        ().pure[F]
-      }
-    }
-
-    Resource.make(acquire)(release)
   }
-
-  def make[F[+_]: ContextShift: Concurrent: Log](
-      uri: URI
-  ): Resource[F, RedisClusterClient[F]] =
-    for {
-      blocker <- RedisBlocker.make
-      client <- acquireAndRelease(uri, blocker)
-    } yield client
 }

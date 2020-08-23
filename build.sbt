@@ -88,6 +88,7 @@ lazy val `effredis-root` = project
 lazy val `effredis-core` = project
   .in(file("modules/core"))
   .settings(commonSettings: _*)
+  .settings(libraryDependencies += Libraries.keypool)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
 

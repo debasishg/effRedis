@@ -21,10 +21,10 @@ import scala.collection.immutable.BitSet
 
 import cats.effect._
 import cats.implicits._
-import effredis.{ Log, RedisBlocker, RedisClient }
+import effredis.{ Log, RedisBlocker }
 
 final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
-    val client: RedisClient[F],
+    uri: URI,
     nodeId: String,
     connected: Boolean,
     slaveOf: String,
@@ -34,8 +34,9 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
     slots: BitSet,
     nodeFlags: Set[NodeFlag]
 ) {
-  def getSlots(): List[Int]       = slots.toList
-  def hasSlot(slot: Int): Boolean = slots(slot)
+  def getSlots(): List[Int]                     = slots.toList
+  def hasSlot(slot: Int): Boolean               = slots(slot)
+  def client(implicit pool: RedisClientPool[F]) = pool.getClient(uri)
 
   private def getSlotsString(): String =
     if (slots.isEmpty) "[](0)"
@@ -45,7 +46,7 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
     }
 
   override def toString() = s"""
-    client: $client,
+    uri: $uri,
     nodeId: $nodeId,
     connected: $connected,
     replicaOf: $slaveOf,
@@ -75,9 +76,9 @@ object RedisClusterNode {
     val acquire: F[RedisClusterNode[F]] = {
       F.info(s"Acquiring cluster node $nodeId") *>
         blocker.blockOn(
-          (
+          {
             new RedisClusterNode(
-              new RedisClient[F](uri, blocker),
+              uri,
               nodeId,
               connected,
               slaveOf,
@@ -87,13 +88,12 @@ object RedisClusterNode {
               BitSet(slots: _*),
               nodeFlags
             )
-          ).pure[F]
+          }.pure[F]
         )
     }
 
-    val release: RedisClusterNode[F] => F[Unit] = { c =>
+    val release: RedisClusterNode[F] => F[Unit] = { _ =>
       F.info(s"Releasing cluster node $nodeId") *> {
-        c.client.disconnect
         ().pure[F]
       }
     }
@@ -113,7 +113,7 @@ object RedisClusterNode {
       nodeFlags: Set[NodeFlag]
   ): Resource[F, RedisClusterNode[F]] =
     for {
-      blocker <- RedisBlocker.make
+      blocker <- RedisBlocker.make()
       client <- acquireAndRelease(
                  uri,
                  nodeId,

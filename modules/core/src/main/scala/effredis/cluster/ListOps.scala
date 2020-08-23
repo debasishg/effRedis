@@ -21,7 +21,6 @@ import effredis.Resp
 import effredis.codecs.{ Format, Parse }
 
 trait ListOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
-  // implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
