@@ -35,14 +35,10 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log: Timer](
     slots: BitSet,
     nodeFlags: Set[NodeFlag]
 ) {
-  def getSlots(): List[Int]                                     = slots.toList
-  def hasSlot(slot: Int): Boolean                               = slots(slot)
-  def client(implicit pool: RedisClientPool[F]): RedisClient[F] = pool.getClient(uri)
+  def getSlots(): List[Int]       = slots.toList
+  def hasSlot(slot: Int): Boolean = slots(slot)
 
-  def managedClient: F[RedisClient[F]] =
-    RedisClientPool.poolResource[F].use(pool => pool.take(uri).use(cl => cl.value.pure[F]))
-
-  def managedClient1: Resource[F, Managed[F, RedisClient[F]]] =
+  def managedClient: Resource[F, Managed[F, RedisClient[F]]] =
     for {
       keypool <- RedisClientPool.poolResource[F]
       r <- keypool.take(uri)

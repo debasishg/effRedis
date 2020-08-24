@@ -20,12 +20,8 @@ import java.net.URI
 import java.util.concurrent._
 
 import scala.concurrent._
-// import scala.concurrent.duration._
-
-// import io.chrisdavenport.keypool._
 
 import effredis.{ Log, RedisClient }
-// import effredis.Log
 import cats.effect._
 import cats.implicits._
 
@@ -33,17 +29,10 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
     seedURI: URI,
     topology: ClusterTopology[F]
 ) extends RedisClusterOps[F] {
-  // with BaseOps[F]
-  // with StringOps[F]
-  // with ListOps[F]
-  // with SetOps[F]
-  // with HashOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
   def l: Log[F]                        = implicitly[Log[F]]
-
-  implicit def pool: RedisClientPool[F] = ???
 }
 
 object RedisClusterClient {

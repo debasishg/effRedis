@@ -24,9 +24,7 @@ import cats.effect._
 import cats.implicits._
 import effredis.{ Log, RedisClient }
 
-case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]() {
-  def getClient(uri: URI): RedisClient[F] = ???
-}
+case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]()
 
 object RedisClientPool {
   def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer]: Resource[F, KeyPool[F, URI, RedisClient[F]]] =
