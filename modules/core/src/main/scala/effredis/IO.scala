@@ -63,13 +63,14 @@ trait RedisIO {
   // Disconnects the socket.
   def disconnect: Boolean =
     try {
-      socket.close()
-      out.close()
-      in.close()
+      if (socket != null) socket.close()
+      if (out != null) out.close()
+      if (in != null) in.close()
       clearFd()
       true
     } catch {
-      case _: Throwable =>
+      case th: Throwable =>
+        th.printStackTrace
         false
     }
 

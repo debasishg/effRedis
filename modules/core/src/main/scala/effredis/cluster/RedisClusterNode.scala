@@ -19,12 +19,13 @@ package effredis.cluster
 import java.net.URI
 import scala.collection.immutable.BitSet
 
+import io.chrisdavenport.keypool._
 import cats.effect._
 import cats.implicits._
-import effredis.{ Log, RedisBlocker, RedisClient }
+import effredis.{ Log, RedisClient }
 
-final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
-    val client: RedisClient[F],
+final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log: Timer](
+    uri: URI,
     nodeId: String,
     connected: Boolean,
     slaveOf: String,
@@ -37,6 +38,12 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
   def getSlots(): List[Int]       = slots.toList
   def hasSlot(slot: Int): Boolean = slots(slot)
 
+  def managedClient: Resource[F, Managed[F, RedisClient[F]]] =
+    for {
+      keypool <- RedisClientPool.poolResource[F]
+      r <- keypool.take(uri)
+    } yield r
+
   private def getSlotsString(): String =
     if (slots.isEmpty) "[](0)"
     else {
@@ -45,7 +52,7 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
     }
 
   override def toString() = s"""
-    client: $client,
+    uri: $uri,
     nodeId: $nodeId,
     connected: $connected,
     replicaOf: $slaveOf,
@@ -55,76 +62,4 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log](
     slots: ${getSlotsString()},
     nodeFlags: $nodeFlags
   """
-}
-
-object RedisClusterNode {
-
-  private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift: Log](
-      uri: URI,
-      nodeId: String,
-      connected: Boolean,
-      slaveOf: String,
-      lastPendingPingSentTimestamp: Long,
-      lastPongReceivedTimestamp: Long,
-      configEpoch: Long,
-      slots: List[Int],
-      nodeFlags: Set[NodeFlag],
-      blocker: Blocker
-  ): Resource[F, RedisClusterNode[F]] = {
-
-    val acquire: F[RedisClusterNode[F]] = {
-      F.info(s"Acquiring cluster node $nodeId") *>
-        blocker.blockOn(
-          (
-            new RedisClusterNode(
-              new RedisClient[F](uri, blocker),
-              nodeId,
-              connected,
-              slaveOf,
-              lastPendingPingSentTimestamp,
-              lastPongReceivedTimestamp,
-              configEpoch,
-              BitSet(slots: _*),
-              nodeFlags
-            )
-          ).pure[F]
-        )
-    }
-
-    val release: RedisClusterNode[F] => F[Unit] = { c =>
-      F.info(s"Releasing cluster node $nodeId") *> {
-        c.client.disconnect
-        ().pure[F]
-      }
-    }
-
-    Resource.make(acquire)(release)
-  }
-
-  def make[F[+_]: ContextShift: Concurrent: Log](
-      uri: URI,
-      nodeId: String,
-      connected: Boolean,
-      slaveOf: String,
-      lastPendingPingSentTimestamp: Long,
-      lastPongReceivedTimestamp: Long,
-      configEpoch: Long,
-      slots: List[Int],
-      nodeFlags: Set[NodeFlag]
-  ): Resource[F, RedisClusterNode[F]] =
-    for {
-      blocker <- RedisBlocker.make
-      client <- acquireAndRelease(
-                 uri,
-                 nodeId,
-                 connected,
-                 slaveOf,
-                 lastPendingPingSentTimestamp,
-                 lastPongReceivedTimestamp,
-                 configEpoch,
-                 slots,
-                 nodeFlags,
-                 blocker
-               )
-    } yield client
 }

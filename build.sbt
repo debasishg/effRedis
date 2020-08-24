@@ -88,6 +88,7 @@ lazy val `effredis-root` = project
 lazy val `effredis-core` = project
   .in(file("modules/core"))
   .settings(commonSettings: _*)
+  .settings(libraryDependencies += Libraries.keypool)
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)
 
@@ -103,6 +104,7 @@ lazy val `effredis-examples` = project
   .in(file("modules/examples"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
+  .settings(libraryDependencies += Libraries.keypool)
   .settings(libraryDependencies += Libraries.logback % "runtime")
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)

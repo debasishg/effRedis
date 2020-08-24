@@ -14,25 +14,10 @@
  * limitations under the License.
  */
 
-package effredis
-package cluster
+package effredis.cluster
 
-import java.net.URI
-import cats.effect._
-import log4cats._
+import effredis.EffRedisFunSuite
 
-object Cluster extends LoggerIOApp {
-
-  def program: IO[Unit] =
-    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap { cl =>
-      for {
-        _ <- cl.set("k1", "v1")
-        y <- cl.get("k1")
-        _ <- IO(println(y))
-      } yield ()
-    }
-  override def run(args: List[String]): IO[ExitCode] = {
-    program.unsafeRunSync()
-    IO(ExitCode.Success)
-  }
+class EffRedisClusterSpec extends EffRedisFunSuite with TestClusterCommands {
+  test("cluster commands".ignore)(withRedisCluster(clusterCommands))
 }

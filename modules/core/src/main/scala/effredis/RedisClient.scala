@@ -18,6 +18,8 @@ package effredis
 
 import java.net.URI
 import javax.net.ssl.SSLContext
+import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
 
 import shapeless.HList
 import codecs.Format
@@ -49,11 +51,14 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] = {
 
     val acquire: F[RedisClient[F]] = {
-      blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
+      F.debug(s"Acquiring client for uri $uri") *>
+        blocker.blockOn((new RedisClient[F](uri, blocker)).pure[F])
     }
     val release: RedisClient[F] => F[Unit] = { c =>
-      c.disconnect
-      ().pure[F]
+      F.debug(s"Releasing client for uri $uri") *> {
+        c.close()
+        ().pure[F]
+      }
     }
 
     Resource.make(acquire)(release)
@@ -76,11 +81,22 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
+  /**
+    * This smart constructor is used for `RedisClientPool` to make individual
+    * instances
+    */
+  def build[F[+_]: ContextShift: Concurrent: Log](
+      uri: URI
+  ): F[RedisClient[F]] = {
+    val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
+    (new RedisClient[F](uri, blocker)).pure[F]
+  }
+
   def make[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
   ): Resource[F, RedisClient[F]] =
     for {
-      blocker <- RedisBlocker.make
+      blocker <- RedisBlocker.make()
       client <- acquireAndRelease(uri, blocker)
     } yield client
 
@@ -89,7 +105,7 @@ object RedisClient {
       pipelineMode: Boolean
   ): Resource[F, SequencingDecorator[F]] =
     for {
-      blocker <- RedisBlocker.make
+      blocker <- RedisBlocker.make()
       client <- acquireAndReleaseSequencingDecorator(parent, pipelineMode, blocker)
     } yield client
 
