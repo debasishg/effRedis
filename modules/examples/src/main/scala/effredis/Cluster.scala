@@ -22,18 +22,17 @@ import cats.effect._
 import log4cats._
 
 object Cluster extends LoggerIOApp {
-  override def run(args: List[String]): IO[ExitCode] =
+
+  def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap { cl =>
-      // println(cl)
-
-      val res = for {
-        _ <- cl.set("k1", "v1")
-        y <- cl.get("k1")
+      for {
+        _ <- cl.cset("k1", "v1")
+        y <- cl.cget("k1")
         _ <- IO(println(y))
-      } yield y
-
-      res.unsafeRunSync()
-
-      IO(ExitCode.Success)
+      } yield ()
     }
+  override def run(args: List[String]): IO[ExitCode] = {
+    program.unsafeRunSync()
+    IO(ExitCode.Success)
+  }
 }

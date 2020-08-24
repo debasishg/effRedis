@@ -64,6 +64,7 @@ val commonSettings = Seq(
       ),
   sources in (Compile, doc) := (sources in (Compile, doc)).value,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
+  javaOptions := Seq("-Dcats.effect.stackTracingMode=full"),
   autoAPIMappings := true,
   scalafmtOnCompile := true
 )
@@ -104,6 +105,7 @@ lazy val `effredis-examples` = project
   .in(file("modules/examples"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
+  .settings(libraryDependencies += Libraries.keypool)
   .settings(libraryDependencies += Libraries.logback % "runtime")
   .settings(parallelExecution in Test := false)
   .enablePlugins(AutomateHeaderPlugin)

@@ -16,12 +16,15 @@
 
 package effredis.cluster
 
+import scala.concurrent.duration._
 import cats.effect._
 import cats.implicits._
 import effredis.{ Error, Log, Resp, Value }
+import effredis.codecs._
 
-abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: RedisClusterClient[F] =>
+abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { self: RedisClusterClient[F] =>
   implicit def pool: RedisClientPool[F]
+
   def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
     topology.nodes.headOption
       .map(fn)
@@ -36,15 +39,42 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: Red
     val slot = HashSlot.find(key)
     val node = topology.nodes.filter(_.hasSlot(slot)).headOption
 
-    F.debug(s"Command mapped to slot $slot node uri ${node.get.uri}") *>
+    F.info(s"Command mapped to slot $slot node uri ${node.get.uri}") *>
       executeOnNode(node, slot, key)(fn).flatMap {
         case r @ Value(_) => r.pure[F]
         case Error(err) =>
-          F.debug(s"Error from server $err - will retry") *>
+          F.error(s"Error from server $err - will retry") *>
               retryForMoved(err, key)(fn)
         case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
       }
   }
+
+  import effredis.algebra.StringApi._
+
+  def cset(key: Any, value: Any, whenSet: SetBehaviour = Always, expire: Duration = null, keepTTL: Boolean = false)(
+      implicit format: Format
+  ): F[Resp[Boolean]] =
+    forKey(key.toString) {
+      _.managedClient1.use {
+        _.value.set(key, value, whenSet, expire, keepTTL)
+      }
+    }
+
+  def cget[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
+    forKey(key.toString) {
+      _.managedClient1.use {
+        _.value.get[A](key)
+      }
+    }
+
+  def clpush[G[+_]: Concurrent: ContextShift: Log: Timer](key: Any, value: Any, values: Any*)(
+      implicit format: Format
+  ): F[Resp[Option[Long]]] =
+    forKey(key.toString) {
+      _.managedClient1.use {
+        _.value.lpush(key, value, values)
+      }
+    }
 
   def executeOnNode[R](node: Option[RedisClusterNode[F]], slot: Int, key: String)(
       fn: RedisClusterNode[F] => F[Resp[R]]
@@ -64,7 +94,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log] { self: Red
       val parts = err.split(" ")
       val slot  = parts(1).toInt
 
-      F.debug(s"Retrying with ${parts(1)} ${parts(2)}") *> {
+      F.info(s"Retrying with ${parts(1)} ${parts(2)}") *> {
         if (parts.size != 3) {
           F.raiseError(
             new IllegalStateException(s"Expected error for MOVED to contain 3 parts (MOVED, slot, URI) - found $err")

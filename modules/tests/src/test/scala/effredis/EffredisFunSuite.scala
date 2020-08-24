@@ -19,6 +19,7 @@
 
 package effredis
 
+import cluster.RedisClusterClient
 import java.net.URI
 import cats.effect._
 import Log.NoOp._
@@ -45,6 +46,9 @@ abstract class EffRedisFunSuite extends FunSuite {
   def withAbstractRedis[A](f: RedisClient[IO] => IO[A]): Future[Unit] =
     RedisClient.make[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
 
+  def withAbstractRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): Future[Unit] =
+    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).map(f).as(assert(true)).unsafeToFuture()
+
   def withAbstractRedis2[A](f: ((RedisClient[IO], RedisClient[IO])) => IO[A]): Future[Unit] = {
     val x = for {
       r1 <- RedisClient.make[IO](new URI("http://localhost:6379"))
@@ -55,6 +59,9 @@ abstract class EffRedisFunSuite extends FunSuite {
 
   def withRedis[A](f: RedisClient[IO] => IO[A]): Future[Unit] =
     withAbstractRedis[A](f)
+
+  def withRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): Future[Unit] =
+    withAbstractRedisCluster[A](f)
 
   def withRedis2[A](f: ((RedisClient[IO], RedisClient[IO])) => IO[A]): Future[Unit] =
     withAbstractRedis2[A](f)

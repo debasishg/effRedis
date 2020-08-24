@@ -20,19 +20,24 @@ import java.net.URI
 import java.util.concurrent._
 
 import scala.concurrent._
+// import scala.concurrent.duration._
+
+// import io.chrisdavenport.keypool._
+
 import effredis.{ Log, RedisClient }
+// import effredis.Log
 import cats.effect._
 import cats.implicits._
 
-final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] private (
+final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
     seedURI: URI,
     topology: ClusterTopology[F]
-) extends RedisClusterOps[F]
-    with BaseOps[F]
-    with StringOps[F]
-    with ListOps[F]
-    with SetOps[F]
-    with HashOps[F] {
+) extends RedisClusterOps[F] {
+  // with BaseOps[F]
+  // with StringOps[F]
+  // with ListOps[F]
+  // with SetOps[F]
+  // with HashOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
@@ -42,7 +47,7 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log] privat
 }
 
 object RedisClusterClient {
-  def make[F[+_]: Concurrent: ContextShift: Log](seedURI: URI): F[RedisClusterClient[F]] = {
+  def make[F[+_]: Concurrent: ContextShift: Log: Timer](seedURI: URI): F[RedisClusterClient[F]] = {
     val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
     blocker.blockOn {
       RedisClient.make(seedURI).use { cl =>

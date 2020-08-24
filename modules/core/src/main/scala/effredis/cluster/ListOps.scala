@@ -17,17 +17,21 @@
 package effredis.cluster
 
 import cats.effect._
-import effredis.Resp
+import effredis.{ Log, Resp }
 import effredis.codecs.{ Format, Parse }
 
 trait ListOps[F[+_]] extends RedisClusterOps[F] { self: RedisClusterClient[F] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
+  implicit def T: Timer[F]
+  implicit def L: Log[F]
 
   /**
     * add values to the head of the list stored at key (Variadic: >= 2.4)
     */
-  def lpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
+  def lpush(key: Any, value: Any, values: Any*)(
+      implicit format: Format
+  ): F[Resp[Option[Long]]] =
     forKey(key.toString)(_.client.lpush(key, value, values))
 
   /**

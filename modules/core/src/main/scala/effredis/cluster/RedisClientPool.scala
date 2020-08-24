@@ -17,10 +17,27 @@
 package effredis.cluster
 
 import java.net.URI
+import scala.concurrent.duration._
+
+import io.chrisdavenport.keypool._
 import cats.effect._
+import cats.implicits._
 import effredis.{ Log, RedisClient }
 
-case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log]() {
+case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]() {
   def getClient(uri: URI): RedisClient[F] = ???
 }
-object RedisClientPool {}
+
+object RedisClientPool {
+  def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer]: Resource[F, KeyPool[F, URI, RedisClient[F]]] =
+    KeyPoolBuilder[F, URI, RedisClient[F]](
+      { uri: URI => F.debug(s"Building client for $uri") *> RedisClient.build(uri) }, { client: RedisClient[F] =>
+        F.debug(s"Closing client for ${client.host}:${client.port}") *> client.close().pure[F]
+      }
+    ).withDefaultReuseState(Reusable.Reuse)
+      .withIdleTimeAllowedInPool(Duration.Inf)
+      .withMaxPerKey(Function.const(4))
+      .withMaxTotal(10)
+      .withOnReaperException { _: Throwable => F.unit }
+      .build
+}

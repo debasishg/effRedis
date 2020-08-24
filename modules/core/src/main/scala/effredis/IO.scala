@@ -41,7 +41,6 @@ trait RedisIO {
   // Connects the socket, and sets the input and output streams.
   def connect: Boolean =
     try {
-      println(s"from connect $host $port")
       socket = new Socket()
       socket.connect(new InetSocketAddress(host, port), timeout)
 
@@ -64,7 +63,6 @@ trait RedisIO {
   // Disconnects the socket.
   def disconnect: Boolean =
     try {
-      println(s"from disconnect $host $port")
       if (socket != null) socket.close()
       if (out != null) out.close()
       if (in != null) in.close()

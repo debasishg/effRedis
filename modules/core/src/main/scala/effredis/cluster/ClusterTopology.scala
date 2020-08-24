@@ -28,7 +28,7 @@ final private[effredis] case class ClusterTopology[F[+_]: Concurrent: ContextShi
 
 object ClusterTopology {
 
-  def create[F[+_]: Concurrent: ContextShift: Log](
+  def create[F[+_]: Concurrent: ContextShift: Log: Timer](
       cl: RedisClient[F]
   ): F[ClusterTopology[F]] = {
 
