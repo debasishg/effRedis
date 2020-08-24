@@ -27,56 +27,50 @@ import effredis.algebra.StringApi._
 
 abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { self: RedisClusterClient[F] =>
 
+  /**
+    * Run the function on one specific node of the cluster. This is given by the
+    * slot that the node contains.
+    */
   def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
     topology.nodes.headOption
       .map(fn)
       .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
 
+  /**
+    * Run the function on all nodes of the cluster. Currently it's only side-effects
+    * and does not implement any form of aggregation.
+    */
   def onAllNodes(fn: RedisClusterNode[F] => F[Resp[Boolean]]): F[Resp[Boolean]] = {
     val _ = topology.nodes.foreach(fn)
     Value(true).pure[F]
   }
 
+  /**
+    * Runs the function in the node that the key hashes to. Implements a retry
+    * semantics on getting a MOVED error from the server.
+    *
+    * @param key the redis key for the command
+    * @param fn the fucntion to execute
+    * @return the response in F
+    */
   def forKey[R](key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
     val node = topology.nodes.filter(_.hasSlot(slot)).headOption
 
     F.info(s"Command mapped to slot $slot node uri ${node.get.uri}") *>
-      executeOnNode(node, slot, key)(fn).flatMap {
+      executeOnNode(node, slot, List(key))(fn).flatMap {
         case r @ Value(_) => r.pure[F]
         case Error(err) =>
           F.error(s"Error from server $err - will retry") *>
-              retryForMoved(err, key)(fn)
+              retryForMoved(err, List(key))(fn)
         case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
       }
   }
 
-  def cset(key: Any, value: Any, whenSet: SetBehaviour = Always, expire: Duration = null, keepTTL: Boolean = false)(
-      implicit format: Format
-  ): F[Resp[Boolean]] =
-    forKey(key.toString) {
-      _.managedClient.use {
-        _.value.set(key, value, whenSet, expire, keepTTL)
-      }
-    }
-
-  def cget[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
-    forKey(key.toString) {
-      _.managedClient.use {
-        _.value.get[A](key)
-      }
-    }
-
-  def clpush(key: Any, value: Any, values: Any*)(
-      implicit format: Format
-  ): F[Resp[Option[Long]]] =
-    forKey(key.toString) {
-      _.managedClient.use {
-        _.value.lpush(key, value, values)
-      }
-    }
-
-  def executeOnNode[R](node: Option[RedisClusterNode[F]], slot: Int, key: String)(
+  /**
+    * The execution function for the key.
+    */
+  def executeOnNode[R](node: Option[RedisClusterNode[F]], slot: Int, keys: List[String])(
       fn: RedisClusterNode[F] => F[Resp[R]]
   ): F[Resp[R]] =
     node
@@ -84,12 +78,20 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       .getOrElse(
         F.raiseError(
           new IllegalArgumentException(
-            s"Redis Cluster Node $node not found corresponding to slot $slot for $key"
+            s"""Redis Cluster Node $node not found corresponding to slot $slot for [${keys.mkString(",")}]"""
           )
         )
       )
 
-  def retryForMoved[R](err: String, key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
+  /**
+    * Retry semantics for MOVED errors
+    *
+    * @param err the error string
+    * @param key the redis key involved in the operation
+    * @param fn the function to run
+    * @return the repsonse from redis server
+    */
+  def retryForMoved[R](err: String, keys: List[String])(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
     if (err.startsWith("MOVED")) {
       val parts = err.split(" ")
       val slot  = parts(1).toInt
@@ -101,7 +103,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
           )
         } else {
           val node = topology.nodes.filter(_.hasSlot(slot)).headOption
-          executeOnNode(node, slot, key)(fn)
+          executeOnNode(node, slot, keys)(fn)
         }
       }
     } else {
@@ -112,20 +114,18 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       )
     }
 
+  /**
+    * Runs the function in the node that the keys hash to. Implements a retry
+    * semantics on getting a MOVED error from the server.
+    *
+    * @param key the redis key for the command
+    * @param fn the fucntion to execute
+    * @return the response in F
+    */
   def forKeys[R](key: String, keys: String*)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slots = (key :: keys.toList).map(HashSlot.find(_))
-    if (slots.forall(_ == slots.head)) {
-      val node = topology.nodes.filter(_.hasSlot(slots.head)).headOption
-      node
-        .map(fn)
-        .getOrElse(
-          F.raiseError(
-            new IllegalArgumentException(
-              s"Slot not found corresponding to keys ${(key :: keys.toList).mkString(",")}"
-            )
-          )
-        )
-    } else {
+    if (slots.forall(_ == slots.head)) forKey(key)(fn)
+    else {
       F.raiseError(
         new IllegalArgumentException(
           s"Keys ${(key :: keys.toList).mkString(",")} do not map to the same slot"

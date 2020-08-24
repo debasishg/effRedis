@@ -64,7 +64,6 @@ val commonSettings = Seq(
       ),
   sources in (Compile, doc) := (sources in (Compile, doc)).value,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
-  javaOptions := Seq("-Dcats.effect.stackTracingMode=full"),
   autoAPIMappings := true,
   scalafmtOnCompile := true
 )

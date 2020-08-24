@@ -81,6 +81,10 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
+  /**
+    * This smart constructor is used for `RedisClientPool` to make individual
+    * instances
+    */
   def build[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
   ): F[RedisClient[F]] = {

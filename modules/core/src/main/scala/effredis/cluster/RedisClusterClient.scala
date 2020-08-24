@@ -26,6 +26,8 @@ import cats.effect._
 import cats.implicits._
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
+    // need to make this a collection and try sequentially till
+    // one of them works
     seedURI: URI,
     topology: ClusterTopology[F]
 ) extends RedisClusterOps[F] {
