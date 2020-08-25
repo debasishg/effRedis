@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.concurrent._
 
 import scala.concurrent._
+import util.Cached
 
 import effredis.{ Log, RedisClient }
 import cats.effect._
@@ -29,7 +30,7 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
     // need to make this a collection and try sequentially till
     // one of them works
     seedURI: URI,
-    topology: ClusterTopology[F]
+    topology: Cached[F, ClusterTopology[F]]
 ) extends RedisClusterOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
@@ -42,7 +43,12 @@ object RedisClusterClient {
     val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
     blocker.blockOn {
       RedisClient.make(seedURI).use { cl =>
-        ClusterTopology.create[F](cl).flatMap(topology => (new RedisClusterClient[F](seedURI, topology)).pure[F])
+        Cached
+          .create[F, ClusterTopology[F]](ClusterTopology.create[F](cl))
+          .flatMap { ct =>
+            new RedisClusterClient[F](seedURI, ct).pure[F] <*
+              ct.get.flatMap(topo => F.debug(s"RedisClusterClient created with topology $topo"))
+          }
       }
     }
   }

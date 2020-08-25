@@ -32,16 +32,18 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * slot that the node contains.
     */
   def onANode[R](fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] =
-    topology.nodes.headOption
-      .map(fn)
-      .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
+    topology.get.flatMap { t =>
+      t.nodes.headOption
+        .map(fn)
+        .getOrElse(F.raiseError(new IllegalArgumentException("No cluster node found")))
+    }
 
   /**
     * Run the function on all nodes of the cluster. Currently it's only side-effects
     * and does not implement any form of aggregation.
     */
   def onAllNodes(fn: RedisClusterNode[F] => F[Resp[Boolean]]): F[Resp[Boolean]] = {
-    val _ = topology.nodes.foreach(fn)
+    val _ = topology.get.flatMap(_.nodes.foreach(fn).pure[F])
     Value(true).pure[F]
   }
 
@@ -55,16 +57,18 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   def forKey[R](key: String)(fn: RedisClusterNode[F] => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
-    val node = topology.nodes.filter(_.hasSlot(slot)).headOption
+    val node = topology.get.flatMap(t => t.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
 
-    F.info(s"Command mapped to slot $slot node uri ${node.get.uri}") *>
-      executeOnNode(node, slot, List(key))(fn).flatMap {
-        case r @ Value(_) => r.pure[F]
-        case Error(err) =>
-          F.error(s"Error from server $err - will retry") *>
-              retryForMoved(err, List(key))(fn)
-        case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
-      }
+    node.flatMap { n =>
+      F.info(s"Command mapped to slot $slot node uri ${n.get.uri}") *>
+        executeOnNode(n, slot, List(key))(fn).flatMap {
+          case r @ Value(_) => r.pure[F]
+          case Error(err) =>
+            F.error(s"Error from server $err - will retry") *>
+                retryForMoved(err, List(key))(fn)
+          case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
+        }
+    }
   }
 
   /**
@@ -102,8 +106,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
             new IllegalStateException(s"Expected error for MOVED to contain 3 parts (MOVED, slot, URI) - found $err")
           )
         } else {
-          val node = topology.nodes.filter(_.hasSlot(slot)).headOption
-          executeOnNode(node, slot, keys)(fn)
+          val node = topology.get.flatMap(t => t.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
+          node.flatMap(executeOnNode(_, slot, keys)(fn))
         }
       }
     } else {
@@ -133,6 +137,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       )
     }
   }
+
+  // String Operations
 
   /**
     * sets the key with the specified value.
@@ -354,6 +360,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       }
     }
 
+  // List Operations
+
   /**
     * add values to the head of the list stored at key (Variadic: >= 2.4)
     */
@@ -525,6 +533,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       }
     }
 
+  // Hash Operations
+
   /**
     * Sets <code>field</code> in the hash stored at <code>key</code> to <code>value</code>.
     * If <code>key</code> does not exist, a new key holding a hash is created.
@@ -690,6 +700,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
         _.value.hscan(key, cursor, pattern, count)
       }
     }
+
+  // Base Operations
 
   /**
     * sort keys in a set, and optionally pull values for them
@@ -988,6 +1000,8 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     onANode(_.managedClient.use {
       _.value.echo(message)
     })
+
+  // Set Operations
 
   /**
     * Add the specified members to the set value stored at key. (VARIADIC: >= 2.4)

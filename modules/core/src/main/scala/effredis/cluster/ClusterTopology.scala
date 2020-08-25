@@ -69,6 +69,6 @@ object ClusterTopology {
       case err =>
         F.error(s"Error fetching topology $err") *>
             F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
-    }
+    } <* F.debug(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
   }
 }

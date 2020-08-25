@@ -18,6 +18,7 @@ package effredis.cluster
 
 import effredis.EffRedisFunSuite
 
-class EffRedisClusterSpec extends EffRedisFunSuite with TestClusterCommands {
+class EffRedisClusterSpec extends EffRedisFunSuite with TestClusterScenarios {
   test("cluster commands".ignore)(withRedisCluster(clusterCommands))
+  test("cluster list lpush commands".ignore)(withRedisCluster(clusterListsLPush))
 }
