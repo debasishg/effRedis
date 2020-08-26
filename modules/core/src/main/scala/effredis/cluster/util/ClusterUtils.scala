@@ -65,7 +65,7 @@ object ClusterUtils {
     else BitSet((parts(0).toInt to parts(1).toInt).toList: _*)
   }
 
-  def repeatAtFixedRate(period: FiniteDuration, task: IO[Unit])(implicit timer: Timer[IO]): IO[Unit] =
+  def repeatAtFixedRate[F[+_]: Concurrent](period: Duration, task: F[Unit])(implicit timer: Timer[F]): F[Unit] =
     timer.clock.monotonic(MILLISECONDS).flatMap { start =>
       task *> timer.clock.monotonic(MILLISECONDS).flatMap { finish =>
         val nextDelay = period.toMillis - (finish - start)

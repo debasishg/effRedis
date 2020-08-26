@@ -18,8 +18,8 @@ package effredis
 
 import java.net.URI
 import javax.net.ssl.SSLContext
-import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executors
+// import scala.concurrent.ExecutionContext
+// import java.util.concurrent.Executors
 
 import shapeless.HList
 import codecs.Format
@@ -85,12 +85,12 @@ object RedisClient {
     * This smart constructor is used for `RedisClientPool` to make individual
     * instances
     */
-  def build[F[+_]: ContextShift: Concurrent: Log](
-      uri: URI
-  ): F[RedisClient[F]] = {
-    val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
-    (new RedisClient[F](uri, blocker)).pure[F]
-  }
+//   def build[F[+_]: ContextShift: Concurrent: Log](
+//       uri: URI
+//   ): F[RedisClient[F]] = {
+//     val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
+//     (new RedisClient[F](uri, blocker)).pure[F]
+//   }
 
   def make[F[+_]: ContextShift: Concurrent: Log](
       uri: URI

@@ -17,20 +17,23 @@
 package effredis.cluster
 
 import java.net.URI
-import java.util.concurrent._
+// import java.util.concurrent._
 
-import scala.concurrent._
+// import scala.concurrent._
+import scala.concurrent.duration._
 import util.Cached
+import util.ClusterUtils
 
 import effredis.{ Log, RedisClient }
 import cats.effect._
 import cats.implicits._
+import cats.effect.implicits._
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
     // need to make this a collection and try sequentially till
     // one of them works
     seedURI: URI,
-    topology: Cached[F, ClusterTopology[F]]
+    topologyCache: Cached[F, ClusterTopology]
 ) extends RedisClusterOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
@@ -39,17 +42,20 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
 }
 
 object RedisClusterClient {
-  def make[F[+_]: Concurrent: ContextShift: Log: Timer](seedURI: URI): F[RedisClusterClient[F]] = {
-    val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
-    blocker.blockOn {
-      RedisClient.make(seedURI).use { cl =>
-        Cached
-          .create[F, ClusterTopology[F]](ClusterTopology.create[F](cl))
-          .flatMap { ct =>
+  def make[F[+_]: Concurrent: ContextShift: Log: Timer](
+      seedURI: URI,
+      topologyRefreshInterval: Duration = Duration.Inf
+  ): F[RedisClusterClient[F]] = {
+    println(topologyRefreshInterval)
+
+    RedisClient.make(seedURI).use { cl =>
+      Cached
+        .create[F, ClusterTopology](ClusterTopology.create[F](cl))
+        .flatMap { ct =>
+          ClusterUtils.repeatAtFixedRate[F](topologyRefreshInterval, ct.expire).start *>
             new RedisClusterClient[F](seedURI, ct).pure[F] <*
-              ct.get.flatMap(topo => F.debug(s"RedisClusterClient created with topology $topo"))
-          }
-      }
+            ct.get.flatMap(topo => F.debug(s"RedisClusterClient created with topology $topo"))
+        }
     }
   }
 }

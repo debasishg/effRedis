@@ -22,22 +22,22 @@ import cats.effect._
 import cats.implicits._
 import effredis.{ Error, Log, RedisClient, Value }
 
-final private[effredis] case class ClusterTopology[F[+_]: Concurrent: ContextShift: Log](
-    nodes: List[RedisClusterNode[F]]
+final private[effredis] case class ClusterTopology(
+    nodes: List[RedisClusterNode]
 )
 
 object ClusterTopology {
 
   def create[F[+_]: Concurrent: ContextShift: Log: Timer](
       cl: RedisClient[F]
-  ): F[ClusterTopology[F]] = {
+  ): F[ClusterTopology] = {
 
     def toRedisClusterNode(
         ts: ClusterUtils.TopologyString
-    ): RedisClusterNode[F] = {
+    ): RedisClusterNode = {
       import ts._
 
-      RedisClusterNode[F](
+      RedisClusterNode(
         new java.net.URI(s"http://${ts.uri.split("@")(0)}"),
         nodeId,
         if (linkState == "connected") true else false,
@@ -57,7 +57,7 @@ object ClusterTopology {
         ClusterUtils.fromRedisServer(
           s"nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n$n"
         ) match {
-          case Right(value) => ClusterTopology(value.toList.map(ts => toRedisClusterNode(ts))).pure[F]
+          case Right(tsNel) => ClusterTopology(tsNel.toList.map(ts => toRedisClusterNode(ts))).pure[F]
           case Left(err) =>
             F.error(s"Error fetching topology $err") *>
                 F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
@@ -69,6 +69,6 @@ object ClusterTopology {
       case err =>
         F.error(s"Error fetching topology $err") *>
             F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
-    } <* F.debug(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
+    } <* F.info(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
   }
 }

@@ -27,15 +27,18 @@ import effredis.{ Log, RedisClient }
 case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]()
 
 object RedisClientPool {
-  def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer]: Resource[F, KeyPool[F, URI, RedisClient[F]]] =
-    KeyPoolBuilder[F, URI, RedisClient[F]](
-      { uri: URI => F.debug(s"Building client for $uri") *> RedisClient.build(uri) }, { client: RedisClient[F] =>
-        F.debug(s"Closing client for ${client.host}:${client.port}") *> client.close().pure[F]
-      }
+  def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer]
+      : Resource[F, KeyPool[F, URI, (RedisClient[F], F[Unit])]] = {
+    println("Building pool")
+
+    KeyPoolBuilder[F, URI, (RedisClient[F], F[Unit])](
+      { uri: URI => F.info(s"Building client for $uri") *> RedisClient.make(uri).allocated },
+      { case (_, shutdown) => shutdown }
     ).withDefaultReuseState(Reusable.Reuse)
       .withIdleTimeAllowedInPool(Duration.Inf)
       .withMaxPerKey(Function.const(4))
       .withMaxTotal(10)
       .withOnReaperException { _: Throwable => F.unit }
       .build
+  }
 }

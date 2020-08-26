@@ -21,14 +21,15 @@ package util
 import cats.effect.concurrent.{ Deferred, Ref }
 import cats.effect._
 import cats.implicits._
+import effredis.Log
 
-trait Cached[F[_], A] {
+abstract class Cached[F[_]: Concurrent: ContextShift: Timer: Log, A] {
   def get: F[A]
   def expire: F[Unit]
 }
 
 object Cached {
-  def create[F[_]: Concurrent, A](fa: F[A]): F[Cached[F, A]] = {
+  def create[F[_]: Concurrent: ContextShift: Timer: Log, A](fa: F[A]): F[Cached[F, A]] = {
     sealed trait State
     case class Value(v: A) extends State
 
@@ -56,7 +57,7 @@ object Cached {
 
               // move to state Updating and call fetch
               // fetch starts the task and puts the result in the proper place
-              case NoValue => Updating(newV) -> fetch(newV).rethrow
+              case NoValue => { F.info("Found NoValue : Recreating"); Updating(newV) -> fetch(newV).rethrow }
             }.flatten
           }
 
@@ -82,37 +83,42 @@ object Cached {
   }
 }
 
-object Main extends IOApp {
-
-  import scala.concurrent.duration._
-  import java.time.LocalDateTime
-
-  def run(args: List[String]): cats.effect.IO[cats.effect.ExitCode] = {
-    // create
-    val program = IO { println(s"Hey! ${LocalDateTime.now()}"); 42 }
-    val cio     = Cached.create[IO, Int](program)
-    val c       = cio.unsafeRunSync()
-
-    // schedule expiry every 10 seconds
-
-    val getJob = for {
-      v <- c.get
-      _ <- IO(println(v))
-    } yield ()
-
-    ClusterUtils.repeatAtFixedRate(10.seconds, c.expire).start.unsafeRunSync()
-    ClusterUtils.repeatAtFixedRate(3.seconds, getJob).unsafeRunSync()
-    IO(ExitCode.Success)
-
-  }
-//     val program = IO { println("Hey!"); 42 }
-//     for {
-//       c <- Cached.create[IO, Int](program)
-//       x <- c.get
-//       y <- c.get
-//       _ <- c.expire
-//       z <- c.get
-//       _ <- IO(println(s"$x, $y, $z"))
-//     } yield (ExitCode.Success)
+// object Main extends IOApp {
+//
+//   import scala.concurrent.duration._
+//   import java.time.LocalDateTime
+//
+//   def run(args: List[String]): cats.effect.IO[cats.effect.ExitCode] = {
+//     // create
+//     val program = IO { println(s"Hey! ${LocalDateTime.now()}"); 42 }
+//     val cio     = Cached.create[IO, Int](program)
+//     val c       = cio.unsafeRunSync()
+//
+//     // schedule expiry every 10 seconds
+//
+//     val getJob = for {
+//       v <- c.get
+//       _ <- IO(println(v))
+//     } yield ()
+//     import ClusterUtils._
+//
+//     (for {
+//       _ <- repeatAtFixedRate(10.seconds, c.expire).start //.start.unsafeRunSync()
+//       _ <- repeatAtFixedRate(3.seconds, getJob) // .unsafeRunSync()
+//     } yield ()).unsafeRunSync
+//
+//     IO(ExitCode.Success)
+//
 //   }
-}
+// //     val program = IO { println("Hey!"); 42 }
+// //     for {
+// //       c <- Cached.create[IO, Int](program)
+// //       x <- c.get
+// //       y <- c.get
+// //       _ <- c.expire
+// //       z <- c.get
+// //       _ <- IO(println(s"$x, $y, $z"))
+// //     } yield (ExitCode.Success)
+// //   }
+// }
+//
