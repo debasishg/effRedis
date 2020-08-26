@@ -27,7 +27,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
+  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = { 
 
     val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
     F.debug(s"Sending ${new String(cmd)}") >> {
@@ -51,8 +51,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
 
   def send[A](command: String, pipelineMode: Boolean = false)(
       result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] =
-    blocker.blockOn {
+  )(implicit blocker: Blocker): F[Resp[A]] = {
       val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
       F.debug(s"Sending ${new String(cmd)}") >> {
 

@@ -29,6 +29,6 @@ object RedisBlocker {
       def ec: Blocker = blocker
     }
 
-  private[effredis] def make[F[+_]: Sync](threadCountInPool: Int = 1): Resource[F, Blocker] =
-    Blocker.fromExecutorService(F.delay(Executors.newFixedThreadPool(threadCountInPool)))
+  private[effredis] def make[F[+_]: Sync]: Resource[F, Blocker] =
+    Blocker.fromExecutorService(F.delay(Executors.newFixedThreadPool(1)))
 }

@@ -19,7 +19,7 @@ package effredis.cluster
 import java.net.URI
 import scala.collection.immutable.BitSet
 
-// import io.chrisdavenport.keypool._
+import io.chrisdavenport.keypool._
 import cats.effect._
 import cats.implicits._
 import effredis.{ Log, RedisClient }
@@ -38,11 +38,14 @@ final case class RedisClusterNode(
   def getSlots(): List[Int]       = slots.toList
   def hasSlot(slot: Int): Boolean = slots(slot)
 
-  def managedClient[F[+_]: Concurrent: ContextShift: Log: Timer]: Resource[F, RedisClient[F]] =
-    (for {
-      keypool <- RedisClientPool.poolResource[F]
+  def managedClient[F[+_]: Concurrent: ContextShift: Log: Timer](
+      keypool: KeyPool[F, URI, (RedisClient[F], F[Unit])],
+      uri: URI
+  ): Resource[F, RedisClient[F]] ={
+    for {
       r <- keypool.take(uri)
-    } yield r.value._1)
+    } yield r.value._1
+  }
 
   private def getSlotsString(): String =
     if (slots.isEmpty) "[](0)"
