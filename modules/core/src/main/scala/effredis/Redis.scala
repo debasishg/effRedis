@@ -27,7 +27,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = { 
+  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = {
 
     val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
     F.debug(s"Sending ${new String(cmd)}") >> {
@@ -52,27 +52,27 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
   def send[A](command: String, pipelineMode: Boolean = false)(
       result: => A
   )(implicit blocker: Blocker): F[Resp[A]] = {
-      val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-      F.debug(s"Sending ${new String(cmd)}") >> {
+    val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+    F.debug(s"Sending ${new String(cmd)}") >> {
 
-        try {
+      try {
 
-          if (!pipelineMode) write(cmd)
-          else write(command.getBytes("UTF-8"))
-          Value(result).pure[F]
+        if (!pipelineMode) write(cmd)
+        else write(command.getBytes("UTF-8"))
+        Value(result).pure[F]
 
-        } catch {
-          case e: RedisConnectionException =>
-            if (disconnect) send(command)(result)
-            else Error(e.getMessage()).pure[F]
-          case e: SocketException =>
-            if (disconnect) send(command)(result)
-            else Error(e.getMessage()).pure[F]
-          case e: Exception =>
-            Error(e.getMessage()).pure[F]
-        }
+      } catch {
+        case e: RedisConnectionException =>
+          if (disconnect) send(command)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: SocketException =>
+          if (disconnect) send(command)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: Exception =>
+          Error(e.getMessage()).pure[F]
       }
     }
+  }
 
   def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
 

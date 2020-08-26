@@ -29,17 +29,20 @@ object Cluster extends LoggerIOApp {
   def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://localhost:7000"), 10.seconds).flatMap { cl =>
       for {
-        _ <- (0 to nKeys).map { i => 
-               cl.set(s"ley$i", s"debasish ghosh $i") *> IO(println(s"State ${cl.pool.state.unsafeRunSync}"))
-             }.toList.sequence
+        _ <- (0 to nKeys)
+              .map { i =>
+                cl.set(s"ley$i", s"debasish ghosh $i") *> IO(println(s"State ${cl.pool.state.unsafeRunSync()}"))
+              }
+              .toList
+              .sequence
       } yield ()
-      /*
+    /*
       for {
         _ <- cl.set("k1", "v1")
         y <- cl.get("k1")
         _ <- IO(println(y))
       } yield ()
-      */
+     */
     }
   override def run(args: List[String]): IO[ExitCode] = {
     program.unsafeRunSync()

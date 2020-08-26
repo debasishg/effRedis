@@ -51,7 +51,7 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] = {
 
     val acquire: F[RedisClient[F]] = {
-      F.debug(s"Acquiring client for uri $uri $blocker") *> 
+      F.debug(s"Acquiring client for uri $uri $blocker") *>
         blocker.blockOn {
           new RedisClient[F](uri, blocker).pure[F]
         }

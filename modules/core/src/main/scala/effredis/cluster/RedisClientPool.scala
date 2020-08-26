@@ -32,9 +32,9 @@ object RedisClientPool {
       { uri: URI => RedisClient.make(uri).allocated },
       { case (_, shutdown) => shutdown }
     ) // .withDefaultReuseState(Reusable.Reuse)
-      // .withIdleTimeAllowedInPool(Duration.Inf)
-      // .withMaxPerKey(Function.const(10))
-      // .withMaxTotal(100)
-      // .withOnReaperException { _: Throwable => F.unit }
-      .build
+    // .withIdleTimeAllowedInPool(Duration.Inf)
+    // .withMaxPerKey(Function.const(10))
+    // .withMaxTotal(100)
+    // .withOnReaperException { _: Throwable => F.unit }
+    .build
 }

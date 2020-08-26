@@ -56,9 +56,7 @@ object RedisClusterClient {
       RedisClientPool.poolResource[F].use { pool =>
         Cached
           .create[F, ClusterTopology](ClusterTopology.create[F](cl))
-          .flatMap { cachedTopology =>
-            (new RedisClusterClient[F](seedURI, cachedTopology, pool)).pure[F]
-          }
+          .flatMap(cachedTopology => (new RedisClusterClient[F](seedURI, cachedTopology, pool)).pure[F])
       }
     }
   }

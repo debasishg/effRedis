@@ -64,7 +64,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   def forKey[R](key: String)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
-    val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption) 
+    val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
       F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>

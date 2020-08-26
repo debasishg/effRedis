@@ -26,6 +26,6 @@ trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
   implicit def ctx: ContextShift[F]
   implicit def l: Log[F]
 
-  override def clusterNodes: F[Resp[Option[String]]] = 
+  override def clusterNodes: F[Resp[Option[String]]] =
     send("CLUSTER", List("NODES"))(asBulk[String])
 }
