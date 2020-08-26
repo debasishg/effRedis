@@ -24,7 +24,7 @@ import cats.effect._
 import cats.implicits._
 import effredis.{ Log, RedisClient }
 
-final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log: Timer](
+final case class RedisClusterNode(
     uri: URI,
     nodeId: String,
     connected: Boolean,
@@ -38,11 +38,13 @@ final case class RedisClusterNode[F[+_]: Concurrent: ContextShift: Log: Timer](
   def getSlots(): List[Int]       = slots.toList
   def hasSlot(slot: Int): Boolean = slots(slot)
 
-  def managedClient: Resource[F, Managed[F, RedisClient[F]]] =
+  def managedClient[F[+_]: Concurrent: ContextShift: Log: Timer](
+      keypool: KeyPool[F, URI, (RedisClient[F], F[Unit])],
+      uri: URI
+  ): Resource[F, RedisClient[F]] =
     for {
-      keypool <- RedisClientPool.poolResource[F]
       r <- keypool.take(uri)
-    } yield r
+    } yield r.value._1
 
   private def getSlotsString(): String =
     if (slots.isEmpty) "[](0)"

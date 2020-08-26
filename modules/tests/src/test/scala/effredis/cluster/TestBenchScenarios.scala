@@ -17,19 +17,33 @@
 package effredis.cluster
 
 import cats.effect._
+import cats.implicits._
 
 import effredis.EffRedisFunSuite._
 
-trait TestClusterCommands {
+trait TestBenchScenarios {
   implicit def cs: ContextShift[IO]
 
-  def clusterCommands(cmd: RedisClusterClient[IO]): IO[Unit] = {
+  def clusterCommandsB(cmd: RedisClusterClient[IO]): IO[Unit] = {
     import cmd._
     for {
-      x <- set("key-1", "foo")
+      x <- set("ley-2", "bar")
       _ <- IO(assert(getBoolean(x)))
-      x <- get("key-1")
-      _ <- IO(assert(getResp(x).get == "foo"))
+      x <- get("ley-2")
+      _ <- IO(assert(getResp(x).get == "bar"))
+      x <- lpush("mley-1", "lval-1", "lval-2", "lval-3")
+      _ <- IO(assert(getResp(x).get == 3))
+      x <- llen("mley-1")
+      _ <- IO(assert(getResp(x).get == 3))
+    } yield ()
+  }
+
+  def clusterBench(cmd: RedisClusterClient[IO]): IO[Unit] = {
+    val nKeys = 1000
+    for {
+      x <- (0 to nKeys).map(i => cmd.set(s"ley-$i", s"debasish ghosh $i")).toList.sequence
+      _ <- IO(println(x.size))
+      _ <- IO(assert(x.map(getBoolean(_)).forall(_ == true)))
     } yield ()
   }
 }

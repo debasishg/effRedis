@@ -18,6 +18,9 @@ package effredis.cluster
 package util
 
 import scala.collection.immutable.BitSet
+import scala.concurrent.duration._
+
+import cats.effect._
 import cats.implicits._
 import cats.data.{ EitherNec, NonEmptyList }
 
@@ -62,7 +65,15 @@ object ClusterUtils {
     else BitSet((parts(0).toInt to parts(1).toInt).toList: _*)
   }
 
+  def repeatAtFixedRate[F[+_]: Concurrent](period: Duration, task: F[Unit])(implicit timer: Timer[F]): F[Unit] =
+    timer.clock.monotonic(MILLISECONDS).flatMap { start =>
+      task *> timer.clock.monotonic(MILLISECONDS).flatMap { finish =>
+        val nextDelay = period.toMillis - (finish - start)
+        timer.sleep(nextDelay.millis) *> repeatAtFixedRate(period, task)
+      }
+    }
 }
+
 /*
 07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004@31004 slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected
 67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1 127.0.0.1:30002@31002 master - 0 1426238316232 2 connected 5461-10922

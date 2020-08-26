@@ -27,7 +27,7 @@ import munit.FunSuite
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 
-abstract class EffRedisFunSuite extends FunSuite {
+abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   implicit val timer: Timer[IO]     = IO.timer(ExecutionContext.global)
@@ -47,7 +47,7 @@ abstract class EffRedisFunSuite extends FunSuite {
     RedisClient.make[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
 
   def withAbstractRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): Future[Unit] =
-    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).map(f).as(assert(true)).unsafeToFuture()
+    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap(f).as(assert(true)).unsafeToFuture()
 
   def withAbstractRedis2[A](f: ((RedisClient[IO], RedisClient[IO])) => IO[A]): Future[Unit] = {
     val x = for {
@@ -67,7 +67,8 @@ abstract class EffRedisFunSuite extends FunSuite {
     withAbstractRedis2[A](f)
 
   private def flushAll(): Future[Unit] =
-    withRedis(_.flushall)
+    if (isCluster) withRedisCluster(_.flushall)
+    else withRedis(_.flushall)
 
 }
 

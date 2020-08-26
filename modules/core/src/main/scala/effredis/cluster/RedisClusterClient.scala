@@ -17,19 +17,25 @@
 package effredis.cluster
 
 import java.net.URI
-import java.util.concurrent._
+// import java.util.concurrent._
 
-import scala.concurrent._
+// import scala.concurrent._
+import scala.concurrent.duration._
+import util.Cached
+// import util.ClusterUtils
 
+import io.chrisdavenport.keypool._
 import effredis.{ Log, RedisClient }
 import cats.effect._
 import cats.implicits._
+// import cats.effect.implicits._
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
     // need to make this a collection and try sequentially till
     // one of them works
     seedURI: URI,
-    topology: ClusterTopology[F]
+    topologyCache: Cached[F, ClusterTopology],
+    pool: KeyPool[F, URI, (RedisClient[F], F[Unit])]
 ) extends RedisClusterOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
@@ -38,11 +44,19 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
 }
 
 object RedisClusterClient {
-  def make[F[+_]: Concurrent: ContextShift: Log: Timer](seedURI: URI): F[RedisClusterClient[F]] = {
-    val blocker = Blocker.liftExecutionContext(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1)))
-    blocker.blockOn {
-      RedisClient.make(seedURI).use { cl =>
-        ClusterTopology.create[F](cl).flatMap(topology => (new RedisClusterClient[F](seedURI, topology)).pure[F])
+
+  def make[F[+_]: Concurrent: ContextShift: Log: Timer](
+      seedURI: URI,
+      topologyRefreshInterval: Duration = Duration.Inf
+  ): F[RedisClusterClient[F]] = {
+    println(topologyRefreshInterval)
+
+    RedisClient.make(seedURI).use { cl =>
+      println(s"After redis client make for $seedURI")
+      RedisClientPool.poolResource[F].use { pool =>
+        Cached
+          .create[F, ClusterTopology](ClusterTopology.create[F](cl))
+          .flatMap(cachedTopology => (new RedisClusterClient[F](seedURI, cachedTopology, pool)).pure[F])
       }
     }
   }
