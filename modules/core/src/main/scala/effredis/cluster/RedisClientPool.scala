@@ -17,7 +17,7 @@
 package effredis.cluster
 
 import java.net.URI
-// import scala.concurrent.duration._
+import scala.concurrent.duration._
 
 import io.chrisdavenport.keypool._
 import cats.effect._
@@ -31,10 +31,7 @@ object RedisClientPool {
     KeyPoolBuilder[F, URI, (RedisClient[F], F[Unit])](
       { uri: URI => RedisClient.make(uri).allocated },
       { case (_, shutdown) => shutdown }
-    ) // .withDefaultReuseState(Reusable.Reuse)
-    // .withIdleTimeAllowedInPool(Duration.Inf)
-    // .withMaxPerKey(Function.const(10))
-    // .withMaxTotal(100)
-    // .withOnReaperException { _: Throwable => F.unit }
-    .build
+    ).withDefaultReuseState(Reusable.Reuse)
+      .withIdleTimeAllowedInPool(Duration.Inf)
+      .build
 }
