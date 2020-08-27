@@ -45,14 +45,12 @@ object RedisClusterClient {
   def make[F[+_]: Concurrent: ContextShift: Log: Timer](
       seedURI: URI // ,
       // topologyRefreshInterval: Duration = Duration.Inf
-  ): F[RedisClusterClient[F]] = {
-
+  ): F[RedisClusterClient[F]] =
     RedisClient.make(seedURI).use { cl =>
       Cached
         .create[F, ClusterTopology](ClusterTopology.create[F](cl))
         .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURI, cachedTopology)))
-            // .flatTap(_ => ClusterUtils.repeatAtFixedRate(topologyRefreshInterval, cachedTopology.expire))
-        // }
+    // .flatTap(_ => ClusterUtils.repeatAtFixedRate(topologyRefreshInterval, cachedTopology.expire))
+    // }
     }
-  }
 }

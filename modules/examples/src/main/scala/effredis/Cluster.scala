@@ -17,6 +17,7 @@
 package effredis
 package cluster
 
+import util.ClusterUtils
 import java.net.URI
 import scala.concurrent.duration._
 import cats.effect._
@@ -29,16 +30,16 @@ object Cluster extends LoggerIOApp {
   def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://localhost:7000")).flatMap { cl =>
       for {
-        _ <- util.ClusterUtils.repeatAtFixedRate(2.seconds, cl.topologyCache.expire).start
+        _ <- ClusterUtils.repeatAtFixedRate(2.seconds, cl.topologyCache.expire).start
         _ <- RedisClientPool.poolResource[IO].use { pool =>
-               implicit val p = pool
-               for {
-                 _ <- (0 to nKeys)
-                       .map(i => cl.set(s"key$i", s"value $i"))
-                       .toList
-                       .sequence
-               } yield ()
-             }
+              implicit val p = pool
+              for {
+                _ <- (0 to nKeys)
+                      .map(i => cl.set(s"key$i", s"value $i"))
+                      .toList
+                      .sequence
+              } yield ()
+            }
       } yield ()
     }
 
