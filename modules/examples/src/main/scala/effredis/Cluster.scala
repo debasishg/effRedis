@@ -25,7 +25,7 @@ import log4cats._
 
 object Cluster extends LoggerIOApp {
 
-  val nKeys = 4000
+  val nKeys = 8000
   def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://localhost:7000"), 10.seconds).flatMap { cl =>
       RedisClientPool.poolResource[IO].use { pool =>
@@ -33,7 +33,6 @@ object Cluster extends LoggerIOApp {
         for {
           _ <- (0 to nKeys)
                 .map { i =>
-                  // cl.set(s"ley$i", s"debasish ghosh $i") *> IO(println(s"State ${cl.pool.state.unsafeRunSync()}"))
                   cl.set(s"ley$i", s"debasish ghosh $i")
                 }
                 .toList
