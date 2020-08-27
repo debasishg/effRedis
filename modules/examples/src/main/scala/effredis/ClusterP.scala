@@ -17,6 +17,7 @@
 package effredis
 package cluster
 
+import io.chrisdavenport.keypool._
 import util.ClusterUtils
 import java.net.URI
 import scala.concurrent.duration._
@@ -24,9 +25,19 @@ import cats.effect._
 import cats.implicits._
 import log4cats._
 
-object Cluster extends LoggerIOApp {
+object ClusterP extends LoggerIOApp {
 
   val nKeys = 60000
+  def subProgram(cl: RedisClusterClient[IO], keyPrefix: String, valuePrefix: String)(
+      implicit pool: KeyPool[IO, URI, (RedisClient[IO], IO[Unit])]
+  ): IO[Unit] =
+    for {
+      _ <- (0 to nKeys)
+            .map(i => cl.set(s"$keyPrefix$i", s"$valuePrefix $i"))
+            .toList
+            .sequence
+    } yield ()
+
   def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://localhost:7000")).flatMap { cl =>
       for {
@@ -35,12 +46,16 @@ object Cluster extends LoggerIOApp {
         _ <- ClusterUtils.repeatAtFixedRate(10.seconds, cl.topologyCache.expire).start
         _ <- RedisClientPool.poolResource[IO].use { pool =>
               implicit val p = pool
-              for {
-                _ <- (0 to nKeys)
-                      .map(i => cl.set(s"key$i", s"value $i"))
-                      .toList
-                      .sequence
-              } yield ()
+              // parallelize the job with fibers
+              // can be done when you have parallelizable fragments of jobs
+              // also handles cancelation
+              (
+                subProgram(cl, "k1", "v1").start,
+                subProgram(cl, "k2", "v2").start
+              ).tupled.bracket {
+                case (fa, fb) =>
+                  (fa.join, fb.join).tupled
+              } { case (fa, fb) => fa.cancel >> fb.cancel }
             }
       } yield ()
     }
