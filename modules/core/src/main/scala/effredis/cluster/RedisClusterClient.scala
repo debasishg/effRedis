@@ -24,7 +24,6 @@ import scala.concurrent.duration._
 import util.Cached
 // import util.ClusterUtils
 
-import io.chrisdavenport.keypool._
 import effredis.{ Log, RedisClient }
 import cats.effect._
 import cats.implicits._
@@ -34,8 +33,7 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
     // need to make this a collection and try sequentially till
     // one of them works
     seedURI: URI,
-    topologyCache: Cached[F, ClusterTopology],
-    pool: KeyPool[F, URI, (RedisClient[F], F[Unit])]
+    topologyCache: Cached[F, ClusterTopology]
 ) extends RedisClusterOps[F] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
@@ -52,12 +50,9 @@ object RedisClusterClient {
     println(topologyRefreshInterval)
 
     RedisClient.make(seedURI).use { cl =>
-      println(s"After redis client make for $seedURI")
-      RedisClientPool.poolResource[F].use { pool =>
-        Cached
-          .create[F, ClusterTopology](ClusterTopology.create[F](cl))
-          .flatMap(cachedTopology => (new RedisClusterClient[F](seedURI, cachedTopology, pool)).pure[F])
-      }
+      Cached
+        .create[F, ClusterTopology](ClusterTopology.create[F](cl))
+        .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURI, cachedTopology)))
     }
   }
 }

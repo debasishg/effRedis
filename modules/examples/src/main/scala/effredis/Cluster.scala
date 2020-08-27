@@ -25,27 +25,24 @@ import log4cats._
 
 object Cluster extends LoggerIOApp {
 
-  val nKeys = 800
+  val nKeys = 4000
   def program: IO[Unit] =
     RedisClusterClient.make[IO](new URI("http://localhost:7000"), 10.seconds).flatMap { cl =>
-      for {
-        _ <- (0 to nKeys)
-              .map { i =>
-                cl.set(s"ley$i", s"debasish ghosh $i") *> IO(println(s"State ${cl.pool.state.unsafeRunSync()}"))
-              }
-              .toList
-              .sequence
-      } yield ()
-    /*
-      for {
-        _ <- cl.set("k1", "v1")
-        y <- cl.get("k1")
-        _ <- IO(println(y))
-      } yield ()
-     */
+      RedisClientPool.poolResource[IO].use { pool =>
+        implicit val p = pool
+        for {
+          _ <- (0 to nKeys)
+                .map { i =>
+                  // cl.set(s"ley$i", s"debasish ghosh $i") *> IO(println(s"State ${cl.pool.state.unsafeRunSync()}"))
+                  cl.set(s"ley$i", s"debasish ghosh $i")
+                }
+                .toList
+                .sequence
+        } yield ()
+      }
     }
   override def run(args: List[String]): IO[ExitCode] = {
-    program.unsafeRunSync()
+    println(program.unsafeRunSync())
     IO(ExitCode.Success)
   }
 }

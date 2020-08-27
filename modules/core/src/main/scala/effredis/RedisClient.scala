@@ -53,12 +53,12 @@ object RedisClient {
     val acquire: F[RedisClient[F]] = {
       F.debug(s"Acquiring client for uri $uri $blocker") *>
         blocker.blockOn {
-          new RedisClient[F](uri, blocker).pure[F]
+          F.delay(new RedisClient[F](uri, blocker))
         }
     }
     val release: RedisClient[F] => F[Unit] = { c =>
       F.debug(s"Releasing client for uri $uri") *> {
-        c.close().pure[F]
+        F.delay(c.close())
       }
     }
 
@@ -72,12 +72,9 @@ object RedisClient {
   ): Resource[F, SequencingDecorator[F]] = {
 
     val acquire: F[SequencingDecorator[F]] = {
-      blocker.blockOn((new SequencingDecorator[F](parent, pipelineMode)).pure[F])
+      blocker.blockOn(F.delay(new SequencingDecorator[F](parent, pipelineMode)))
     }
-    val release: SequencingDecorator[F] => F[Unit] = { c =>
-      c.disconnect
-      ().pure[F]
-    }
+    val release: SequencingDecorator[F] => F[Unit] = { c => F.delay(c.close()) }
 
     Resource.make(acquire)(release)
   }
@@ -160,10 +157,10 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
         .flatTap { r =>
           client.handlers = Vector.empty
           client.commandBuffer = new StringBuffer
-          r.pure[F]
+          F.delay(r)
         }
     } catch {
-      case e: Exception => Error(e.getMessage).pure[F]
+      case e: Exception => F.delay(Error(e.getMessage))
     }
   }
 
