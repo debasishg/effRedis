@@ -11,7 +11,11 @@ Non-blocking, effectful Scala client for Redis implemented using [cats](https://
 
 # Sample Usage
 
+## Using Single instance
+
 ```scala
+package effredis
+
 import java.net.URI
 import cats.effect._
 import cats.implicits._
@@ -75,6 +79,46 @@ object Main extends LoggerIOApp {
 
       IO(ExitCode.Success)
     }
+}
+```
+
+## Using Redis Cluster
+
+```scala
+package effredis
+package cluster
+
+import java.net.URI
+import scala.concurrent.duration._
+import cats.effect._
+import cats.implicits._
+import log4cats._
+
+object Cluster extends LoggerIOApp {
+
+  val nKeys = 60000
+  def program: IO[Unit] =
+    RedisClusterClient.make[IO](new URI("http://localhost:7000")).flatMap { cl =>
+      for {
+        // optionally set refresh interval at which the cluster topology will be refreshed
+        // we start a fibre here that will expire the cache at the specified interval
+        _ <- util.ClusterUtils.repeatAtFixedRate(2.seconds, cl.topologyCache.expire).start
+        _ <- RedisClientPool.poolResource[IO].use { pool =>
+               implicit val p = pool
+               for {
+                 _ <- (0 to nKeys)
+                       .map(i => cl.set(s"key$i", s"value $i"))
+                       .toList
+                       .sequence
+               } yield ()
+             }
+      } yield ()
+    }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    program.unsafeRunSync()
+    IO(ExitCode.Success)
+  }
 }
 ```
 

@@ -67,12 +67,12 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
-            F.error(s"Error from server $err - will retry") *>
-                retryForMoved(err, List(key))(fn)
+            F.debug(s"Error from server $err - will retry") *>
+                retryForMovedOrAskRedirection(err, List(key))(fn)
           case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
         }
     }
@@ -102,15 +102,19 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * @param fn the function to run
     * @return the repsonse from redis server
     */
-  def retryForMoved[R](err: String, keys: List[String])(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] =
-    if (err.startsWith("MOVED")) {
+  def retryForMovedOrAskRedirection[R](err: String, keys: List[String])(
+      fn: RedisClusterNode => F[Resp[R]]
+  ): F[Resp[R]] =
+    if (err.startsWith("MOVED") || err.startsWith("ASK")) {
       val parts = err.split(" ")
       val slot  = parts(1).toInt
 
-      F.info(s"Retrying with ${parts(1)} ${parts(2)}") *> {
+      F.debug(s"Retrying with ${parts(1)} ${parts(2)}") *> {
         if (parts.size != 3) {
           F.raiseError(
-            new IllegalStateException(s"Expected error for MOVED to contain 3 parts (MOVED, slot, URI) - found $err")
+            new IllegalStateException(
+              s"Expected error for MOVED or ASK redirection to contain 3 parts (MOVED/ASK, slot, URI) - found $err"
+            )
           )
         } else {
           val node = topologyCache.get.flatMap(t => t.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
@@ -120,7 +124,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     } else {
       F.raiseError(
         new IllegalStateException(
-          s"Expected MOVED error but found $err"
+          s"Expected MOVED or ASK redirection but found $err"
         )
       )
     }
