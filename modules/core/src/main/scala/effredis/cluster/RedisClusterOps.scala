@@ -67,11 +67,11 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
-            F.error(s"Error from server $err - will retry") *>
+            F.debug(s"Error from server $err - will retry") *>
                 retryForMoved(err, List(key))(fn)
           case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
         }
@@ -107,7 +107,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       val parts = err.split(" ")
       val slot  = parts(1).toInt
 
-      F.info(s"Retrying with ${parts(1)} ${parts(2)}") *> {
+      F.debug(s"Retrying with ${parts(1)} ${parts(2)}") *> {
         if (parts.size != 3) {
           F.raiseError(
             new IllegalStateException(s"Expected error for MOVED to contain 3 parts (MOVED, slot, URI) - found $err")

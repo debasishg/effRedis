@@ -17,17 +17,16 @@
 package effredis.cluster
 
 import java.net.URI
-// import java.util.concurrent._
 
-// import scala.concurrent._
-import scala.concurrent.duration._
+// import scala.concurrent.duration._
 import util.Cached
-// import util.ClusterUtils
+// import util.{ Cached, ClusterUtils }
 
-import effredis.{ Log, RedisClient }
 import cats.effect._
 import cats.implicits._
 // import cats.effect.implicits._
+
+import effredis.{ Log, RedisClient }
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
     // need to make this a collection and try sequentially till
@@ -44,15 +43,16 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
 object RedisClusterClient {
 
   def make[F[+_]: Concurrent: ContextShift: Log: Timer](
-      seedURI: URI,
-      topologyRefreshInterval: Duration = Duration.Inf
+      seedURI: URI // ,
+      // topologyRefreshInterval: Duration = Duration.Inf
   ): F[RedisClusterClient[F]] = {
-    println(topologyRefreshInterval)
 
     RedisClient.make(seedURI).use { cl =>
       Cached
         .create[F, ClusterTopology](ClusterTopology.create[F](cl))
         .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURI, cachedTopology)))
+            // .flatTap(_ => ClusterUtils.repeatAtFixedRate(topologyRefreshInterval, cachedTopology.expire))
+        // }
     }
   }
 }

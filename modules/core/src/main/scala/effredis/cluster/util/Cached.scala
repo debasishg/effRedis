@@ -57,7 +57,7 @@ object Cached {
 
               // move to state Updating and call fetch
               // fetch starts the task and puts the result in the proper place
-              case NoValue => { F.info("Found NoValue : Recreating"); Updating(newV) -> fetch(newV).rethrow }
+              case NoValue => Updating(newV) -> fetch(newV).rethrow
             }.flatten
           }
 
