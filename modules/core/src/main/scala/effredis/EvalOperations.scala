@@ -20,7 +20,7 @@ import cats.effect._
 import algebra.EvalApi
 import codecs._
 
-trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F] =>
+trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F, _] =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]

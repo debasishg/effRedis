@@ -18,14 +18,12 @@ package effredis
 
 import java.net.URI
 import javax.net.ssl.SSLContext
-// import scala.concurrent.ExecutionContext
-// import java.util.concurrent.Executors
 
 import shapeless.HList
-import codecs.Format
 
 import cats.effect._
 import cats.implicits._
+// import enumeratum._
 
 object RedisClient {
   sealed trait SortOrder
@@ -37,6 +35,22 @@ object RedisClient {
   case object MIN extends Aggregate
   case object MAX extends Aggregate
 
+  sealed trait Mode
+  case object SINGLE extends Mode
+  case object TRANSACT extends Mode
+  case object PIPE extends Mode
+
+  /*
+  sealed abstract class Mode(override val entryName: String) extends EnumEntry
+  object Mode extends Enum[Mode] {
+    case object SINGLE extends Mode("single")
+    case object TRANSACT extends Mode("transact")
+    case object PIPE extends Mode("pipe")
+
+    val values = findValues
+  }
+   */
+
   private[effredis] def extractDatabaseNumber(connectionUri: java.net.URI): Int =
     Option(connectionUri.getPath)
       .map(path =>
@@ -45,18 +59,19 @@ object RedisClient {
       )
       .getOrElse(0)
 
-  private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift: Log](
+  private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift: Log, M <: Mode](
       uri: URI,
-      blocker: Blocker
-  ): Resource[F, RedisClient[F]] = {
+      blocker: Blocker,
+      mode: M
+  ): Resource[F, RedisClient[F, M]] = {
 
-    val acquire: F[RedisClient[F]] = {
+    val acquire: F[RedisClient[F, M]] = {
       F.debug(s"Acquiring client for uri $uri $blocker") *>
         blocker.blockOn {
-          F.delay(new RedisClient[F](uri, blocker))
+          F.delay(new RedisClient[F, M](uri, blocker, mode))
         }
     }
-    val release: RedisClient[F] => F[Unit] = { c =>
+    val release: RedisClient[F, M] => F[Unit] = { c =>
       F.debug(s"Releasing client for uri $uri") *> {
         F.delay(c.close())
       }
@@ -65,94 +80,68 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
-  private[effredis] def acquireAndReleaseSequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
-      parent: RedisClient[F],
-      pipelineMode: Boolean,
-      blocker: Blocker
-  ): Resource[F, SequencingDecorator[F]] = {
-
-    val acquire: F[SequencingDecorator[F]] = {
-      blocker.blockOn(F.delay(new SequencingDecorator[F](parent, pipelineMode)))
-    }
-    val release: SequencingDecorator[F] => F[Unit] = { c => F.delay(c.close()) }
-
-    Resource.make(acquire)(release)
-  }
-
-  def make[F[+_]: ContextShift: Concurrent: Log](
+  /**
+    * Make a single normal connection
+    *
+    * @param uri
+    * @return
+    */
+  def single[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
-  ): Resource[F, RedisClient[F]] =
+  ): Resource[F, RedisClient[F, SINGLE.type]] =
     for {
       blocker <- RedisBlocker.make
-      client <- acquireAndRelease(uri, blocker)
+      client <- acquireAndRelease(uri, blocker, SINGLE)
     } yield client
 
-  private def withSequencingDecorator[F[+_]: ContextShift: Concurrent: Log](
-      parent: RedisClient[F],
-      pipelineMode: Boolean
-  ): Resource[F, SequencingDecorator[F]] =
-    for {
-      blocker <- RedisBlocker.make
-      client <- acquireAndReleaseSequencingDecorator(parent, pipelineMode, blocker)
-    } yield client
-
+  /**
+    * Make a connection for transaction
+    *
+    * @param uri
+    * @return
+    */
   def transact[F[+_]: ContextShift: Concurrent: Log](
-      parent: RedisClient[F]
-  ): Resource[F, SequencingDecorator[F]] = withSequencingDecorator(parent, false)
+      uri: URI
+  ): Resource[F, RedisClient[F, TRANSACT.type]] =
+    for {
+      blocker <- RedisBlocker.make
+      client <- acquireAndRelease(uri, blocker, TRANSACT)
+    } yield client
 
+  /**
+    * Make a connection for pipelines
+    *
+    * @param uri
+    * @return
+    */
   def pipe[F[+_]: ContextShift: Concurrent: Log](
-      parent: RedisClient[F]
-  ): Resource[F, SequencingDecorator[F]] = withSequencingDecorator(parent, true)
+      uri: URI
+  ): Resource[F, RedisClient[F, PIPE.type]] =
+    for {
+      blocker <- RedisBlocker.make
+      client <- acquireAndRelease(uri, blocker, PIPE)
+    } yield client
 
-}
-
-class RedisClient[F[+_]: Concurrent: ContextShift: Log](
-    override val host: String,
-    override val port: Int,
-    override val database: Int = 0,
-    override val secret: Option[Any] = None,
-    override val timeout: Int = 0,
-    override val sslContext: Option[SSLContext] = None,
-    val blocker: Blocker
-) extends RedisCommand[F] {
-
-  def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
-  def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
-  def l: Log[F]                        = implicitly[Log[F]]
-
-  def this(b: Blocker) = this("localhost", 6379, blocker = b)
-  def this(connectionUri: java.net.URI, b: Blocker) = this(
-    host = connectionUri.getHost,
-    port = connectionUri.getPort,
-    database = RedisClient.extractDatabaseNumber(connectionUri),
-    secret = Option(connectionUri.getUserInfo)
-      .flatMap(_.split(':') match {
-        case Array(_, password, _*) => Some(password)
-        case _                      => None
-      }),
-    blocker = b
-  )
-  override def toString: String = host + ":" + String.valueOf(port) + "/" + database
-  override def close(): Unit    = { disconnect; () }
-
-  def pipeline(client: SequencingDecorator[F])(f: () => Any): F[Resp[Option[List[Any]]]] = {
-    implicit val b = blocker
+  def pipeline[F[+_]: Concurrent: ContextShift: Log](
+      client: RedisClient[F, PIPE.type]
+  )(f: () => Any): F[Resp[Option[List[Any]]]] = {
+    implicit val b = client.blocker
     try {
       val _ = f()
-      client.parent
+      client
         .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
     } catch {
       case e: Exception => Error(e.getMessage).pure[F]
     }
   }
 
-  def hpipeline[In <: HList](
-      client: SequencingDecorator[F]
+  def hpipeline[F[+_]: Concurrent: ContextShift: Log, In <: HList](
+      client: RedisClient[F, PIPE.type]
   )(commands: () => In): F[Resp[Option[List[Any]]]] = {
-    implicit val b = blocker
+    implicit val b = client.blocker
     try {
       val _ = commands()
-      client.parent
+      client
         .send(client.commandBuffer.toString, true)(Option(client.handlers.map(_._2).map(_()).toList))
         .flatTap { r =>
           client.handlers = Vector.empty
@@ -164,10 +153,10 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
     }
   }
 
-  def htransaction[In <: HList](
-      client: SequencingDecorator[F]
+  def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
+      client: RedisClient[F, TRANSACT.type]
   )(commands: () => In): F[Resp[Option[List[Any]]]] =
-    multi.flatMap { _ =>
+    client.multi.flatMap { _ =>
       try {
         val _ = commands()
 
@@ -179,7 +168,7 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
           // exec only if no discard
           F.debug(s"Executing transaction ..") >> {
             try {
-              exec(client.handlers.map(_._2)).flatTap { _ =>
+              client.exec(client.handlers.map(_._2)).flatTap { _ =>
                 client.handlers = Vector.empty
                 ().pure[F]
               }
@@ -204,11 +193,12 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
       }
     }
 
-  def transaction(
-      client: SequencingDecorator[F]
+  def transaction[F[+_]: Concurrent: ContextShift: Log](
+      client: RedisClient[F, TRANSACT.type]
   )(f: () => Any): F[Resp[Option[List[Any]]]] = {
 
-    implicit val b = blocker
+    implicit val b = client.blocker
+    import client._
 
     send("MULTI")(asString).flatMap { _ =>
       try {
@@ -239,78 +229,34 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log](
   }
 }
 
-class SequencingDecorator[F[+_]: Concurrent: ContextShift: Log](
-    val parent: RedisClient[F],
-    pipelineMode: Boolean = false
-) extends RedisCommand[F] {
+private[effredis] class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode](
+    override val host: String,
+    override val port: Int,
+    override val database: Int = 0,
+    override val secret: Option[Any] = None,
+    override val timeout: Int = 0,
+    override val sslContext: Option[SSLContext] = None,
+    val blocker: Blocker,
+    val mode: M
+) extends RedisCommand[F, M](mode) {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
-  def blocker: Blocker                 = parent.blocker
   def l: Log[F]                        = implicitly[Log[F]]
 
-  var handlers: Vector[(String, () => Any)] = Vector.empty
-  var commandBuffer: StringBuffer           = new StringBuffer
-
-  override def send[A](command: String, args: Seq[Any])(
-      result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
-    try {
-      val cmd  = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-      val crlf = "\r\n"
-      if (!pipelineMode) { // transaction mode
-        write(cmd)
-        handlers :+= ((command, () => result))
-        val _ = receive(singleLineReply)
-        Queued.pure[F]
-
-      } else { // pipeline mode
-        handlers :+= ((command, () => result))
-        commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
-        Buffered.pure[F]
-      }
-    } catch {
-      case e: Exception => Error(e.getMessage()).pure[F]
-    }
-  }
-
-  override def send[A](command: String, pipeline: Boolean = false)(
-      result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] =
-    blocker.blockOn {
-      try {
-        val cmd  = Commands.multiBulk(List(command.getBytes("UTF-8")))
-        val crlf = "\r\n"
-        if (!pipelineMode) {
-          write(cmd)
-          handlers :+= ((command, () => result))
-          val _ = receive(singleLineReply)
-          Queued.pure[F]
-        } else {
-          handlers :+= ((command, () => result))
-          commandBuffer.append(command ++ crlf)
-          Buffered.pure[F]
-        }
-      } catch {
-        case e: Exception => Error(e.getMessage()).pure[F]
-      }
-    }
-
-  val host              = parent.host
-  val port              = parent.port
-  val timeout           = parent.timeout
-  override val secret   = parent.secret
-  override val database = parent.database
-
-  // TODO: Find a better abstraction
-  override def connected                = parent.connected
-  override def connect                  = parent.connect
-  override def disconnect               = parent.disconnect
-  override def clearFd()                = parent.clearFd()
-  override def write(data: Array[Byte]) = parent.write(data)
-  override def readLine                 = parent.readLine
-  override def readCounted(count: Int)  = parent.readCounted(count)
-  override def onConnect()              = parent.onConnect()
-
-  override def close(): Unit = parent.close()
+  def this(b: Blocker, m: M) = this("localhost", 6379, blocker = b, mode = m)
+  def this(connectionUri: java.net.URI, b: Blocker, m: M) = this(
+    host = connectionUri.getHost,
+    port = connectionUri.getPort,
+    database = RedisClient.extractDatabaseNumber(connectionUri),
+    secret = Option(connectionUri.getUserInfo)
+      .flatMap(_.split(':') match {
+        case Array(_, password, _*) => Some(password)
+        case _                      => None
+      }),
+    blocker = b,
+    mode = m
+  )
+  override def toString: String = host + ":" + String.valueOf(port) + "/" + database
+  override def close(): Unit    = { disconnect; () }
 }

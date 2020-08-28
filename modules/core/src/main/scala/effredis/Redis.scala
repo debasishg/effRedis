@@ -22,19 +22,39 @@ import cats.effect._
 import cats.implicits._
 
 import codecs.Format
+import RedisClient._
 
-abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with Protocol {
+abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) extends RedisIO with Protocol {
+
+  var handlers: Vector[(String, () => Any)] = Vector.empty
+  var commandBuffer: StringBuffer           = new StringBuffer
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
   )(implicit format: Format, blocker: Blocker): F[Resp[A]] = {
 
+    val crlf = "\r\n"
+
     val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
     F.debug(s"Sending ${new String(cmd)}") >> {
       try {
 
-        write(cmd)
-        Value(result).pure[F]
+        if (mode == SINGLE) {
+          write(cmd)
+          Value(result).pure[F]
+
+        } else if (mode == PIPE) {
+          handlers :+= ((command, () => result))
+          commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
+          Buffered.pure[F]
+
+        } else {
+          write(cmd)
+          handlers :+= ((command, () => result))
+          val _ = receive(singleLineReply)
+          Queued.pure[F]
+
+        }
 
       } catch {
         case e: RedisConnectionException =>

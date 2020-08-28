@@ -19,7 +19,7 @@ package effredis
 import cats.effect._
 import algebra.HyperLogLogApi
 
-trait HyperLogLogOperations[F[+_]] extends HyperLogLogApi[F] { self: Redis[F] =>
+trait HyperLogLogOperations[F[+_]] extends HyperLogLogApi[F] { self: Redis[F, _] =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]

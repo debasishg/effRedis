@@ -20,7 +20,7 @@ import cats.effect._
 import algebra.GeoApi
 import codecs._
 
-trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F] =>
+trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]

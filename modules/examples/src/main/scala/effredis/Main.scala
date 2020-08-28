@@ -23,7 +23,7 @@ import log4cats._
 
 object Main extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cmd =>
+    RedisClient.single[IO](new URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
       // just 1 command

@@ -23,13 +23,11 @@ import log4cats._
 object PipelineBench extends LoggerIOApp {
 
   def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] =
-    RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cli =>
-      RedisClient.pipe[IO](cli).use { txnClient =>
-        import txnClient._
+    RedisClient.pipe[IO](new java.net.URI("http://localhost:6379")).use { cli =>
+      import cli._
 
-        val nKeys = 12500
-        parent.pipeline(txnClient)(() => (0 to nKeys).map(i => set(s"$keyPrefix$i", s"$valPrefix $i")))
-      }
+      val nKeys = 12500
+      RedisClient.pipeline(cli)(() => (0 to nKeys).map(i => set(s"$keyPrefix$i", s"$valPrefix $i")))
     }
 
   override def run(args: List[String]): IO[ExitCode] = {

@@ -24,12 +24,13 @@ import scala.concurrent.duration._
 import cats.effect._
 import cats.implicits._
 import log4cats._
+import effredis.RedisClient.SINGLE
 
 object ClusterP extends LoggerIOApp {
 
   val nKeys = 60000
   def subProgram(cl: RedisClusterClient[IO], keyPrefix: String, valuePrefix: String)(
-      implicit pool: KeyPool[IO, URI, (RedisClient[IO], IO[Unit])]
+      implicit pool: KeyPool[IO, URI, (RedisClient[IO, SINGLE.type], IO[Unit])]
   ): IO[Unit] =
     for {
       _ <- (0 to nKeys)

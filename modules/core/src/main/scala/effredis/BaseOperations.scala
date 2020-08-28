@@ -20,7 +20,7 @@ import cats.effect.{ Blocker, Concurrent, ContextShift }
 import algebra.BaseApi
 import codecs._
 
-trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F] =>
+trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]

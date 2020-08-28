@@ -27,7 +27,7 @@ import algebra.StringApi.{ NX, XX }
 trait TestStringScenarios {
   implicit def cs: ContextShift[IO]
 
-  def stringsGetAndSet(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsGetAndSet(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("key-1", "value-1")
@@ -50,7 +50,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsGetAndSetIfExistsOrNot(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsGetAndSetIfExistsOrNot(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- get("amit-1")
@@ -82,7 +82,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsGetSet(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsGetSet(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("anshin-1", "debasish")
@@ -99,7 +99,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsSetNxEx(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsSetNxEx(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     val key   = "setex-1"
     val value = "value"
@@ -123,7 +123,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsIncr(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsIncr(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("anshin-1", 10)
@@ -158,7 +158,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsDecr(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsDecr(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("anshin-1", 10)
@@ -183,7 +183,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsMget(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsMget(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("anshin-1", "debasish")
@@ -199,7 +199,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsMset(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsMset(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should set all keys irrespective of whether they exist
@@ -216,7 +216,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsWithSpacesInKeys(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsWithSpacesInKeys(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("anshin software", "debasish ghosh")
@@ -236,7 +236,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsGetSetRange(cmd: RedisClient[IO]): IO[Unit] = {
+  final def stringsGetSetRange(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("key1", "hello world")
@@ -266,7 +266,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsStrlen(cmd: RedisCommand[IO]): IO[Unit] = {
+  final def stringsStrlen(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- set("mykey", "Hello World")
@@ -278,7 +278,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsAppend(cmd: RedisCommand[IO]): IO[Unit] = {
+  final def stringsAppend(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- exists("mykey")
@@ -292,7 +292,7 @@ trait TestStringScenarios {
     } yield ()
   }
 
-  def stringsBitManip(cmd: RedisCommand[IO]): IO[Unit] = {
+  final def stringsBitManip(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should set of clear the bit at offset in the string value stored at the key

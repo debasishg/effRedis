@@ -46,27 +46,31 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   override def munitFlakyOK: Boolean = true
 
-  def withAbstractRedis[A](f: RedisClient[IO] => IO[A]): Future[Unit] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
+  final def withAbstractRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
+    RedisClient.single[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
 
-  def withAbstractRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): IO[Unit] =
-    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap(f).as(assert(true)) // .unsafeToFuture()
+  final def withAbstractRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): IO[Unit] =
+    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap(f).as(assert(true))
 
-  def withAbstractRedis2[A](f: ((RedisClient[IO], RedisClient[IO])) => IO[A]): Future[Unit] = {
+  final def withAbstractRedis2[A](
+      f: ((RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])) => IO[A]
+  ): Future[Unit] = {
     val x = for {
-      r1 <- RedisClient.make[IO](new URI("http://localhost:6379"))
-      r2 <- RedisClient.make[IO](new URI("http://localhost:6379"))
+      r1 <- RedisClient.single[IO](new URI("http://localhost:6379"))
+      r2 <- RedisClient.single[IO](new URI("http://localhost:6379"))
     } yield (r1, r2)
     x.use(f).as(assert(true)).unsafeToFuture()
   }
 
-  def withRedis[A](f: RedisClient[IO] => IO[A]): Future[Unit] =
+  final def withRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
     withAbstractRedis[A](f)
 
-  def withRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): IO[Unit] =
+  final def withRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): IO[Unit] =
     withAbstractRedisCluster[A](f)
 
-  def withRedis2[A](f: ((RedisClient[IO], RedisClient[IO])) => IO[A]): Future[Unit] =
+  final def withRedis2[A](
+      f: ((RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])) => IO[A]
+  ): Future[Unit] =
     withAbstractRedis2[A](f)
 
   private def flushAllCluster(): IO[Unit] =
@@ -80,31 +84,31 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 }
 
 object EffRedisFunSuite {
-  def getBoolean(resp: Resp[Boolean]): Boolean =
+  final def getBoolean(resp: Resp[Boolean]): Boolean =
     resp match {
       case Value(value) => value == true
       case _            => false
     }
 
-  def getLong(resp: Resp[Option[Long]]): Option[Long] =
+  final def getLong(resp: Resp[Option[Long]]): Option[Long] =
     resp match {
       case Value(Some(value)) => Some(value)
       case _                  => None
     }
 
-  def getResp(resp: Resp[_]): Option[_] = resp match {
+  final def getResp(resp: Resp[_]): Option[_] = resp match {
     case Value(s @ Some(_)) => s
     case Value(None)        => None
     case Error(err)         => Some(err)
     case _                  => None
   }
 
-  def getRespListSize(resp: Resp[_]): Option[Int] = resp match {
+  final def getRespListSize(resp: Resp[_]): Option[Int] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.size)
     case _                        => None
   }
 
-  def getRespList[A](resp: Resp[_]): Option[List[A]] = resp match {
+  final def getRespList[A](resp: Resp[_]): Option[List[A]] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.asInstanceOf[List[A]])
     case _                        => None
   }

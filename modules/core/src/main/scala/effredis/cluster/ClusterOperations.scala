@@ -20,7 +20,7 @@ import cats.effect.{ Blocker, Concurrent, ContextShift }
 import algebra.ClusterApi
 import effredis.{ Log, Redis, Resp }
 
-trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
+trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F, _] =>
   implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]

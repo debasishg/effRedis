@@ -42,7 +42,7 @@ object RedisClusterClient {
   def make[F[+_]: Concurrent: ContextShift: Log: Timer](
       seedURI: URI
   ): F[RedisClusterClient[F]] =
-    RedisClient.make(seedURI).use { cl =>
+    RedisClient.single(seedURI).use { cl =>
       Cached
         .create[F, ClusterTopology](ClusterTopology.create[F](cl))
         .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURI, cachedTopology)))

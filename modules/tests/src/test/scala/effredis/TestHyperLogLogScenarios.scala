@@ -22,7 +22,7 @@ import EffRedisFunSuite._
 trait TestHyperLogLogScenarios {
   implicit def cs: ContextShift[IO]
 
-  def hllPfAdd(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hllPfAdd(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should return one for changed estimated cardinality") {
@@ -43,7 +43,7 @@ trait TestHyperLogLogScenarios {
     } yield ()
   }
 
-  def hllPfCount(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hllPfCount(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should return zero for an empty
@@ -65,7 +65,7 @@ trait TestHyperLogLogScenarios {
     } yield ()
   }
 
-  def hllPfMerge(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hllPfMerge(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should merge existing entries
