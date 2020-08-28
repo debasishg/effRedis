@@ -23,7 +23,6 @@ import shapeless.HList
 
 import cats.effect._
 import cats.implicits._
-// import enumeratum._
 
 object RedisClient {
   sealed trait SortOrder
@@ -39,17 +38,6 @@ object RedisClient {
   case object SINGLE extends Mode
   case object TRANSACT extends Mode
   case object PIPE extends Mode
-
-  /*
-  sealed abstract class Mode(override val entryName: String) extends EnumEntry
-  object Mode extends Enum[Mode] {
-    case object SINGLE extends Mode("single")
-    case object TRANSACT extends Mode("transact")
-    case object PIPE extends Mode("pipe")
-
-    val values = findValues
-  }
-   */
 
   private[effredis] def extractDatabaseNumber(connectionUri: java.net.URI): Int =
     Option(connectionUri.getPath)
@@ -83,8 +71,8 @@ object RedisClient {
   /**
     * Make a single normal connection
     *
-    * @param uri
-    * @return
+    * @param uri the client URI
+    * @return the single client
     */
   def single[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
@@ -97,8 +85,8 @@ object RedisClient {
   /**
     * Make a connection for transaction
     *
-    * @param uri
-    * @return
+    * @param uri the client URI
+    * @return the transaction client
     */
   def transact[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
@@ -111,8 +99,8 @@ object RedisClient {
   /**
     * Make a connection for pipelines
     *
-    * @param uri
-    * @return
+    * @param uri the client URI
+    * @return the pipeline client
     */
   def pipe[F[+_]: ContextShift: Concurrent: Log](
       uri: URI
@@ -122,6 +110,13 @@ object RedisClient {
       client <- acquireAndRelease(uri, blocker, PIPE)
     } yield client
 
+  /**
+    * API for pipeline instructions
+    *
+    * @param client the pipeline client
+    * @param f the pipeline of functions
+    * @return response from server
+    */
   def pipeline[F[+_]: Concurrent: ContextShift: Log](
       client: RedisClient[F, PIPE.type]
   )(f: () => Any): F[Resp[Option[List[Any]]]] = {
@@ -135,6 +130,14 @@ object RedisClient {
     }
   }
 
+  /**
+    * API for pipeline instructions. Allows HList to be used for setting up
+    * the pipeline
+    *
+    * @param client the pipeline client
+    * @param f the pipeline of functions
+    * @return response from server
+    */
   def hpipeline[F[+_]: Concurrent: ContextShift: Log, In <: HList](
       client: RedisClient[F, PIPE.type]
   )(commands: () => In): F[Resp[Option[List[Any]]]] = {
@@ -153,6 +156,14 @@ object RedisClient {
     }
   }
 
+  /**
+    * API for transaction. Allows HList to be used for setting up
+    * the transaction set
+    *
+    * @param client the transaction client
+    * @param f the pipeline of functions
+    * @return response from server
+    */
   def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
       client: RedisClient[F, TRANSACT.type]
   )(commands: () => In): F[Resp[Option[List[Any]]]] =
@@ -193,6 +204,14 @@ object RedisClient {
       }
     }
 
+  /**
+    * API for transaction. Allows HList to be used for setting up
+    * the transaction set
+    *
+    * @param client the transaction client
+    * @param f the pipeline of functions
+    * @return response from server
+    */
   def transaction[F[+_]: Concurrent: ContextShift: Log](
       client: RedisClient[F, TRANSACT.type]
   )(f: () => Any): F[Resp[Option[List[Any]]]] = {
@@ -229,7 +248,7 @@ object RedisClient {
   }
 }
 
-private[effredis] class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode](
+class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode] private (
     override val host: String,
     override val port: Int,
     override val database: Int = 0,
