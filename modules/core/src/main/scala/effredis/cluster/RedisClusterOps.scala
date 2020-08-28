@@ -1454,6 +1454,42 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
         _.sscan[A](key, cursor, pattern, count)
       }
     }
+
+  // Hyperloglog operations
+
+  /**
+    * Add a value to the hyperloglog (>= 2.8.9)
+    */
+  def pfadd(key: Any, value: Any, values: Any*)(
+      implicit pool: KeyPool[F, URI, (RedisClient[F], F[Unit])]
+  ): F[Resp[Option[Long]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.pfadd(key, value, values: _*)
+      }
+    }
+
+  /**
+    * Get the estimated cardinality from one or more keys (>= 2.8.9)
+    */
+  def pfcount(key: Any, keys: Any*)(implicit pool: KeyPool[F, URI, (RedisClient[F], F[Unit])]): F[Resp[Option[Long]]] =
+    forKeys(key.toString, keys.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.pfcount(keys)
+      }
+    }
+
+  /**
+    * Merge existing keys (>= 2.8.9)
+    */
+  def pfmerge(destination: Any, sources: Any*)(
+      implicit pool: KeyPool[F, URI, (RedisClient[F], F[Unit])]
+  ): F[Resp[Boolean]] =
+    forKeys(destination.toString, sources.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.pfmerge(destination, sources: _*)
+      }
+    }
 }
 
 class NotAllowedInClusterError(message: String) extends RuntimeException(message)

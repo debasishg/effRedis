@@ -27,7 +27,7 @@ trait HyperLogLogApi[F[+_]] {
   /**
     * Get the estimated cardinality from one or more keys (>= 2.8.9)
     */
-  def pfcount(keys: Any*): F[Resp[Option[Long]]]
+  def pfcount(key: Any, keys: Any*): F[Resp[Option[Long]]]
 
   /**
     * Merge existing keys (>= 2.8.9)

@@ -27,8 +27,8 @@ trait HyperLogLogOperations[F[+_]] extends HyperLogLogApi[F] { self: Redis[F] =>
   override def pfadd(key: Any, value: Any, values: Any*): F[Resp[Option[Long]]] =
     send("PFADD", List(key, value) ::: values.toList)(asLong)
 
-  override def pfcount(keys: Any*): F[Resp[Option[Long]]] =
-    send("PFCOUNT", keys.toList)(asLong)
+  override def pfcount(key: Any, keys: Any*): F[Resp[Option[Long]]] =
+    send("PFCOUNT", key :: keys.toList)(asLong)
 
   override def pfmerge(destination: Any, sources: Any*): F[Resp[Boolean]] =
     send("PFMERGE", List(destination) ::: sources.toList)(asBoolean)
