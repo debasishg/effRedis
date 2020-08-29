@@ -20,6 +20,7 @@ import cats.effect._
 
 import effredis.EffRedisFunSuite._
 import effredis.Log.NoOp._
+import effredis.RedisClientPool
 
 trait TestClusterScenarios {
   implicit def cs: ContextShift[IO]

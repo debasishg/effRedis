@@ -19,7 +19,7 @@
 
 package effredis
 
-import cluster.{ RedisClientPool, RedisClusterClient }
+import cluster.RedisClusterClient
 import java.net.URI
 import cats.effect._
 import Log.NoOp._

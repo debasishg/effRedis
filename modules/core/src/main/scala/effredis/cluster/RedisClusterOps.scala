@@ -72,7 +72,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
-            F.debug(s"Error from server $err - will retry") *>
+            F.error(s"Error from server $err - will retry") *>
                 retryForMovedOrAskRedirection(err, List(key))(fn)
           case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
         }

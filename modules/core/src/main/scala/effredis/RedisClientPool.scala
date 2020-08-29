@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package effredis.cluster
+package effredis
 
 import java.net.URI
 import scala.concurrent.duration._
 
 import io.chrisdavenport.keypool._
 import cats.effect._
-import effredis.{ Log, RedisClient }
-import effredis.RedisClient.SINGLE
+import RedisClient.SINGLE
 
 case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]()
 
