@@ -32,9 +32,8 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
-
-    F.debug(s"Now Sending $command $args") >> {
+  )(implicit format: Format): F[Resp[A]] =
+    F.debug(s"Sending $command $args") >> {
       val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
 
       try {
@@ -66,15 +65,13 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
           Error(e.getMessage()).pure[F]
       }
     }
-  }
 
   def send[A](command: String, pipelineSubmissionMode: Boolean = false)(
       result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] = blocker.blockOn {
+  ): F[Resp[A]] = {
     val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
 
-    // F.debug(s"Sending ${new String(cmd)}") >> {
-    F.debug(s"Now Sending ${command}") >> {
+    F.debug(s"Sending ${command}") >> {
       try {
         if (mode == SINGLE) {
           write(cmd)

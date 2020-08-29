@@ -18,19 +18,17 @@ package effredis
 
 import cats.effect._
 import cats.implicits._
-// import log4cats._
+import log4cats._
 
 object PipelineBench extends LoggerIOApp {
 
-  def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] = ???
-  /*
+  def setupPipeline(keyPrefix: String, valPrefix: String): IO[Resp[Option[List[Any]]]] =
     RedisClient.pipe[IO](new java.net.URI("http://localhost:6379")).use { cli =>
-      import cli._
-
       val nKeys = 12500
-      RedisClient.pipeline(cli)(() => (0 to nKeys).map(i => set(s"$keyPrefix$i", s"$valPrefix $i")))
+      RedisClient.pipeline(cli) { c =>
+        (0 to nKeys).map(i => c.set(s"$keyPrefix$i", s"$valPrefix $i")).toList.sequence
+      }
     }
-   */
 
   override def run(args: List[String]): IO[ExitCode] = {
 

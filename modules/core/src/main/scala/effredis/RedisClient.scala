@@ -121,7 +121,6 @@ object RedisClient {
       client: RedisClient[F, PIPE.type]
   )(f: RedisClient[F, PIPE.type] => F[A]): F[Resp[Option[List[Any]]]] =
     try {
-      implicit val b = client.blocker
       f(client).flatMap { _ =>
         client
           .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
@@ -142,7 +141,6 @@ object RedisClient {
       client: RedisClient[F, PIPE.type]
   )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
     try {
-      implicit val b = client.blocker
       commands().flatMap { _ =>
         client
           .send(client.commandBuffer.toString, true)(Option(client.handlers.map(_._2).map(_()).toList))
@@ -216,7 +214,6 @@ object RedisClient {
       client: RedisClient[F, TRANSACT.type]
   )(f: RedisClient[F, TRANSACT.type] => F[A]): F[Resp[Option[List[Any]]]] = {
 
-    implicit val b = client.blocker
     import client._
 
     send("MULTI")(asString).flatMap { _ =>
