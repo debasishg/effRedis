@@ -117,18 +117,18 @@ object RedisClient {
     * @param f the pipeline of functions
     * @return response from server
     */
-  def pipeline[F[+_]: Concurrent: ContextShift: Log](
+  def pipeline[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, PIPE.type]
-  )(f: () => Any): F[Resp[Option[List[Any]]]] = {
-    implicit val b = client.blocker
+  )(f: RedisClient[F, PIPE.type] => F[A]): F[Resp[Option[List[Any]]]] =
     try {
-      val _ = f()
-      client
-        .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+      implicit val b = client.blocker
+      f(client).flatMap { _ =>
+        client
+          .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
+      }
     } catch {
       case e: Exception => Error(e.getMessage).pure[F]
     }
-  }
 
   /**
     * API for pipeline instructions. Allows HList to be used for setting up
@@ -140,21 +140,21 @@ object RedisClient {
     */
   def hpipeline[F[+_]: Concurrent: ContextShift: Log, In <: HList](
       client: RedisClient[F, PIPE.type]
-  )(commands: () => In): F[Resp[Option[List[Any]]]] = {
-    implicit val b = client.blocker
+  )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
     try {
-      val _ = commands()
-      client
-        .send(client.commandBuffer.toString, true)(Option(client.handlers.map(_._2).map(_()).toList))
-        .flatTap { r =>
-          client.handlers = Vector.empty
-          client.commandBuffer = new StringBuffer
-          F.delay(r)
-        }
+      implicit val b = client.blocker
+      commands().flatMap { _ =>
+        client
+          .send(client.commandBuffer.toString, true)(Option(client.handlers.map(_._2).map(_()).toList))
+          .flatTap { r =>
+            client.handlers = Vector.empty
+            client.commandBuffer = new StringBuffer
+            F.delay(r)
+          }
+      }
     } catch {
       case e: Exception => F.delay(Error(e.getMessage))
     }
-  }
 
   /**
     * API for transaction. Allows HList to be used for setting up
@@ -212,34 +212,33 @@ object RedisClient {
     * @param f the pipeline of functions
     * @return response from server
     */
-  def transaction[F[+_]: Concurrent: ContextShift: Log](
+  def transaction[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, TRANSACT.type]
-  )(f: () => Any): F[Resp[Option[List[Any]]]] = {
+  )(f: RedisClient[F, TRANSACT.type] => F[A]): F[Resp[Option[List[Any]]]] = {
 
     implicit val b = client.blocker
     import client._
 
     send("MULTI")(asString).flatMap { _ =>
       try {
-        val _ = f()
+        f(client).flatMap { _ =>
+          // no exec if discard
+          if (client.handlers
+                .map(_._1)
+                .filter(_ == "DISCARD")
+                .isEmpty) {
 
-        // no exec if discard
-        if (client.handlers
-              .map(_._1)
-              .filter(_ == "DISCARD")
-              .isEmpty) {
-
-          send("EXEC")(asExec(client.handlers.map(_._2))).flatTap { _ =>
-            client.handlers = Vector.empty
-            ().pure[F]
-          }
-        } else {
-          TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-            client.handlers = Vector.empty
-            r.pure[F]
+            send("EXEC")(asExec(client.handlers.map(_._2))).flatTap { _ =>
+              client.handlers = Vector.empty
+              ().pure[F]
+            }
+          } else {
+            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
+              client.handlers = Vector.empty
+              r.pure[F]
+            }
           }
         }
-
       } catch {
         case e: Exception =>
           Error(e.getMessage()).pure[F]

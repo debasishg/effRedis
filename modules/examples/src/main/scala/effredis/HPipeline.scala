@@ -27,12 +27,14 @@ object HPipeline extends LoggerIOApp {
       import cli._
 
       val cmds = { () =>
-        set("k1", "v1") ::
-          get("k1") ::
-          set("k2", 100) ::
-          incrby("k2", 12) ::
-          get("k2") ::
-          HNil
+        IO.delay {
+          set("k1", "v1") ::
+            get("k1") ::
+            set("k2", 100) ::
+            incrby("k2", 12) ::
+            get("k2") ::
+            HNil
+        }
       }
 
       val r = RedisClient.hpipeline(cli)(cmds)

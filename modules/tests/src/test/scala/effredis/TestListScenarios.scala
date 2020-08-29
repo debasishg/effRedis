@@ -460,14 +460,13 @@ trait TestListScenarios {
 
     // start r1 and r2 in fibers and then
     // then join : r1 blocks but then gets
-    // the valie as soon as r2 ends
+    // the value as soon as r2 ends
     val f = for {
       a <- r1.start
       b <- r2.start
       c <- a.join
       _ <- b.join
     } yield c
-
     f.map(r => assert(getResp(r) == Some(("l1", "a"))))
   }
 }

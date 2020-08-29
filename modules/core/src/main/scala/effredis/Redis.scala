@@ -28,91 +28,97 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
   var commandBuffer: StringBuffer           = new StringBuffer
-  val crlf = "\r\n"
+  val crlf                                  = "\r\n"
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = {
+  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = blocker.blockOn {
 
-    val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-    try {
-      if (mode == SINGLE) {
-        write(cmd)
-        Value(result).pure[F]
+    F.debug(s"Now Sending $command $args") >> {
+      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
 
-      } else if (mode == PIPE) {
-        handlers :+= ((command, () => result))
-        commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
-        Buffered.pure[F]
-
-      } else {
-        write(cmd)
-        handlers :+= ((command, () => result))
-        val _ = receive(singleLineReply)
-        Queued.pure[F]
-
-      }
-
-    } catch {
-      case e: RedisConnectionException =>
-        if (disconnect) send(command, args)(result)
-        else Error(e.getMessage()).pure[F]
-      case e: SocketException =>
-        if (disconnect) send(command, args)(result)
-        else Error(e.getMessage()).pure[F]
-      case e: Exception =>
-        Error(e.getMessage()).pure[F]
-    }
-}
-
-  def send[A](command: String, pipelineSubmissionMode: Boolean = false)(
-      result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] = {
-    val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-
-    try {
-      if (mode == SINGLE) {
-        write(cmd)
-        Value(result).pure[F]
-
-      } else if (mode == PIPE) {
-        if (pipelineSubmissionMode) { // pipeline submission phase
-          write(command.getBytes("UTF-8")) 
+      try {
+        if (mode == SINGLE) {
+          write(cmd)
           Value(result).pure[F]
 
-        } else { // pipeline accumulation phase
+        } else if (mode == PIPE) {
           handlers :+= ((command, () => result))
-          commandBuffer.append(command ++ crlf)
+          commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
           Buffered.pure[F]
-
-        }
-
-      } else { // mode == TRANSACT
-        if (command == "MULTI") {
-          write(cmd)
-          Value(result).pure[F]
-
-        } else if (command == "EXEC") {
-          write(cmd)
-          Value(result).pure[F]
 
         } else {
           write(cmd)
           handlers :+= ((command, () => result))
           val _ = receive(singleLineReply)
           Queued.pure[F]
-        }
-      }
 
-    } catch {
-      case e: RedisConnectionException =>
-        if (disconnect) send(command)(result)
-        else Error(e.getMessage()).pure[F]
-      case e: SocketException =>
-        if (disconnect) send(command)(result)
-        else Error(e.getMessage()).pure[F]
-      case e: Exception =>
-        Error(e.getMessage()).pure[F]
+        }
+
+      } catch {
+        case e: RedisConnectionException =>
+          if (disconnect) send(command, args)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: SocketException =>
+          if (disconnect) send(command, args)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: Exception =>
+          Error(e.getMessage()).pure[F]
+      }
+    }
+  }
+
+  def send[A](command: String, pipelineSubmissionMode: Boolean = false)(
+      result: => A
+  )(implicit blocker: Blocker): F[Resp[A]] = blocker.blockOn {
+    val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+
+    // F.debug(s"Sending ${new String(cmd)}") >> {
+    F.debug(s"Now Sending ${command}") >> {
+      try {
+        if (mode == SINGLE) {
+          write(cmd)
+          Value(result).pure[F]
+
+        } else if (mode == PIPE) {
+          if (pipelineSubmissionMode) { // pipeline submission phase
+            write(command.getBytes("UTF-8"))
+            Value(result).pure[F]
+
+          } else { // pipeline accumulation phase
+            handlers :+= ((command, () => result))
+            commandBuffer.append(command ++ crlf)
+            Buffered.pure[F]
+
+          }
+
+        } else { // mode == TRANSACT
+          if (command == "MULTI") {
+            write(cmd)
+            Value(result).pure[F]
+
+          } else if (command == "EXEC") {
+            write(cmd)
+            Value(result).pure[F]
+
+          } else {
+            write(cmd)
+            handlers :+= ((command, () => result))
+            val _ = receive(singleLineReply)
+            Queued.pure[F]
+          }
+        }
+
+      } catch {
+        case e: RedisConnectionException =>
+          if (disconnect) send(command)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: SocketException =>
+          if (disconnect) send(command)(result)
+          else Error(e.getMessage()).pure[F]
+        case e: Exception =>
+          Error(e.getMessage()).pure[F]
+      }
     }
   }
 
