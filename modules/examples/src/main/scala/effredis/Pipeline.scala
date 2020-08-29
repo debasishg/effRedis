@@ -18,10 +18,12 @@ package effredis
 
 import java.net.URI
 import cats.effect._
+import cats.implicits._
 import log4cats._
 
 object Pipeline extends LoggerIOApp {
 
+  // pipeline formation
   def program(c: RedisClient[IO, RedisClient.PIPE.type]): IO[Unit] =
     for {
       _ <- c.set("k1", "v1")
@@ -31,12 +33,26 @@ object Pipeline extends LoggerIOApp {
       _ <- c.get("k2")
     } yield ()
 
+  // another pipeline formation
+  def program2(pcli: RedisClient[IO, RedisClient.PIPE.type]) =
+    (
+      pcli.set("k1", "v1"),
+      pcli.get("k1"),
+      pcli.set("k2", 100),
+      pcli.incrby("k2", 12),
+      pcli.get("k2")
+    ).tupled
+
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.pipe[IO](new URI("http://localhost:6379")).use { cli =>
       import cli._
 
-      val r1 = RedisClient.pipeline(cli)(program)
-      println(r1.unsafeRunSync())
+      val res = for {
+        r1 <- RedisClient.pipeline(cli)(program)
+        r2 <- RedisClient.pipeline(cli)(program2)
+      } yield (r1, r2)
+
+      println(res.unsafeRunSync())
       IO(ExitCode.Success)
     }
 }

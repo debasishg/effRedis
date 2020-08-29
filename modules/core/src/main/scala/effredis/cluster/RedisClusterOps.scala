@@ -32,7 +32,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Run the function on one specific node of the cluster. This is given by the
     * slot that the node contains.
     */
-  def onANode[R](fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] =
+  private def onANode[R](fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] =
     topologyCache.get.flatMap { t =>
       t.nodes.headOption
         .map(fn)
@@ -46,7 +46,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * TODO: Need to check: some commands like flushall are not allowed on replica
     * nodes. Need to eliminate them
     */
-  def onAllNodes[R](fn: RedisClusterNode => F[Resp[R]]): F[List[Resp[R]]] =
+  private def onAllNodes[R](fn: RedisClusterNode => F[Resp[R]]): F[List[Resp[R]]] =
     topologyCache.get.flatMap {
       _.nodes
         .map(fn)
@@ -63,7 +63,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * @param fn the fucntion to execute
     * @return the response in F
     */
-  def forKey[R](key: String)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
+  private def forKey[R](key: String)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
@@ -82,7 +82,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * The execution function for the key.
     */
-  def executeOnNode[R](node: Option[RedisClusterNode], slot: Int, keys: List[String])(
+  private def executeOnNode[R](node: Option[RedisClusterNode], slot: Int, keys: List[String])(
       fn: RedisClusterNode => F[Resp[R]]
   ): F[Resp[R]] =
     node
@@ -103,7 +103,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * @param fn the function to run
     * @return the repsonse from redis server
     */
-  def retryForMovedOrAskRedirection[R](err: String, keys: List[String])(
+  private def retryForMovedOrAskRedirection[R](err: String, keys: List[String])(
       fn: RedisClusterNode => F[Resp[R]]
   ): F[Resp[R]] =
     if (err.startsWith("MOVED") || err.startsWith("ASK")) {
@@ -138,7 +138,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * @param fn the fucntion to execute
     * @return the response in F
     */
-  def forKeys[R](key: String, keys: String*)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
+  private def forKeys[R](key: String, keys: String*)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
     val slots = (key :: keys.toList).map(HashSlot.find(_))
     if (slots.forall(_ == slots.head)) forKey(key)(fn)
     else {
