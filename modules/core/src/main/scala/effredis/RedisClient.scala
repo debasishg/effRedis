@@ -56,7 +56,7 @@ object RedisClient {
     val acquire: F[RedisClient[F, M]] = {
       F.debug(s"Acquiring client for uri $uri $blocker") *>
         blocker.blockOn {
-          F.delay(new RedisClient[F, M](uri, blocker, mode))
+          F.delay(new RedisClient[F, M](uri, mode))
         }
     }
     val release: RedisClient[F, M] => F[Unit] = { c =>
@@ -251,7 +251,6 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode] p
     override val secret: Option[Any] = None,
     override val timeout: Int = 0,
     override val sslContext: Option[SSLContext] = None,
-    val blocker: Blocker,
     val mode: M
 ) extends RedisCommand[F, M](mode) {
 
@@ -259,8 +258,8 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode] p
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
   def l: Log[F]                        = implicitly[Log[F]]
 
-  def this(b: Blocker, m: M) = this("localhost", 6379, blocker = b, mode = m)
-  def this(connectionUri: java.net.URI, b: Blocker, m: M) = this(
+  def this(m: M) = this("localhost", 6379, mode = m)
+  def this(connectionUri: java.net.URI, m: M) = this(
     host = connectionUri.getHost,
     port = connectionUri.getPort,
     database = RedisClient.extractDatabaseNumber(connectionUri),
@@ -269,7 +268,6 @@ class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode] p
         case Array(_, password, _*) => Some(password)
         case _                      => None
       }),
-    blocker = b,
     mode = m
   )
   override def toString: String = host + ":" + String.valueOf(port) + "/" + database

@@ -21,7 +21,6 @@ import algebra.SetApi
 import codecs._
 
 trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

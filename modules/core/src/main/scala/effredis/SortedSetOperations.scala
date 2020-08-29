@@ -22,7 +22,6 @@ import algebra.SortedSetApi
 import codecs._
 
 trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

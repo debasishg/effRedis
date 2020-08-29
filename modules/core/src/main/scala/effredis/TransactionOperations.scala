@@ -16,11 +16,9 @@
 
 package effredis
 
-import cats.effect._
 import algebra.TransactionApi
 
 trait TransactionOperations[F[+_]] extends TransactionApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
 
   override def discard: F[Resp[Boolean]] =
     send("DISCARD")(asBoolean)

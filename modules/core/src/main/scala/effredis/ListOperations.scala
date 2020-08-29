@@ -21,7 +21,6 @@ import algebra.ListApi
 import codecs._
 
 trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

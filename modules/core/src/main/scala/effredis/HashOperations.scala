@@ -21,7 +21,6 @@ import algebra.HashApi
 import codecs._
 
 trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

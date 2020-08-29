@@ -20,7 +20,6 @@ import cats.effect._
 import algebra.NodeApi
 
 trait NodeOperations[F[+_]] extends NodeApi[F] { self: Redis[F, _] =>
-  implicit def blocker: Blocker
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
