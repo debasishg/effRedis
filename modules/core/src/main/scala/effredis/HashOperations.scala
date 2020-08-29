@@ -20,8 +20,7 @@ import cats.effect._
 import algebra.HashApi
 import codecs._
 
-trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F] =>
-  implicit def blocker: Blocker
+trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

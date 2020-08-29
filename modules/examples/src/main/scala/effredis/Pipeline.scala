@@ -21,22 +21,22 @@ import cats.effect._
 import log4cats._
 
 object Pipeline extends LoggerIOApp {
-  override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.pipe[IO](cli).use { txnClient =>
-        import txnClient._
 
-        val r1 = parent.pipeline(txnClient) { () =>
-          List(
-            set("k1", "v1"),
-            get("k1"),
-            set("k2", 100),
-            incrby("k2", 12),
-            get("k2")
-          )
-        }
-        println(r1.unsafeRunSync())
-        IO(ExitCode.Success)
-      }
+  def program(c: RedisClient[IO, RedisClient.PIPE.type]): IO[Unit] =
+    for {
+      _ <- c.set("k1", "v1")
+      _ <- c.get("k1")
+      _ <- c.set("k2", 100)
+      _ <- c.incrby("k2", 12)
+      _ <- c.get("k2")
+    } yield ()
+
+  override def run(args: List[String]): IO[ExitCode] =
+    RedisClient.pipe[IO](new URI("http://localhost:6379")).use { cli =>
+      import cli._
+
+      val r1 = RedisClient.pipeline(cli)(program)
+      println(r1.unsafeRunSync())
+      IO(ExitCode.Success)
     }
 }

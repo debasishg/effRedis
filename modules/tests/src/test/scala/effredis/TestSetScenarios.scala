@@ -22,7 +22,7 @@ import EffRedisFunSuite._
 trait TestSetScenarios {
   implicit def cs: ContextShift[IO]
 
-  def setsAdd(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsAdd(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- sadd("set-1", "foo")
@@ -39,7 +39,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsAddVariadic(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsAddVariadic(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- sadd("set-1", "foo", "bar", "baz")
@@ -51,7 +51,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsRem(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsRem(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -70,7 +70,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsRemVariadic(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsRemVariadic(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- sadd("set-1", "foo", "bar", "baz", "faz")
@@ -84,7 +84,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsPop(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsPop(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -98,7 +98,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsPopWithCount(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsPopWithCount(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "one")
@@ -138,7 +138,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsMove(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsMove(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -177,7 +177,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsCard(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsCard(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -193,7 +193,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsIsMember(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsIsMember(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -215,7 +215,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsInter(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsInter(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -246,7 +246,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsInterstore(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsInterstore(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should store intersection
@@ -284,7 +284,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsUnion(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsUnion(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -316,7 +316,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsUnionstore(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsUnionstore(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -352,7 +352,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsDiff(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsDiff(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -380,7 +380,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsMember(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsMember(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "foo")
@@ -415,7 +415,7 @@ trait TestSetScenarios {
     } yield ()
   }
 
-  def setsRandomMemberWithCount(cmd: RedisClient[IO]): IO[Unit] = {
+  final def setsRandomMemberWithCount(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- sadd("set-1", "one")

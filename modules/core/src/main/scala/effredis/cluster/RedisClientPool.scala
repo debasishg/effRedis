@@ -22,14 +22,15 @@ import scala.concurrent.duration._
 import io.chrisdavenport.keypool._
 import cats.effect._
 import effredis.{ Log, RedisClient }
+import effredis.RedisClient.SINGLE
 
 case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]()
 
 object RedisClientPool {
   def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer]
-      : Resource[F, KeyPool[F, URI, (RedisClient[F], F[Unit])]] =
-    KeyPoolBuilder[F, URI, (RedisClient[F], F[Unit])](
-      { uri: URI => RedisClient.make(uri).allocated },
+      : Resource[F, KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]] =
+    KeyPoolBuilder[F, URI, (RedisClient[F, SINGLE.type], F[Unit])](
+      { uri: URI => RedisClient.single(uri).allocated },
       { case (_, shutdown) => shutdown }
     ).withDefaultReuseState(Reusable.Reuse)
       .withIdleTimeAllowedInPool(Duration.Inf)

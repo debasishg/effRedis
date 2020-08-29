@@ -18,36 +18,29 @@ package effredis
 
 import java.net.URI
 import cats.effect._
-import cats.implicits._
 import log4cats._
 
 object Transaction extends LoggerIOApp {
+  def program(c: RedisClient[IO, RedisClient.TRANSACT.type]): IO[Unit] =
+    for {
+      _ <- c.set("k1", "v1")
+      _ <- c.set("k2", 100)
+      _ <- c.incrby("k2", 12)
+      _ <- c.get("k1")
+      _ <- c.get("k2")
+      _ <- c.lpop("k1")
+    } yield ()
+
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.transact[IO](cli).use { txnClient =>
-        import txnClient._
+    RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
+      val r1 = RedisClient.transaction(cli)(program)
+      r1.unsafeRunSync() match {
 
-        val r1 = parent.transaction(txnClient) { () =>
-          List(
-            set("k1", "v1"),
-            set("k2", 100),
-            incrby("k2", 12),
-            get("k1"),
-            get("k2"),
-            lpop("k1")
-            // discard,
-            // get("k2"),
-          ).sequence
-        }
-
-        r1.unsafeRunSync() match {
-
-          case Value(ls)        => ls.foreach(println)
-          case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-          case Error(err)       => println(s"oops! $err")
-          case err              => println(err)
-        }
-        IO(ExitCode.Success)
+        case Value(ls)        => ls.foreach(println)
+        case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+        case Error(err)       => println(s"oops! $err")
+        case err              => println(err)
       }
+      IO(ExitCode.Success)
     }
 }

@@ -21,6 +21,7 @@ import util.ClusterUtils
 import cats.effect._
 import cats.implicits._
 import effredis.{ Error, Log, RedisClient, Value }
+import effredis.RedisClient.SINGLE
 
 final private[effredis] case class ClusterTopology(
     nodes: List[RedisClusterNode]
@@ -29,7 +30,7 @@ final private[effredis] case class ClusterTopology(
 object ClusterTopology {
 
   def create[F[+_]: Concurrent: ContextShift: Log: Timer](
-      cl: RedisClient[F]
+      cl: RedisClient[F, SINGLE.type]
   ): F[ClusterTopology] = {
 
     def toRedisClusterNode(

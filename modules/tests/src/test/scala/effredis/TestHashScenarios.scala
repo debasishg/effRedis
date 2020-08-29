@@ -22,7 +22,7 @@ import EffRedisFunSuite._
 trait TestHashScenarios {
   implicit def cs: ContextShift[IO]
 
-  def hashHSet1(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hashHSet1(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should set and get fields
@@ -67,7 +67,7 @@ trait TestHashScenarios {
     } yield ()
   }
 
-  def hashHSet2(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hashHSet2(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should delete fields
@@ -122,7 +122,7 @@ trait TestHashScenarios {
     } yield ()
   }
 
-  def hashHGetAll(cmd: RedisClient[IO]): IO[Unit] = {
+  final def hashHGetAll(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should behave symmetrically with hmset

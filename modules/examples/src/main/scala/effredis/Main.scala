@@ -23,7 +23,7 @@ import log4cats._
 
 object Main extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cmd =>
+    RedisClient.single[IO](new URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
       // just 1 command
@@ -36,7 +36,7 @@ object Main extends LoggerIOApp {
       // Use as applicative
       case class Foo(str: String, num: Long)
 
-      val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).parMapN { (_, _, k1val, k2val) =>
+      val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).mapN { (_, _, k1val, k2val) =>
         (k1val, k2val) match {
           case (Value(Some(k1)), Value(Some(k2))) => Foo(k1, k2)
           case err                                => println(s"Error $err")
@@ -50,6 +50,7 @@ object Main extends LoggerIOApp {
         a <- set("k1", "v1")
         b <- set("k2", "v2")
         c <- get("k1")
+        _ <- flushall
 
       } yield (a, b, c)
 
@@ -73,7 +74,7 @@ object Main extends LoggerIOApp {
         set("k2", "v2"),
         lpop("k1"),
         get("k1")
-      ).parMapN((a, b, c, d) => List(a, b, c, d))
+      ).mapN((a, b, c, d) => List(a, b, c, d))
 
       println(rs.unsafeRunSync())
 

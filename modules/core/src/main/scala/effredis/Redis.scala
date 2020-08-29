@@ -22,19 +22,37 @@ import cats.effect._
 import cats.implicits._
 
 import codecs.Format
+import RedisClient._
 
-abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with Protocol {
+abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) extends RedisIO with Protocol {
+
+  var handlers: Vector[(String, () => Any)] = Vector.empty
+  var commandBuffer: StringBuffer           = new StringBuffer
+  val crlf                                  = "\r\n"
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
-  )(implicit format: Format, blocker: Blocker): F[Resp[A]] = {
+  )(implicit format: Format): F[Resp[A]] =
+    F.debug(s"Sending $command $args") >> {
+      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
 
-    val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
-    F.debug(s"Sending ${new String(cmd)}") >> {
       try {
+        if (mode == SINGLE) {
+          write(cmd)
+          Value(result).pure[F]
 
-        write(cmd)
-        Value(result).pure[F]
+        } else if (mode == PIPE) {
+          handlers :+= ((command, () => result))
+          commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
+          Buffered.pure[F]
+
+        } else {
+          write(cmd)
+          handlers :+= ((command, () => result))
+          val _ = receive(singleLineReply)
+          Queued.pure[F]
+
+        }
 
       } catch {
         case e: RedisConnectionException =>
@@ -47,19 +65,46 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log] extends RedisIO with 
           Error(e.getMessage()).pure[F]
       }
     }
-  }
 
-  def send[A](command: String, pipelineMode: Boolean = false)(
+  def send[A](command: String, pipelineSubmissionMode: Boolean = false)(
       result: => A
-  )(implicit blocker: Blocker): F[Resp[A]] = {
+  ): F[Resp[A]] = {
     val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
-    F.debug(s"Sending ${new String(cmd)}") >> {
 
+    F.debug(s"Sending ${command}") >> {
       try {
+        if (mode == SINGLE) {
+          write(cmd)
+          Value(result).pure[F]
 
-        if (!pipelineMode) write(cmd)
-        else write(command.getBytes("UTF-8"))
-        Value(result).pure[F]
+        } else if (mode == PIPE) {
+          if (pipelineSubmissionMode) { // pipeline submission phase
+            write(command.getBytes("UTF-8"))
+            Value(result).pure[F]
+
+          } else { // pipeline accumulation phase
+            handlers :+= ((command, () => result))
+            commandBuffer.append(command ++ crlf)
+            Buffered.pure[F]
+
+          }
+
+        } else { // mode == TRANSACT
+          if (command == "MULTI") {
+            write(cmd)
+            Value(result).pure[F]
+
+          } else if (command == "EXEC") {
+            write(cmd)
+            Value(result).pure[F]
+
+          } else {
+            write(cmd)
+            handlers :+= ((command, () => result))
+            val _ = receive(singleLineReply)
+            Queued.pure[F]
+          }
+        }
 
       } catch {
         case e: RedisConnectionException =>

@@ -16,12 +16,11 @@
 
 package effredis.cluster
 
-import cats.effect.{ Blocker, Concurrent, ContextShift }
+import cats.effect.{ Concurrent, ContextShift }
 import algebra.ClusterApi
 import effredis.{ Log, Redis, Resp }
 
-trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F] =>
-  implicit def blocker: Blocker
+trait ClusterOperations[F[+_]] extends ClusterApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
   implicit def l: Log[F]

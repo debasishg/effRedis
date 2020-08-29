@@ -22,10 +22,10 @@ import log4cats._
 
 object Bench extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
+    RedisClient.single[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       import cmd._
 
-      val nKeys = 1000000
+      val nKeys = 100000
       val s     = System.currentTimeMillis()
       val x = (0 to nKeys)
         .map { i =>

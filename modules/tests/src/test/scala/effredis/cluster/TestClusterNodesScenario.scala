@@ -27,7 +27,7 @@ import effredis.cluster.util.ClusterUtils._
 trait TestClusterNodesScenarios {
   implicit def cs: ContextShift[IO]
 
-  def parseClusterNodes(client: RedisClient[IO]): IO[Unit] = {
+  final def parseClusterNodes(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     val ts1 = TopologyString(
       "07c37dfeb235213a872192d90877d0cd55635b91",
       "127.0.0.1:30004@31004",

@@ -16,8 +16,11 @@
 
 package effredis
 
-trait RedisCommand[F[+_]]
-    extends Redis[F]
+import cats.effect._
+import RedisClient._
+
+abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M)
+    extends Redis[F, M](mode)
     with StringOperations[F]
     with BaseOperations[F]
     with ListOperations[F]

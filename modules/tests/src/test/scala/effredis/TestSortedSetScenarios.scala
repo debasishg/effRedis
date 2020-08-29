@@ -24,7 +24,7 @@ import EffRedisFunSuite._
 trait TestSortedSetScenarios {
   implicit def cs: ContextShift[IO]
 
-  private def add(cmd: RedisClient[IO]): IO[Unit] =
+  private def add(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] =
     for {
       x <- cmd.zadd("hackers", 1965, "yukihiro matsumoto")
       _ <- IO(assert(getResp(x).get == 1))
@@ -40,7 +40,7 @@ trait TestSortedSetScenarios {
       _ <- IO(assert(getResp(x).get == 5))
     } yield ()
 
-  def sortedSetsZrangeByLex(cmd: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZrangeByLex(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should return the elements between min and max
@@ -55,7 +55,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZAdd(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZAdd(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       // should add based on proper sorted set semantics
@@ -67,7 +67,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRem(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRem(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       // should remove
@@ -81,7 +81,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRange(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRange(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- add(client)
@@ -92,7 +92,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRank(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRank(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- add(client)
@@ -103,7 +103,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRemRange(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRemRange(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- add(client)
@@ -118,7 +118,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZUnion(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZUnion(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- zadd("hackers 1", 1965, "yukihiro matsumoto")
@@ -150,7 +150,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZInter(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZInter(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- zadd("hackers", 1912, "alan turing")
@@ -200,7 +200,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZCount(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZCount(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       _ <- add(client)
@@ -209,7 +209,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRangeByScore(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRangeByScore(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       // should return the elements between min and max") {
@@ -244,7 +244,7 @@ trait TestSortedSetScenarios {
     } yield ()
   }
 
-  def sortedSetsZRangeByScoreWithScore(client: RedisClient[IO]): IO[Unit] = {
+  final def sortedSetsZRangeByScoreWithScore(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
       // should return the elements between min and max") {

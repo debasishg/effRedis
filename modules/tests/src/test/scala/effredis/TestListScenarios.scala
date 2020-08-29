@@ -22,7 +22,7 @@ import EffRedisFunSuite._
 trait TestListScenarios {
   implicit def cs: ContextShift[IO]
 
-  def listsLPush(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- lpush("list-1", "foo")
@@ -57,7 +57,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsRPush(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsRPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- rpush("list-1", "foo")
@@ -92,7 +92,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLlen(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLlen(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "foo")
@@ -109,7 +109,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLrange(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLrange(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -139,7 +139,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLtrim(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLtrim(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -171,7 +171,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLIndex(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLIndex(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -200,7 +200,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLSet(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLSet(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -222,7 +222,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLRem(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLRem(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // should remove count elements matching value from beginning
@@ -266,7 +266,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLPop(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLPop(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -288,7 +288,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsRPop(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsRPop(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- lpush("list-1", "6")
@@ -310,7 +310,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsRPopLPush(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsRPopLPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- rpush("list-1", "a")
@@ -353,7 +353,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLPushPopWithNL(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLPushPopWithNL(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       // lpush with newlines
@@ -368,7 +368,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsLPushPopWithArrayBytes(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsLPushPopWithArrayBytes(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       x <- lpush("list-1", "foo\nbar\nbaz".getBytes("UTF-8"))
@@ -378,7 +378,7 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsBRPoplPush(cmd: RedisClient[IO]): IO[Unit] = {
+  final def listsBRPoplPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
       _ <- rpush("list-1", "a")
@@ -419,7 +419,9 @@ trait TestListScenarios {
     } yield ()
   }
 
-  def listsBRPoplPushWithBlockingPop(cmds: (RedisClient[IO], RedisClient[IO])): IO[Unit] = {
+  final def listsBRPoplPushWithBlockingPop(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
     val cmd1 = cmds._1
     val cmd2 = cmds._2
     val r1 = for {
@@ -441,7 +443,9 @@ trait TestListScenarios {
     }
   }
 
-  def listsBLPop(cmds: (RedisClient[IO], RedisClient[IO])): IO[Unit] = {
+  final def listsBLPop(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
     val cmd1 = cmds._1
     val cmd2 = cmds._2
     val r1 = for {
@@ -456,14 +460,13 @@ trait TestListScenarios {
 
     // start r1 and r2 in fibers and then
     // then join : r1 blocks but then gets
-    // the valie as soon as r2 ends
+    // the value as soon as r2 ends
     val f = for {
       a <- r1.start
       b <- r2.start
       c <- a.join
       _ <- b.join
     } yield c
-
     f.map(r => assert(getResp(r) == Some(("l1", "a"))))
   }
 }

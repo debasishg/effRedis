@@ -22,7 +22,7 @@ import log4cats._
 
 object PBench extends LoggerIOApp {
   def setter(keyPrefix: String, valPrefix: String) =
-    RedisClient.make[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
+    RedisClient.single[IO](new java.net.URI("http://localhost:6379")).use { cmd =>
       val nKeys = 12500
       (0 to nKeys)
         .map { i =>

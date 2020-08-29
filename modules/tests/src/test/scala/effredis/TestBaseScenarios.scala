@@ -26,7 +26,7 @@ import EffRedisFunSuite._
 trait TestBaseScenarios {
   implicit def cs: ContextShift[IO]
 
-  def baseMisc1(cmd: RedisClient[IO]): IO[Unit] = {
+  final def baseMisc1(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
 
     import cmd._
     for {
@@ -100,7 +100,7 @@ trait TestBaseScenarios {
     } yield ()
   }
 
-  def baseMisc2(cmd: RedisClient[IO]): IO[Unit] = {
+  final def baseMisc2(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
 
     import cmd._
     for {
@@ -137,7 +137,7 @@ trait TestBaseScenarios {
     } yield ()
   }
 
-  def baseMisc3(cmd: RedisClient[IO]): IO[Unit] = {
+  final def baseMisc3(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     val timeout          = 2.second
     val timeoutTimestamp = System.currentTimeMillis().millis + timeout
 
@@ -202,7 +202,7 @@ trait TestBaseScenarios {
     } yield ()
   }
 
-  def baseMisc4(cmd: RedisClient[IO]): IO[Unit] = {
+  final def baseMisc4(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
 
     import cmd._
     for {
@@ -248,7 +248,7 @@ trait TestBaseScenarios {
   }
 
   import codecs._
-  def baseMisc5(cmd: RedisClient[IO]): IO[Unit] = {
+  final def baseMisc5(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
 
     import cmd._
     for {

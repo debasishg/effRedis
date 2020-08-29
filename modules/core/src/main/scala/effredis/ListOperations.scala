@@ -20,8 +20,7 @@ import cats.effect._
 import algebra.ListApi
 import codecs._
 
-trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F] =>
-  implicit def blocker: Blocker
+trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 

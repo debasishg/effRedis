@@ -23,11 +23,11 @@ import log4cats._
 
 object HPipeline extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    RedisClient.make[IO](new URI("http://localhost:6379")).use { cli =>
-      RedisClient.pipe[IO](cli).use { txnClient =>
-        import txnClient._
+    RedisClient.pipe[IO](new URI("http://localhost:6379")).use { cli =>
+      import cli._
 
-        val cmds = { () =>
+      val cmds = { () =>
+        IO.delay {
           set("k1", "v1") ::
             get("k1") ::
             set("k2", 100) ::
@@ -35,11 +35,11 @@ object HPipeline extends LoggerIOApp {
             get("k2") ::
             HNil
         }
-
-        val r = cli.hpipeline(txnClient)(cmds)
-
-        println(r.unsafeRunSync())
-        IO(ExitCode.Success)
       }
+
+      val r = RedisClient.hpipeline(cli)(cmds)
+
+      println(r.unsafeRunSync())
+      IO(ExitCode.Success)
     }
 }
