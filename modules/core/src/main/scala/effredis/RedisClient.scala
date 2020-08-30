@@ -21,6 +21,7 @@ import javax.net.ssl.SSLContext
 
 import shapeless.HList
 
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 
@@ -91,11 +92,12 @@ object RedisClient {
     * @return a resource for a working client in F
     */
   def single[F[+_]: ContextShift: Concurrent: Log](
-      uris: List[URI]
+      uris: NonEmptyList[URI]
   ): F[Resource[F, RedisClient[F, SINGLE.type]]] =
-    firstWorking(uris).flatMap {
+    firstWorking(uris.toList).flatMap {
       case Some(uri) => single(uri).pure[F]
-      case _         => F.raiseError(new IllegalArgumentException(s"Error"))
+      case _ =>
+        F.raiseError(new IllegalArgumentException(s"None of the supplied URIs $uris could connect to the cluster"))
     }
 
   private def clientPings[F[+_]: ContextShift: Concurrent: Log](r: RedisClient[F, SINGLE.type]): F[Boolean] =
@@ -110,10 +112,14 @@ object RedisClient {
       else if (workingURI.isDefined) workingURI.pure[F]
       else {
         single(uris.head).use { client =>
-          clientPings(client).flatMap {
-            case true  => Some(uris.head).pure[F]
-            case false => firstWorkingRec(uris.tail, None)
-          }
+          F.info(s"Trying ${uris.head} ..") *>
+            clientPings(client).flatMap {
+              case true => {
+                F.info(s"Worked ${uris.head}!") *>
+                  Some(uris.head).pure[F]
+              }
+              case false => firstWorkingRec(uris.tail, None)
+            }
         }
       }
     firstWorkingRec(uris, None)

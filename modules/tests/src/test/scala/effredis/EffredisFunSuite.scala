@@ -21,6 +21,7 @@ package effredis
 
 import cluster.RedisClusterClient
 import java.net.URI
+import cats.data.NonEmptyList
 import cats.effect._
 import Log.NoOp._
 import munit.FunSuite
@@ -50,7 +51,7 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
     RedisClient.single[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
 
   final def withAbstractRedisCluster[A](f: RedisClusterClient[IO] => IO[A]): IO[Unit] =
-    RedisClusterClient.make[IO](new URI("http://127.0.0.1:7000")).flatMap(f).as(assert(true))
+    RedisClusterClient.make[IO](NonEmptyList.one(new URI("http://127.0.0.1:7000"))).flatMap(f).as(assert(true))
 
   final def withAbstractRedis2[A](
       f: ((RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])) => IO[A]

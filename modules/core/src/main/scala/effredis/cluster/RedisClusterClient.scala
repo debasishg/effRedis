@@ -19,16 +19,16 @@ package effredis.cluster
 import java.net.URI
 
 import util.Cached
-
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 
 import effredis.{ Log, RedisClient }
 
 final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
-    // need to make this a collection and try sequentially till
-    // one of them works
-    seedURI: URI,
+    // collection of initial seed uris for the cluster
+    // try sequentially till one of them works
+    seedURIs: NonEmptyList[URI],
     topologyCache: Cached[F, ClusterTopology]
 ) extends RedisClusterOps[F] {
 
@@ -40,11 +40,13 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
 object RedisClusterClient {
 
   def make[F[+_]: Concurrent: ContextShift: Log: Timer](
-      seedURI: URI
+      seedURIs: NonEmptyList[URI]
   ): F[RedisClusterClient[F]] =
-    RedisClient.single(seedURI).use { cl =>
-      Cached
-        .create[F, ClusterTopology](ClusterTopology.create[F](cl))
-        .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURI, cachedTopology)))
+    RedisClient.single(seedURIs).flatMap {
+      _.use { cl =>
+        Cached
+          .create[F, ClusterTopology](ClusterTopology.create[F](cl))
+          .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURIs, cachedTopology)))
+      }
     }
 }
