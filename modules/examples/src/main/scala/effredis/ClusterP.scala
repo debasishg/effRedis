@@ -21,6 +21,7 @@ import io.chrisdavenport.keypool._
 import util.ClusterUtils
 import java.net.URI
 import scala.concurrent.duration._
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 import log4cats._
@@ -40,7 +41,7 @@ object ClusterP extends LoggerIOApp {
     } yield ()
 
   def program: IO[Unit] =
-    RedisClusterClient.make[IO](new URI("http://localhost:7000")).flatMap { cl =>
+    RedisClusterClient.make[IO](NonEmptyList.one(new URI("http://localhost:7000"))).flatMap { cl =>
       for {
         // optionally the cluster topology can be refreshed to reflect the latest partitions
         // this step schedules that job at a pre-configured interval

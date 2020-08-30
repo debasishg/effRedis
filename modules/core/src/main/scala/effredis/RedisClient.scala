@@ -21,6 +21,7 @@ import javax.net.ssl.SSLContext
 
 import shapeless.HList
 
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 
@@ -81,6 +82,48 @@ object RedisClient {
       blocker <- RedisBlocker.make
       client <- acquireAndRelease(uri, blocker, SINGLE)
     } yield client
+
+  /**
+    * Creates a single connection out of the first working one from the
+    * list supplied. This is used to find out one of the seed connections
+    * in a Redis Cluster
+    *
+    * @param uris the list of uris from which at least one needs to work
+    * @return a resource for a working client in F
+    */
+  def single[F[+_]: ContextShift: Concurrent: Log](
+      uris: NonEmptyList[URI]
+  ): F[Resource[F, RedisClient[F, SINGLE.type]]] =
+    firstWorking(uris.toList).flatMap {
+      case Some(uri) => single(uri).pure[F]
+      case _ =>
+        F.raiseError(new IllegalArgumentException(s"None of the supplied URIs $uris could connect to the cluster"))
+    }
+
+  private def clientPings[F[+_]: ContextShift: Concurrent: Log](r: RedisClient[F, SINGLE.type]): F[Boolean] =
+    r.ping.flatMap {
+      case Value(_) => true.pure[F]
+      case _        => false.pure[F]
+    }
+
+  private def firstWorking[F[+_]: ContextShift: Concurrent: Log](uris: List[URI]): F[Option[URI]] = {
+    def firstWorkingRec(uris: List[URI], workingURI: Option[URI]): F[Option[URI]] =
+      if (uris.isEmpty) None.pure[F]
+      else if (workingURI.isDefined) workingURI.pure[F]
+      else {
+        single(uris.head).use { client =>
+          F.info(s"Trying ${uris.head} ..") *>
+            clientPings(client).flatMap {
+              case true => {
+                F.info(s"Worked ${uris.head}!") *>
+                  Some(uris.head).pure[F]
+              }
+              case false => firstWorkingRec(uris.tail, None)
+            }
+        }
+      }
+    firstWorkingRec(uris, None)
+  }
 
   /**
     * Make a connection for transaction
