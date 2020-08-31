@@ -21,6 +21,7 @@ import cats.effect._
 import effredis.EffRedisFunSuite._
 import effredis.Log.NoOp._
 import effredis.RedisClientPool
+import effredis.RedisClient._
 
 trait TestClusterScenarios {
   implicit def cs: ContextShift[IO]
@@ -28,7 +29,7 @@ trait TestClusterScenarios {
 
   def clusterCommands(cmd: RedisClusterClient[IO]): IO[Unit] = {
     import cmd._
-    RedisClientPool.poolResource[IO].use { pool =>
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool
       for {
         x <- set("key-2", "bar")
@@ -45,7 +46,7 @@ trait TestClusterScenarios {
 
   def clusterListsLPush(cmd: RedisClusterClient[IO]): IO[Unit] = {
     import cmd._
-    RedisClientPool.poolResource[IO].use { pool =>
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool
       for {
         x <- lpush("list-1", "foo")

@@ -27,6 +27,7 @@ import Log.NoOp._
 import munit.FunSuite
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
+import RedisClient._
 
 abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
@@ -75,7 +76,7 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
     withAbstractRedis2[A](f)
 
   private def flushAllCluster(): IO[Unit] =
-    RedisClientPool.poolResource[IO].use[IO, Unit] { pool =>
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use[IO, Unit] { pool =>
       implicit val p = pool
       withRedisCluster(_.flushall)
     }

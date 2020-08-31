@@ -20,6 +20,7 @@ import cats.effect._
 import cats.implicits._
 import effredis.Log.NoOp._
 import effredis.RedisClientPool
+import effredis.RedisClient._
 
 import effredis.EffRedisFunSuite._
 
@@ -29,7 +30,7 @@ trait TestBenchScenarios {
 
   def clusterCommandsB(cmd: RedisClusterClient[IO]): IO[Unit] = {
     import cmd._
-    RedisClientPool.poolResource[IO].use { pool =>
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool
       for {
         x <- set("ley-2", "bar")
@@ -46,7 +47,7 @@ trait TestBenchScenarios {
 
   def clusterBench(cmd: RedisClusterClient[IO]): IO[Unit] = {
     val nKeys = 1000
-    RedisClientPool.poolResource[IO].use { pool =>
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool
       for {
         x <- (0 to nKeys).map(i => cmd.set(s"ley-$i", s"debasish ghosh $i")).toList.sequence
