@@ -13,6 +13,8 @@ Non-blocking, effectful Scala client for Redis implemented using [cats](https://
 
 ## Using Single instance
 
+### Normal Redis Operations
+
 ```scala
 package effredis
 
@@ -81,6 +83,89 @@ object Main extends LoggerIOApp {
     }
 }
 ```
+
+### Pipelining
+
+```scala
+package effredis
+
+import java.net.URI
+import cats.effect._
+import cats.implicits._
+import log4cats._
+
+object Pipeline extends LoggerIOApp {
+
+  // pipeline formation
+  def program(c: RedisClient[IO, RedisClient.PIPE.type]): IO[Unit] =
+    for {
+      _ <- c.set("k1", "v1")
+      _ <- c.get("k1")
+      _ <- c.set("k2", 100)
+      _ <- c.incrby("k2", 12)
+      _ <- c.get("k2")
+    } yield ()
+
+  // another pipeline formation
+  def program2(pcli: RedisClient[IO, RedisClient.PIPE.type]) =
+    (
+      pcli.set("k1", "v1"),
+      pcli.get("k1"),
+      pcli.set("k2", 100),
+      pcli.incrby("k2", 12),
+      pcli.get("k2")
+    ).tupled
+
+  override def run(args: List[String]): IO[ExitCode] =
+    RedisClient.pipe[IO](new URI("http://localhost:6379")).use { cli =>
+      import cli._
+
+      val res = for {
+        r1 <- RedisClient.pipeline(cli)(program)
+        r2 <- RedisClient.pipeline(cli)(program2)
+      } yield (r1, r2)
+
+      println(res.unsafeRunSync())
+      IO(ExitCode.Success)
+    }
+}
+```
+
+### Transactions
+
+```scala
+package effredis
+
+import java.net.URI
+import cats.effect._
+import log4cats._
+
+object Transaction extends LoggerIOApp {
+  def program(c: RedisClient[IO, RedisClient.TRANSACT.type]): IO[Unit] =
+    for {
+      _ <- c.set("k1", "v1")
+      _ <- c.set("k2", 100)
+      _ <- c.incrby("k2", 12)
+      _ <- c.get("k1")
+      _ <- c.get("k2")
+      _ <- c.lpop("k1")
+    } yield ()
+
+  override def run(args: List[String]): IO[ExitCode] =
+    RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
+      val r1 = RedisClient.transaction(cli)(program)
+      r1.unsafeRunSync() match {
+
+        case Value(ls)        => ls.foreach(println)
+        case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+        case Error(err)       => println(s"oops! $err")
+        case err              => println(err)
+      }
+      IO(ExitCode.Success)
+    }
+}
+```
+
 
 ## Using Redis Cluster
 
