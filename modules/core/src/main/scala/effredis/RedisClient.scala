@@ -69,6 +69,15 @@ object RedisClient {
     Resource.make(acquire)(release)
   }
 
+  def make[F[+_]: ContextShift: Concurrent: Log, M <: Mode](
+      uri: URI,
+      mode: M = SINGLE
+  ): Resource[F, RedisClient[F, M]] =
+    for {
+      blocker <- RedisBlocker.make
+      client <- acquireAndRelease(uri, blocker, mode)
+    } yield client
+
   /**
     * Make a single normal connection
     *
