@@ -24,9 +24,10 @@ import cats.implicits._
 import effredis.{ Error, Log, Resp, Value }
 import effredis.codecs._
 import effredis.algebra.StringApi._
-import effredis.RedisClient.SINGLE
+import effredis.RedisClient._
 
-abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { self: RedisClusterClient[F] =>
+abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] {
+  self: RedisClusterClient[F, M] =>
 
   /**
     * Run the function on one specific node of the cluster. This is given by the
@@ -171,11 +172,10 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       expire: Duration = null,
       keepTTL: Boolean = false
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
-      // pool.take(node.uri).use(cl => cl.value._1.set(key, value, whenSet, expire, keepTTL))
       node.managedClient(pool, node.uri).use {
         _.set(key, value, whenSet, expire, keepTTL)
       }
@@ -189,7 +189,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   )(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[A]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -206,7 +206,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   )(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[A]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -214,7 +214,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       }
     }
 
-  // def client(node: RedisClusterNode)(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]) = // : RedisClient[F, SINGLE.type] =
+  // def client(node: RedisClusterNode)(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]) = // : RedisClient[F, SINGLE.type] =
   // pool.take(node.uri).use{ _.value._1 }
 
   /**
@@ -223,7 +223,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def setnx(
       key: Any,
       value: Any
-  )(implicit format: Format, pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[Resp[Boolean]] =
+  )(implicit format: Format, pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.setnx(key, value)
@@ -232,7 +232,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
 
   final def setex(key: Any, expiry: Long, value: Any)(
       implicit format: Format,
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -242,7 +242,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
 
   final def psetex(key: Any, expiryInMillis: Long, value: Any)(
       implicit format: Format,
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -255,7 +255,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def incr(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.incr(key)
@@ -268,7 +268,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def incrby(
       key: Any,
       increment: Long
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.incrby(key, increment)
@@ -278,7 +278,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def incrbyfloat(
       key: Any,
       increment: Float
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Float]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Float]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.incrbyfloat(key, increment)
@@ -290,7 +290,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def decr(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.decr(key)
@@ -303,7 +303,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def decrby(
       key: Any,
       increment: Long
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.decrby(key, increment)
@@ -314,7 +314,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * get the values of all the specified keys.
     */
   final def mget[A](key: Any, keys: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[List[Option[A]]]]] =
@@ -329,7 +329,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def mset(
       kvs: (Any, Any)*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKeys(kvs.head._1.toString, kvs.tail.map(_._1.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.mset(kvs: _*)
@@ -341,7 +341,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def msetnx(
       kvs: (Any, Any)*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKeys(kvs.head._1.toString, kvs.tail.map(_._1.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.msetnx(kvs: _*)
@@ -354,7 +354,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * for the entire length of
     */
   final def setrange(key: Any, offset: Int, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -372,7 +372,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       start: Int,
       end: Int
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -387,7 +387,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def strlen(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.strlen(key)
@@ -400,7 +400,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def append(
       key: Any,
       value: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.append(key, value)
@@ -413,7 +413,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def getbit(
       key: Any,
       offset: Int
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Int]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Int]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.getbit(key, offset)
@@ -424,7 +424,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Sets or clears the bit at offset in the string value stored at key
     */
   final def setbit(key: Any, offset: Int, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Int]]] =
     forKey(key.toString) { node =>
@@ -437,7 +437,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Perform a bitwise operation between multiple keys (containing string values) and store the result in the destination key.
     */
   final def bitop(op: String, destKey: Any, srcKeys: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Int]]] =
     forKeys(destKey.toString, srcKeys.toList.map(_.toString): _*) { node =>
@@ -452,7 +452,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def bitcount(
       key: Any,
       range: Option[(Int, Int)] = None
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Int]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Int]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.bitcount(key, range)
@@ -466,7 +466,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def lpush(key: Any, value: Any, values: Any*)(
       implicit format: Format,
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -480,7 +480,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def lpushx(
       key: Any,
       value: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.lpushx(key, value)
@@ -491,7 +491,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * add values to the tail of the list stored at key (Variadic: >= 2.4)
     */
   final def rpush(key: Any, value: Any, values: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -506,7 +506,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def rpushx(
       key: Any,
       value: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.rpushx(key, value)
@@ -520,7 +520,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def llen(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.llen(key)
@@ -533,7 +533,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def lrange[A](key: Any, start: Int, end: Int)(
       implicit format: Format,
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       parse: Parse[A]
   ): F[Resp[Option[List[Option[A]]]]] =
     forKey(key.toString) { node =>
@@ -546,7 +546,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Trim an existing list so that it will contain only the specified range of elements specified.
     */
   final def ltrim(key: Any, start: Int, end: Int)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
@@ -563,7 +563,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       key: Any,
       index: Int
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -577,7 +577,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * set the list element at index with the new  Out of range indexes will generate an error
     */
   final def lset(key: Any, index: Int, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
@@ -590,7 +590,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Remove the first count occurrences of the value element from the list.
     */
   final def lrem(key: Any, count: Int, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -605,7 +605,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def lpop[A](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -621,7 +621,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def rpop[A](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -638,7 +638,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       srcKey: Any,
       dstKey: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -651,7 +651,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def brpoplpush[A](srcKey: Any, dstKey: Any, timeoutInSeconds: Int)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[A]]] =
     forKeys(srcKey.toString, dstKey.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -663,7 +663,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       implicit format: Format,
       parseK: Parse[K],
       parse: Parse[V],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[(K, V)]]] =
     forKeys(key.toString, keys.toList.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
@@ -675,7 +675,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       implicit format: Format,
       parseK: Parse[K],
       parse: Parse[V],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[(K, V)]]] =
     forKeys(key.toString, keys.toList.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
@@ -698,7 +698,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     *
     */
   final def hset(key: Any, field: Any, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
@@ -717,7 +717,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     *         <code>Some(1)</code> if <code>field</code> already exists in the hash and the value was updated.
     */
   final def hset1(key: Any, field: Any, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -736,7 +736,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     *         </code>False</code> if <code>field</code> exists in the hash and no operation was performed.
     */
   final def hsetnx(key: Any, field: Any, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
@@ -749,7 +749,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       key: Any,
       field: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -772,7 +772,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def hmset(
       key: Any,
       map: Iterable[Product2[Any, Any]]
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.hmset(key, map)
@@ -780,7 +780,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hmget[K, V](key: Any, fields: K*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parseV: Parse[V]
   ): F[Resp[Option[Map[K, V]]]] =
@@ -791,7 +791,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hincrby(key: Any, field: Any, value: Long)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -801,7 +801,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hincrbyfloat(key: Any, field: Any, value: Float)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Float]]] =
     forKey(key.toString) { node =>
@@ -813,7 +813,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def hexists(
       key: Any,
       field: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.hexists(key, field)
@@ -821,7 +821,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hdel(key: Any, field: Any, fields: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -832,7 +832,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
 
   final def hlen(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.hlen(key)
@@ -840,7 +840,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hkeys[A](key: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[List[A]]]] =
@@ -851,7 +851,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     }
 
   final def hvals[A](key: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[List[A]]]] =
@@ -868,7 +868,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def hgetall[K, V](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parseK: Parse[K],
       parseV: Parse[V]
@@ -882,7 +882,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def hgetall1[K, V](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parseK: Parse[K],
       parseV: Parse[V]
@@ -899,7 +899,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -920,7 +920,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       by: Option[String] = None,
       get: List[String] = Nil
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[List[Option[A]]]]] =
@@ -942,7 +942,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
       get: List[String] = Nil,
       storeAt: String
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[Long]]] =
@@ -963,7 +963,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * a Unix timestamp and the amount of microseconds already elapsed in the current second.
     */
   final def time[A](
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[List[Option[A]]]]] =
@@ -977,7 +977,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * returns a randomly selected key from the currently selected DB.
     */
   final def randomkey[A](
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
     onANode(node =>
@@ -992,7 +992,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def rename(
       oldkey: Any,
       newkey: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKeys(oldkey.toString, newkey.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.rename(oldkey, newkey)
@@ -1005,7 +1005,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def renamenx(
       oldkey: Any,
       newkey: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKeys(oldkey.toString, newkey.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.renamenx(oldkey, newkey)
@@ -1015,7 +1015,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * returns the size of the db.
     */
-  final def dbsize(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[Resp[Option[Long]]] =
+  final def dbsize(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[Long]]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
         _.dbsize
@@ -1027,7 +1027,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def exists(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.exists(key)
@@ -1040,7 +1040,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def del(
       key: Any,
       keys: Any*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKeys(key.toString, keys.toList.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.del(key, keys: _*)
@@ -1052,7 +1052,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def getType(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[String]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[String]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.getType(key)
@@ -1065,7 +1065,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def expire(
       key: Any,
       ttl: Int
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.expire(key, ttl)
@@ -1078,7 +1078,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def pexpire(
       key: Any,
       ttlInMillis: Int
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.pexpire(key, ttlInMillis)
@@ -1091,7 +1091,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def expireat(
       key: Any,
       timestamp: Long
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.expireat(key, timestamp)
@@ -1104,7 +1104,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def pexpireat(
       key: Any,
       timestampInMillis: Long
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.pexpireat(key, timestampInMillis)
@@ -1116,7 +1116,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def ttl(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.ttl(key)
@@ -1128,7 +1128,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def pttl(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.pttl(key)
@@ -1144,7 +1144,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * removes all the DB data.
     */
-  final def flushdb(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[List[Resp[Boolean]]] =
+  final def flushdb(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[List[Resp[Boolean]]] =
     onAllNodes(node =>
       node.managedClient(pool, node.uri).use {
         _.flushdb
@@ -1154,7 +1154,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * removes data from all the DB's.
     */
-  final def flushall(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[List[Resp[Boolean]]] =
+  final def flushall(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[List[Resp[Boolean]]] =
     onAllNodes[Boolean](node => node.managedClient(pool, node.uri).use(_.flushall))
 
   /**
@@ -1163,7 +1163,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def move(
       key: Any,
       db: Int
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.move(key, db)
@@ -1173,7 +1173,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * exits the server.
     */
-  final def quit(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[Resp[Boolean]] =
+  final def quit(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Boolean]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
         _.quit
@@ -1185,7 +1185,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def auth(
       secret: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
         _.auth(secret)
@@ -1198,7 +1198,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def persist(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.persist(key)
@@ -1218,7 +1218,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * ping
     */
-  final def ping(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[Resp[Option[String]]] =
+  final def ping(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[String]]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
         _.ping
@@ -1233,7 +1233,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def watch(
       key: Any,
       keys: Any*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKeys(key.toString, keys.toList.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.watch(key, keys: _*)
@@ -1243,7 +1243,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   /**
     * Flushes all the previously watched keys for a transaction
     */
-  final def unwatch(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]): F[List[Resp[Boolean]]] =
+  final def unwatch(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[List[Resp[Boolean]]] =
     onAllNodes(node =>
       node.managedClient(pool, node.uri).use {
         _.unwatch()
@@ -1254,7 +1254,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * CONFIG GET
     */
   final def getConfig(key: Any = "*")(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Map[String, Option[String]]]]] =
     forKey(key.toString) { node =>
@@ -1269,7 +1269,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def setConfig(
       key: Any,
       value: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[String]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[String]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.setConfig(key, value)
@@ -1278,7 +1278,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
 
   final def echo(
       message: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[String]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[String]]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
         _.echo(message)
@@ -1291,7 +1291,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Add the specified members to the set value stored at key. (VARIADIC: >= 2.4)
     */
   final def sadd(key: Any, value: Any, values: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -1304,7 +1304,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Remove the specified members from the set value stored at key. (VARIADIC: >= 2.4)
     */
   final def srem(key: Any, value: Any, values: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
@@ -1319,7 +1319,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def spop[A](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -1333,7 +1333,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Remove and return multiple random elements (pop) from the Set value at key since (3.2).
     */
   final def spop[A](key: Any, count: Int)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[Set[Option[A]]]]] =
@@ -1347,7 +1347,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Move the specified member from one Set to another atomically.
     */
   final def smove(sourceKey: Any, destKey: Any, value: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format
   ): F[Resp[Option[Long]]] =
     forKeys(sourceKey.toString, destKey.toString) { node =>
@@ -1361,7 +1361,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     */
   final def scard(
       key: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.scard(key)
@@ -1374,7 +1374,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sismember(
       key: Any,
       value: Any
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Boolean]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Boolean]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.sismember(key, value)
@@ -1387,7 +1387,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sinter[A](key: Any, keys: Any*)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[Set[Option[A]]]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1404,7 +1404,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sinterstore(
       key: Any,
       keys: Any*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.sinterstore(key, keys)
@@ -1417,7 +1417,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sunion[A](key: Any, keys: Any*)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[Set[Option[A]]]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1434,7 +1434,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sunionstore(
       key: Any,
       keys: Any*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.sunionstore(key, keys)
@@ -1445,7 +1445,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Return the difference between the Set stored at key1 and all the Sets key2, ..., keyN.
     */
   final def sdiff[A](key: Any, keys: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[Set[Option[A]]]]] =
@@ -1462,7 +1462,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sdiffstore(
       key: Any,
       keys: Any*
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])], format: Format): F[Resp[Option[Long]]] =
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])], format: Format): F[Resp[Option[Long]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.sdiffstore(key, keys)
@@ -1473,7 +1473,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Return all the members of the Set value at key.
     */
   final def smembers[A](key: Any)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[Set[Option[A]]]]] =
@@ -1489,7 +1489,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def srandmember[A](
       key: Any
   )(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])],
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
@@ -1505,7 +1505,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def srandmember[A](key: Any, count: Int)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[List[Option[A]]]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1519,7 +1519,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
   final def sscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A],
-      pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1533,7 +1533,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Add a value to the hyperloglog (>= 2.8.9)
     */
   final def pfadd(key: Any, value: Any, values: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[Long]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1545,7 +1545,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Get the estimated cardinality from one or more keys (>= 2.8.9)
     */
   final def pfcount(key: Any, keys: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Option[Long]]] =
     forKeys(key.toString, keys.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
@@ -1557,13 +1557,36 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer] { se
     * Merge existing keys (>= 2.8.9)
     */
   final def pfmerge(destination: Any, sources: Any*)(
-      implicit pool: KeyPool[F, URI, (RedisClient[F, SINGLE.type], F[Unit])]
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
   ): F[Resp[Boolean]] =
     forKeys(destination.toString, sources.map(_.toString): _*) { node =>
       node.managedClient(pool, node.uri).use {
         _.pfmerge(destination, sources: _*)
       }
     }
+
+  def discard(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Boolean]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.discard
+      }
+    )
+
+  def multi(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[String]]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.multi
+      }
+    )
+
+  def exec(
+      hs: Seq[() => Any]
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[List[Any]]]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.exec(hs)
+      }
+    )
 }
 
 class NotAllowedInClusterError(message: String) extends RuntimeException(message)

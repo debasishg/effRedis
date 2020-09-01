@@ -28,7 +28,7 @@ trait TestBenchScenarios {
   implicit def cs: ContextShift[IO]
   implicit def tr: Timer[IO]
 
-  def clusterCommandsB(cmd: RedisClusterClient[IO]): IO[Unit] = {
+  def clusterCommandsB(cmd: RedisClusterClient[IO, SINGLE.type]): IO[Unit] = {
     import cmd._
     RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool
@@ -45,7 +45,7 @@ trait TestBenchScenarios {
     }
   }
 
-  def clusterBench(cmd: RedisClusterClient[IO]): IO[Unit] = {
+  def clusterBench(cmd: RedisClusterClient[IO, SINGLE.type]): IO[Unit] = {
     val nKeys = 1000
     RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
       implicit val p = pool

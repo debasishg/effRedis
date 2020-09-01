@@ -30,7 +30,7 @@ import RedisClient._
 object ClusterP extends LoggerIOApp {
 
   val nKeys = 60000
-  def subProgram(cl: RedisClusterClient[IO], keyPrefix: String, valuePrefix: String)(
+  def subProgram(cl: RedisClusterClient[IO, SINGLE.type], keyPrefix: String, valuePrefix: String)(
       implicit pool: KeyPool[IO, URI, (RedisClient[IO, SINGLE.type], IO[Unit])]
   ): IO[Unit] =
     for {
@@ -41,7 +41,7 @@ object ClusterP extends LoggerIOApp {
     } yield ()
 
   def program: IO[Unit] =
-    RedisClusterClient.make[IO](NonEmptyList.one(new URI("http://localhost:7000"))).flatMap { cl =>
+    RedisClusterClient.make[IO, SINGLE.type](NonEmptyList.one(new URI("http://localhost:7000"))).flatMap { cl =>
       for {
         // optionally the cluster topology can be refreshed to reflect the latest partitions
         // this step schedules that job at a pre-configured interval
