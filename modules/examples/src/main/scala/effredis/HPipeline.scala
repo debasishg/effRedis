@@ -19,6 +19,8 @@ package effredis
 import java.net.URI
 import shapeless.HNil
 import cats.effect._
+import cats.implicits._
+import cats.sequence._
 import log4cats._
 
 object HPipeline extends LoggerIOApp {
@@ -26,18 +28,15 @@ object HPipeline extends LoggerIOApp {
     RedisClient.pipe[IO](new URI("http://localhost:6379")).use { cli =>
       import cli._
 
-      val cmds = { () =>
-        IO.delay {
-          set("k1", "v1") ::
+      val toPipeline =
+        (set("k1", "v1") ::
             get("k1") ::
             set("k2", 100) ::
             incrby("k2", 12) ::
             get("k2") ::
-            HNil
-        }
-      }
+            HNil).sequence
 
-      val r = RedisClient.hpipeline(cli)(cmds)
+      val r = RedisClient.hpipeline(cli)(() => toPipeline)
 
       println(r.unsafeRunSync())
       IO(ExitCode.Success)

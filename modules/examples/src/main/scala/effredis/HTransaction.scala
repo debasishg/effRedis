@@ -20,6 +20,8 @@ import java.net.URI
 import shapeless.HNil
 
 import cats.effect._
+import cats.implicits._
+import cats.sequence._
 import log4cats._
 
 object HTransaction extends LoggerIOApp {
@@ -28,11 +30,11 @@ object HTransaction extends LoggerIOApp {
       import cli._
 
       val cmds = { () =>
-        set("k1", "v1") ::
-          set("k2", "v2") ::
-          get("k1") ::
-          get("k2") ::
-          HNil
+        (set("k1", "v1") ::
+            set("k2", "v2") ::
+            get("k1") ::
+            get("k2") ::
+            HNil).sequence
       }
 
       val r = RedisClient.htransaction(cli)(cmds)

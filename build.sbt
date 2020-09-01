@@ -44,6 +44,7 @@ val commonSettings = Seq(
         CompilerPlugins.kindProjector,
         Libraries.catsEffect,
         Libraries.shapeless,
+        Libraries.kittens,
         Libraries.enumeratum,
         Libraries.Cormorant.core,
         Libraries.Cormorant.generic,

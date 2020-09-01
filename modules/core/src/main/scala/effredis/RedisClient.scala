@@ -216,35 +216,35 @@ object RedisClient {
     */
   def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
       client: RedisClient[F, TRANSACT.type]
-  )(commands: () => In): F[Resp[Option[List[Any]]]] =
+  )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
     client.multi.flatMap { _ =>
       try {
-        val _ = commands()
+        commands().flatMap { _ =>
+          if (client.handlers
+                .map(_._1)
+                .filter(_ == "DISCARD")
+                .isEmpty) {
 
-        if (client.handlers
-              .map(_._1)
-              .filter(_ == "DISCARD")
-              .isEmpty) {
-
-          // exec only if no discard
-          F.debug(s"Executing transaction ..") >> {
-            try {
-              client.exec(client.handlers.map(_._2)).flatTap { _ =>
-                client.handlers = Vector.empty
-                ().pure[F]
+            // exec only if no discard
+            F.debug(s"Executing transaction ..") >> {
+              try {
+                client.exec(client.handlers.map(_._2)).flatTap { _ =>
+                  client.handlers = Vector.empty
+                  ().pure[F]
+                }
+              } catch {
+                case e: Exception =>
+                  Error(e.getMessage()).pure[F]
               }
-            } catch {
-              case e: Exception =>
-                Error(e.getMessage()).pure[F]
             }
-          }
 
-        } else {
-          // no exec if discard
-          F.debug(s"Got DISCARD .. discarding transaction") >> {
-            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-              client.handlers = Vector.empty
-              r.pure[F]
+          } else {
+            // no exec if discard
+            F.debug(s"Got DISCARD .. discarding transaction") >> {
+              TxnDiscarded(client.handlers).pure[F].flatTap { r =>
+                client.handlers = Vector.empty
+                r.pure[F]
+              }
             }
           }
         }
