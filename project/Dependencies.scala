@@ -23,6 +23,7 @@ object Dependencies {
     val enumeratum = "1.6.1"
     val cormorant = "0.3.0"
     val keypool = "0.2.0"
+    val kittens = "2.1.0"
   }
 
   object Libraries {
@@ -34,6 +35,7 @@ object Dependencies {
     val shapeless  = "com.chuusai"       %% "shapeless"          % V.shapeless
     val enumeratum = "com.beachape"      %% "enumeratum"         % V.enumeratum
     val keypool    = "io.chrisdavenport" %% "keypool"            % V.keypool
+    val kittens    = "org.typelevel"     %% "kittens"            % V.kittens
 
 
     object Cormorant {

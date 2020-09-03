@@ -25,17 +25,18 @@ import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
 import log4cats._
+import RedisClient._
 
 object Cluster extends LoggerIOApp {
 
   val nKeys = 1000
   def program: IO[Unit] =
-    RedisClusterClient.make[IO](NonEmptyList.one(new URI("http://localhost:7000"))).flatMap { cl =>
+    RedisClusterClient.make[IO, SINGLE.type](NonEmptyList.one(new URI("http://localhost:7000"))).flatMap { cl =>
       for {
         // optionally the cluster topology can be refreshed to reflect the latest partitions
         // this step schedules that job at a pre-configured interval
         _ <- ClusterUtils.repeatAtFixedRate(4.seconds, cl.topologyCache.expire).start
-        _ <- RedisClientPool.poolResource[IO].use { pool =>
+        _ <- RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
               implicit val p = pool
               for {
                 _ <- (0 to nKeys)

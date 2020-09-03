@@ -22,15 +22,16 @@ import util.Cached
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
+import effredis.RedisClient._
 
 import effredis.{ Log, RedisClient }
 
-final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer] private (
+final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] private (
     // collection of initial seed uris for the cluster
     // try sequentially till one of them works
     seedURIs: NonEmptyList[URI],
     topologyCache: Cached[F, ClusterTopology]
-) extends RedisClusterOps[F] {
+) extends RedisClusterOps[F, M] {
 
   def conc: cats.effect.Concurrent[F]  = implicitly[Concurrent[F]]
   def ctx: cats.effect.ContextShift[F] = implicitly[ContextShift[F]]
@@ -39,14 +40,14 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer]
 
 object RedisClusterClient {
 
-  def make[F[+_]: Concurrent: ContextShift: Log: Timer](
+  def make[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode](
       seedURIs: NonEmptyList[URI]
-  ): F[RedisClusterClient[F]] =
+  ): F[RedisClusterClient[F, M]] =
     RedisClient.single(seedURIs).flatMap {
       _.use { cl =>
         Cached
           .create[F, ClusterTopology](ClusterTopology.create[F](cl))
-          .flatMap(cachedTopology => F.delay(new RedisClusterClient[F](seedURIs, cachedTopology)))
+          .flatMap(cachedTopology => F.delay(new RedisClusterClient[F, M](seedURIs, cachedTopology)))
       }
     }
 }
