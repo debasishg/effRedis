@@ -19,7 +19,7 @@ package effredis
 import java.net.SocketException
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 
 import codecs.Format
 import RedisClient._

@@ -20,7 +20,7 @@ import java.net.URI
 import shapeless.HNil
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import cats.sequence._
 import log4cats._
 

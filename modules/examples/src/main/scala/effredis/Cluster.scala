@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import log4cats._
 import RedisClient._
 
