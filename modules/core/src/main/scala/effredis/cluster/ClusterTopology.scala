@@ -19,7 +19,7 @@ package effredis.cluster
 import scala.collection.immutable.BitSet
 import util.ClusterUtils
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import effredis.{ Error, Log, RedisClient, Value }
 import effredis.RedisClient.SINGLE
 

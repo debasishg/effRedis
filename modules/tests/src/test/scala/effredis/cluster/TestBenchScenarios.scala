@@ -17,7 +17,7 @@
 package effredis.cluster
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import effredis.Log.NoOp._
 import effredis.RedisClientPool
 import effredis.RedisClient._

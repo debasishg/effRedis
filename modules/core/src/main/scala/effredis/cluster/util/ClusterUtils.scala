@@ -21,7 +21,7 @@ import scala.collection.immutable.BitSet
 import scala.concurrent.duration._
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import cats.data.{ EitherNec, NonEmptyList }
 
 import io.chrisdavenport.cormorant._

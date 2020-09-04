@@ -19,7 +19,7 @@ package effredis.cluster
 import scala.concurrent.duration._
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 
 import effredis.{ Error, Log, Resp, Value }
 import effredis.codecs._
