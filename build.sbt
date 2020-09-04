@@ -52,10 +52,11 @@ val commonSettings = Seq(
         Libraries.slf4jLog4j,
         Libraries.slf4jApi,
         Libraries.log4j,
-        Libraries.catsLaws        % Test,
-        Libraries.catsTestKit     % Test,
-        Libraries.munitCore       % Test,
-        Libraries.munitScalacheck % Test
+        Libraries.catsLaws         % Test,
+        Libraries.catsTestKit      % Test,
+        Libraries.munitCore        % Test,
+        Libraries.munitScalacheckEffect  % Test,
+        Libraries.munitCatsEffect % Test
       ),
   resolvers += "Apache public" at "https://repository.apache.org/content/groups/public/",
   scalacOptions ++= pred(

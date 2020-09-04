@@ -24,6 +24,8 @@ object Dependencies {
     val cormorant = "0.3.0"
     val keypool = "0.2.0"
     val kittens = "2.1.0"
+    val munitScalacheckEffect = "0.1.0"
+    val munitCatsEffect = "0.3.0"
   }
 
   object Libraries {
@@ -58,11 +60,11 @@ object Dependencies {
     val logback       = "ch.qos.logback" % "logback-classic" % V.logback
 
     // Testing libraries
-    val catsLaws        = cats("core")
-    val catsTestKit     = cats("testkit")
-    val munitCore       = "org.scalameta" %% "munit" % V.munit
-    val munitScalacheck = "org.scalameta" %% "munit-scalacheck" % V.munit
-
+    val catsLaws         = cats("core")
+    val catsTestKit      = cats("testkit")
+    val munitCore        = "org.scalameta" %% "munit" % V.munit
+    val munitScalacheckEffect = "org.typelevel" %% "scalacheck-effect-munit" % V.munitScalacheckEffect
+    val munitCatsEffect = "org.typelevel" %% "munit-cats-effect" % V.munitCatsEffect
   }
 
   object CompilerPlugins {
