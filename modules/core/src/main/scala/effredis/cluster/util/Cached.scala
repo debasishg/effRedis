@@ -20,7 +20,7 @@ package util
 
 import cats.effect.concurrent.{ Deferred, Ref }
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import effredis.Log
 
 abstract class Cached[F[_]: Concurrent: ContextShift: Timer: Log, A] {

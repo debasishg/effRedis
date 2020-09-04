@@ -23,7 +23,7 @@ import shapeless.HList
 
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 
 object RedisClient {
   sealed trait SortOrder

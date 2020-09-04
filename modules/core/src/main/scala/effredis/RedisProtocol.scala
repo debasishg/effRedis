@@ -18,7 +18,7 @@ package effredis
 
 import shapeless.{ ::, HList, HNil }
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import codecs.Parse
 import Parse.{ Implicits => Parsers }
 

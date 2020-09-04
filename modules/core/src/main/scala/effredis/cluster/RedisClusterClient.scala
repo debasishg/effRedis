@@ -21,7 +21,7 @@ import java.net.URI
 import util.Cached
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import effredis.RedisClient._
 
 import effredis.{ Log, RedisClient }

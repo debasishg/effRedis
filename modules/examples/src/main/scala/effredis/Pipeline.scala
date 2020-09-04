@@ -18,7 +18,7 @@ package effredis
 
 import java.net.URI
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import log4cats._
 
 object Pipeline extends LoggerIOApp {

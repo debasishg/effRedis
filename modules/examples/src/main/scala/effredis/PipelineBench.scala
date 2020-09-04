@@ -17,7 +17,7 @@
 package effredis
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import log4cats._
 
 object PipelineBench extends LoggerIOApp {
