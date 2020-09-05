@@ -20,14 +20,14 @@ package util
 import scala.collection.immutable.BitSet
 import scala.concurrent.duration._
 
-import cats.effect._
-import cats.syntax.all._
-import cats.data.{ EitherNec, NonEmptyList }
-
 import io.chrisdavenport.cormorant._
 import io.chrisdavenport.cormorant.generic.semiauto._
 import io.chrisdavenport.cormorant.parser._
 import io.chrisdavenport.cormorant.implicits._
+
+import cats.effect._
+import cats.syntax.all._
+import cats.data.{ EitherNec, NonEmptyList }
 
 object ClusterUtils {
   case class TopologyString(

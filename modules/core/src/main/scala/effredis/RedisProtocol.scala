@@ -42,25 +42,17 @@ private[effredis] object Commands {
 
   val LS = "\r\n".getBytes("UTF-8")
 
-  def makeString(command: String, args: List[Any] = List.empty): String = {
-    val q = s""""\r\n""""
-    // s"$command ${args.map(_.toString).mkString("""\r\n""")}"""\r\n""""
-    s"$command ${args.map(_.toString).mkString(" ")}$q"
-  }
-
   def multiBulk(args: Seq[Array[Byte]]): Array[Byte] = {
-    // val b = new scala.collection.mutable.ArrayBuilder.ofByte
     val b = new scala.collection.mutable.ArrayBuffer[Byte]
     b ++= "*%d".format(args.size).getBytes
     b ++= LS
     args foreach { arg =>
-      b ++= "$%d".format(arg.size).getBytes
+      b ++= s"${BULK}%d".format(arg.size).getBytes
       b ++= LS
       b ++= arg
       b ++= LS
     }
     b.toArray
-    // b.result()
   }
 }
 

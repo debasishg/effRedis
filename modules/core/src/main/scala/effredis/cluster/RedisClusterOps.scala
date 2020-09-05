@@ -18,6 +18,10 @@ package effredis.cluster
 
 import scala.concurrent.duration._
 
+import io.chrisdavenport.keypool._
+import effredis.RedisClient
+import java.net.URI
+
 import cats.effect._
 import cats.syntax.all._
 
@@ -64,16 +68,18 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     * @param fn the fucntion to execute
     * @return the response in F
     */
-  private def forKey[R](key: String)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
+  private def forKey[R](
+      key: String
+  )(fn: RedisClusterNode => F[Resp[R]])(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[R]] = {
     val slot = HashSlot.find(key)
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
-            F.error(s"Error from server $err - will retry") *>
+            F.error(s"Error from server $err for key $key originally mapped to $slot - will retry") *>
                 retryForMovedOrAskRedirection(err, List(key))(fn)
           case err => F.raiseError(new IllegalStateException(s"Unexpected response from server $err"))
         }
@@ -97,39 +103,81 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
       )
 
   /**
-    * Retry semantics for MOVED errors
+    * Retry semantics for MOVED or ASK redirection errors
     *
     * @param err the error string
     * @param key the redis key involved in the operation
     * @param fn the function to run
-    * @return the repsonse from redis server
+    * @return the response from redis server
     */
   private def retryForMovedOrAskRedirection[R](err: String, keys: List[String])(
       fn: RedisClusterNode => F[Resp[R]]
-  ): F[Resp[R]] =
-    if (err.startsWith("MOVED") || err.startsWith("ASK")) {
-      val parts = err.split(" ")
-      val slot  = parts(1).toInt
-
-      F.debug(s"Retrying with ${parts(1)} ${parts(2)}") *> {
-        if (parts.size != 3) {
-          F.raiseError(
-            new IllegalStateException(
-              s"Expected error for MOVED or ASK redirection to contain 3 parts (MOVED/ASK, slot, URI) - found $err"
-            )
-          )
-        } else {
-          val node = topologyCache.get.flatMap(t => t.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
-          node.flatMap(executeOnNode(_, slot, keys)(fn))
-        }
-      }
-    } else {
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[R]] =
+    if (err.startsWith("MOVED")) retryForMovedRedirection(err, keys)(fn)
+    else if (err.startsWith("ASK")) retryForAskRedirection(err, keys)(fn)
+    else {
       F.raiseError(
         new IllegalStateException(
           s"Expected MOVED or ASK redirection but found $err"
         )
       )
     }
+
+  /**
+    * Retry semantics for MOVED redirection errors
+    *
+    * @param err the error string
+    * @param key the redis key involved in the operation
+    * @param fn the function to run
+    * @return the repsonse from redis server
+    */
+  def retryForMovedRedirection[R](err: String, keys: List[String])(
+      fn: RedisClusterNode => F[Resp[R]]
+  ): F[Resp[R]] = {
+    val parts = err.split(" ")
+    val slot  = parts(1).toInt
+
+    F.debug(s"Got MOVED redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
+      if (parts.size != 3) {
+        F.raiseError(
+          new IllegalStateException(
+            s"Expected error for MOVED redirection to contain 3 parts (MOVED, slot, URI) - found $err"
+          )
+        )
+      } else {
+        val node = topologyCache.get.flatMap(_.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
+        node.flatMap(executeOnNode(_, slot, keys)(fn)) <* topologyCache.expire
+      }
+    }
+  }
+
+  /**
+    * Retry semantics for ASK redirection errors
+    *
+    * @param err the error string
+    * @param key the redis key involved in the operation
+    * @param fn the function to run
+    * @return the repsonse from redis server
+    */
+  def retryForAskRedirection[R](err: String, keys: List[String])(
+      fn: RedisClusterNode => F[Resp[R]]
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[R]] = {
+    val parts = err.split(" ")
+    val slot  = parts(1).toInt
+
+    F.debug(s"Got ASK redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
+      if (parts.size != 3) {
+        F.raiseError(
+          new IllegalStateException(
+            s"Expected error for ASK redirection to contain 3 parts (ASK, slot, URI) - found $err"
+          )
+        )
+      } else {
+        val node = topologyCache.get.flatMap(t => t.nodes.filter(_.hasSlot(slot)).headOption.pure[F])
+        node.flatMap(n => executeOnNode(n, slot, keys)(_ => asking(pool) *> fn(n.get)))
+      }
+    }
+  }
 
   /**
     * Runs the function in the node that the keys hash to. Implements a retry
@@ -139,7 +187,9 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     * @param fn the fucntion to execute
     * @return the response in F
     */
-  private def forKeys[R](key: String, keys: String*)(fn: RedisClusterNode => F[Resp[R]]): F[Resp[R]] = {
+  private def forKeys[R](key: String, keys: String*)(
+      fn: RedisClusterNode => F[Resp[R]]
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[R]] = {
     val slots = (key :: keys.toList).map(HashSlot.find(_))
     if (slots.forall(_ == slots.head)) forKey(key)(fn)
     else {
@@ -152,10 +202,6 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
   }
 
   // String Operations
-
-  import io.chrisdavenport.keypool._
-  import effredis.RedisClient
-  import java.net.URI
 
   /**
     * sets the key with the specified value.
@@ -196,6 +242,13 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
         _.get(key)
       }
     }
+
+  final def asking[A](implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Boolean]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.asking
+      }
+    )
 
   /**
     * is an atomic set this value and return the old value command.
