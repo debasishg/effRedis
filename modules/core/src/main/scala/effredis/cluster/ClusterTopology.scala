@@ -38,6 +38,7 @@ object ClusterTopology {
     ): RedisClusterNode = {
       import ts._
 
+      println(s"uri = ${ts.uri}")
       RedisClusterNode(
         new java.net.URI(s"http://${ts.uri.split("@")(0)}"),
         nodeId,
@@ -58,7 +59,9 @@ object ClusterTopology {
         ClusterUtils.fromRedisServer(
           s"nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n$n"
         ) match {
-          case Right(tsNel) => ClusterTopology(tsNel.toList.map(ts => toRedisClusterNode(ts))).pure[F]
+          case Right(tsNel) =>
+            F.debug("Cluster topology fetched") *>
+                ClusterTopology(tsNel.toList.map(ts => toRedisClusterNode(ts))).pure[F]
           case Left(err) =>
             F.error(s"Error fetching topology $err") *>
                 F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
@@ -70,6 +73,6 @@ object ClusterTopology {
       case err =>
         F.error(s"Error fetching topology $err") *>
             F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
-    } <* F.info(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
+    } <* F.debug(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
   }
 }

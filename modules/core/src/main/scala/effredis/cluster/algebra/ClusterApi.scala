@@ -21,4 +21,5 @@ import effredis.Resp
 
 trait ClusterApi[F[+_]] {
   def clusterNodes: F[Resp[Option[String]]]
+  def asking: F[Resp[Boolean]]
 }

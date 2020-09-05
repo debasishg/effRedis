@@ -47,7 +47,7 @@ final case class RedisClusterNode(
       r <- keypool.take(uri)
     } yield r.value._1
 
-  private def getSlotsString(): String =
+  def getSlotsString(): String =
     if (slots.isEmpty) "[](0)"
     else {
       val l = slots.toList
