@@ -113,7 +113,9 @@ private[effredis] trait Reply {
     case (MULTI, str) =>
       Parsers.parseInt(str) match {
         case -1 => None
-        case n  => Some(List.fill(n)(receive(multiBulkReply)))
+        case n => {
+          Some(List.fill(n)(receive(multiBulkReply)))
+        }
       }
   }
 
@@ -169,8 +171,9 @@ private[effredis] trait Reply {
   def receive[T](pf: Reply[T]): T = readLine match {
     case null =>
       throw new RedisConnectionException("Connection dropped ..")
-    case line =>
+    case line => {
       (pf orElse errReply) apply ((line(0).toChar, line.slice(1, line.length)))
+    }
   }
 
   /**
@@ -297,6 +300,8 @@ private[effredis] trait R extends Reply {
   }
 
   def asList[T](implicit parse: Parse[T]): Option[List[Option[T]]] = receive(multiBulkReply).map(_.map(_.map(parse)))
+  def asNestedList[T](implicit parse: Parse[T]): Option[List[Option[List[Option[T]]]]] =
+    receive(multiBulkNested).map(_.map(_.map(_.map(_.map(parse)))))
 
   def asListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): Option[List[Option[(A, B)]]] =
     receive(multiBulkReply).map(_.grouped(2).flatMap {
@@ -316,7 +321,7 @@ private[effredis] trait R extends Reply {
       case _                     => None
     }
 
-  def asAny = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply)
+  def asAny = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply orElse multiBulkNested)
 }
 
 trait Protocol extends R
