@@ -21,16 +21,13 @@ package effredis
 
 import java.net.URI
 import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.concurrent.duration.Duration
-import cluster.RedisClusterClient
-import cats.data.NonEmptyList
+import scala.concurrent.duration._
 import cats.effect._
 import Log.NoOp._
 import munit.FunSuite
 import org.scalacheck.effect.PropF
-import RedisClient._
 
-abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
+abstract class EffRedisFunSuite extends FunSuite {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   implicit val tr: Timer[IO]        = IO.timer(ExecutionContext.global)
@@ -39,10 +36,7 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
     def apply(): Unit = ()
 
     override def afterEach(context: AfterEach): Unit =
-      if (isCluster) {
-        flushAllCluster()
-        ()
-      } else Await.result(flushAll(), Duration.Inf)
+      Await.result(flushAll(), Duration.Inf)
   }
 
   override def munitFixtures = List(flushAllFixture)
@@ -51,12 +45,6 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   final def withAbstractRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
     RedisClient.single[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
-
-  final def withAbstractRedisCluster[A](f: RedisClusterClient[IO, SINGLE.type] => IO[A]): IO[Unit] =
-    RedisClusterClient
-      .make[IO, SINGLE.type](NonEmptyList.one(new URI("http://127.0.0.1:7000")))
-      .flatMap(f)
-      .as(assert(true))
 
   final def withAbstractRedis2[A](
       f: ((RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])) => IO[A]
@@ -74,9 +62,6 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
   final def withRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
     withAbstractRedis[A](f)
 
-  final def withRedisCluster[A](f: RedisClusterClient[IO, SINGLE.type] => IO[A]): IO[Unit] =
-    withAbstractRedisCluster[A](f)
-
   final def withRedis2[A](
       f: ((RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])) => IO[A]
   ): Future[Unit] =
@@ -84,12 +69,6 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   final def withEffectfulRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[PropF[IO]]): Future[Unit] =
     withEffectfulAbstractRedis[A](f)
-
-  private def flushAllCluster(): IO[Unit] =
-    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use[IO, Unit] { pool =>
-      implicit val p = pool
-      withRedisCluster(_.flushall)
-    }
 
   private def flushAll(): Future[Unit] =
     withRedis(_.flushall)
@@ -111,6 +90,7 @@ object EffRedisFunSuite {
   final def getResp(resp: Resp[_]): Option[_] = resp match {
     case Value(s @ Some(_)) => s
     case Value(None)        => None
+    case Value(v)           => Some(v)
     case Error(err)         => Some(err)
     case _                  => None
   }

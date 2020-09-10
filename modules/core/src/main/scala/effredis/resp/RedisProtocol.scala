@@ -66,6 +66,7 @@ trait Reply {
   type SingleReply    = Reply[SingleRedisValue]
   type ArrayReply     = Reply[RedisArray]
   type FlatArrayReply = Reply[RedisFlatArray]
+  type PairReply      = Reply[Option[(SingleRedisValue, RedisFlatArray)]]
 
   def readLine: Array[Byte]
   def readCounted(c: Int): Array[Byte]
@@ -96,7 +97,8 @@ trait Reply {
   private def bulkRead(s: Array[Byte]): Array[Byte] = {
     val size = Parsers.parseInt(s)
     size match {
-      case -1 => throw new RuntimeException(s"Expected integer value in bulkRead .. got $size")
+      // this means we have received "$-1\r\n" which is the null bulk string
+      case -1 => NULL_BULK_STRING
       case l =>
         val str = readCounted(l)
         val _   = readLine // trailing newline
@@ -111,7 +113,8 @@ trait Reply {
     case (ARRAY_ID, str) => {
       val size = Parsers.parseInt(str)
       size match {
-        case -1 => throw new RuntimeException(s"Expected integer value in arrayReply .. got $size")
+        // this means we have received "$-1\r\n" which is the null bulk string
+        case -1 => RedisFlatArray(List(RedisBulkString(NULL_BULK_STRING)))
         case n =>
           RedisFlatArray(
             List.fill(n)(
@@ -142,6 +145,14 @@ trait Reply {
           )
       }
     }
+  }
+
+  val pairBulkReply: PairReply = {
+    case (ARRAY_ID, str) =>
+      Parsers.parseInt(str) match {
+        case 2 => Some((receive(bulkStringReply orElse simpleStringReply), receive(flatArrayReply)))
+        case _ => None
+      }
   }
 
   val errReply: Reply[Nothing] = {
@@ -185,6 +196,12 @@ trait R extends Reply {
         case List(a, b) => Iterator.single((parseA(a.value), parseB(b.value)))
       }
       .toList
+
+  def asPair[T](implicit parse: Parse[T]): Option[(Int, List[T])] =
+    receive(pairBulkReply) match {
+      case Some((single, multi)) => Some((Parsers.parseInt(single.value), multi.map))
+      case _                     => None
+    }
 }
 
 trait Protocol extends R

@@ -31,10 +31,10 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
       alpha: Boolean = false,
       by: Option[String] = None,
       get: List[String] = Nil
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] = {
 
     val commands: List[Any] = makeSortArgs(key, limit, desc, alpha, by, get)
-    send("SORT", commands)(asList)
+    send("SORT", commands)(asFlatList)
   }
 
   private def makeSortArgs(
@@ -62,93 +62,93 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
       by: Option[String] = None,
       get: List[String] = Nil,
       storeAt: String
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Long]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Long]] = {
 
     val commands = makeSortArgs(key, limit, desc, alpha, by, get) ::: List("STORE", storeAt)
-    send("SORT", commands)(asLong)
+    send("SORT", commands)(asInteger)
   }
 
   override def keys[A](
       pattern: Any = "*"
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    send("KEYS", List(pattern))(asList)
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
+    send("KEYS", List(pattern))(asFlatList)
 
-  override def time[A](implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    send("TIME")(asList)
+  override def time[A](implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
+    send("TIME")(asFlatList)
 
   @deprecated("use randomkey", "2.8")
   def randkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
-    send("RANDOMKEY")(asBulk)
+    send("RANDOMKEY")(asBulkString)
 
   override def randomkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
-    send("RANDOMKEY")(asBulk)
+    send("RANDOMKEY")(asBulkString)
 
-  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("RENAME", List(oldkey, newkey))(asBoolean)
+  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]] =
+    send("RENAME", List(oldkey, newkey))(asSimpleString)
 
-  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("RENAMENX", List(oldkey, newkey))(asBoolean)
+  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]] =
+    send("RENAMENX", List(oldkey, newkey))(asSimpleString)
 
-  override def dbsize: F[Resp[Option[Long]]] =
-    send("DBSIZE")(asLong)
+  override def dbsize: F[Resp[Long]] =
+    send("DBSIZE")(asInteger)
 
-  override def exists(key: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("EXISTS", List(key))(asBoolean)
+  override def exists(key: Any)(implicit format: Format): F[Resp[String]] =
+    send("EXISTS", List(key))(asSimpleString)
 
-  override def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("DEL", key :: keys.toList)(asLong)
+  override def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("DEL", key :: keys.toList)(asInteger)
 
-  override def getType(key: Any)(implicit format: Format): F[Resp[Option[String]]] =
-    send("TYPE", List(key))(asString)
+  override def getType(key: Any)(implicit format: Format): F[Resp[String]] =
+    send("TYPE", List(key))(asSimpleString)
 
-  override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[Boolean]] =
-    send("EXPIRE", List(key, ttl))(asBoolean)
+  override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[String]] =
+    send("EXPIRE", List(key, ttl))(asSimpleString)
 
-  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[Boolean]] =
-    send("PEXPIRE", List(key, ttlInMillis))(asBoolean)
+  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[String]] =
+    send("PEXPIRE", List(key, ttlInMillis))(asSimpleString)
 
-  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[Boolean]] =
-    send("EXPIREAT", List(key, timestamp))(asBoolean)
+  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[String]] =
+    send("EXPIREAT", List(key, timestamp))(asSimpleString)
 
-  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[Boolean]] =
-    send("PEXPIREAT", List(key, timestampInMillis))(asBoolean)
+  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[String]] =
+    send("PEXPIREAT", List(key, timestampInMillis))(asSimpleString)
 
-  override def ttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("TTL", List(key))(asLong)
+  override def ttl(key: Any)(implicit format: Format): F[Resp[Long]] =
+    send("TTL", List(key))(asInteger)
 
-  override def pttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("PTTL", List(key))(asLong)
+  override def pttl(key: Any)(implicit format: Format): F[Resp[Long]] =
+    send("PTTL", List(key))(asInteger)
 
   override def select(index: Int): F[Resp[Boolean]] =
-    send("SELECT", List(index))(if (asBoolean) {
+    send("SELECT", List(index))(if (asSimpleString == "OK") {
       db = index
       true
     } else {
       false
     })
 
-  override def flushdb: F[Resp[Boolean]] =
-    send("FLUSHDB")(asBoolean)
+  override def flushdb: F[Resp[String]] =
+    send("FLUSHDB")(asSimpleString)
 
-  override def flushall: F[Resp[Boolean]] =
-    send("FLUSHALL")(asBoolean)
+  override def flushall: F[Resp[String]] =
+    send("FLUSHALL")(asSimpleString)
 
-  override def move(key: Any, db: Int)(implicit format: Format): F[Resp[Boolean]] =
-    send("MOVE", List(key, db))(asBoolean)
+  override def move(key: Any, db: Int)(implicit format: Format): F[Resp[String]] =
+    send("MOVE", List(key, db))(asSimpleString)
 
   override def quit: F[Resp[Boolean]] =
     send("QUIT")(disconnect)
 
-  override def auth(secret: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("AUTH", List(secret))(asBoolean)
+  override def auth(secret: Any)(implicit format: Format): F[Resp[String]] =
+    send("AUTH", List(secret))(asSimpleString)
 
-  override def persist(key: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("PERSIST", List(key))(asBoolean)
+  override def persist(key: Any)(implicit format: Format): F[Resp[String]] =
+    send("PERSIST", List(key))(asSimpleString)
 
   override def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
+  ): F[Resp[Option[(Int, List[A])]]] =
     send(
       "SCAN",
       cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(
@@ -156,28 +156,28 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
           )
     )(asPair)
 
-  override def ping: F[Resp[Option[String]]] =
-    send("PING")(asString)
+  override def ping: F[Resp[String]] =
+    send("PING")(asSimpleString)
 
-  override def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[Boolean]] =
-    send("WATCH", key :: keys.toList)(asBoolean)
+  override def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[String]] =
+    send("WATCH", key :: keys.toList)(asSimpleString)
 
-  override def unwatch(): F[Resp[Boolean]] =
-    send("UNWATCH")(asBoolean)
+  override def unwatch(): F[Resp[String]] =
+    send("UNWATCH")(asSimpleString)
 
   override def getConfig(key: Any = "*")(
       implicit format: Format
   ): F[Resp[Option[Map[String, Option[String]]]]] = ??? // {
-//     val fa = send("CONFIG", List("GET", key))(asList)
+//     val fa = send("CONFIG", List("GET", key))(asFlatList)
 //     val ev = implicitly[Concurrent[F]]
 //     ev.fmap(fa) { ls =>
 //       ls.grouped(2).collect { case Some(k) :: v :: Nil => k -> v }.toMap
 //     }
 //   }
 
-  override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Option[String]]] =
-    send("CONFIG", List("SET", key, value))(asString)
+  override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[String]] =
+    send("CONFIG", List("SET", key, value))(asSimpleString)
 
-  override def echo(message: Any)(implicit format: Format): F[Resp[Option[String]]] =
-    send("ECHO", List(message))(asString)
+  override def echo(message: Any)(implicit format: Format): F[Resp[String]] =
+    send("ECHO", List(message))(asSimpleString)
 }

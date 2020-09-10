@@ -24,7 +24,7 @@ import cats.syntax.all._
 import codecs.Format
 import RedisClient._
 
-abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) extends RedisIO with Protocol {
+abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) extends RedisIO with resp.Protocol {
 
   var handlers: Vector[(String, () => Any)] = Vector.empty
   var commandBuffer: StringBuffer           = new StringBuffer
@@ -49,7 +49,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
         } else {
           write(cmd)
           handlers :+= ((command, () => result))
-          val _ = receive(singleLineReply)
+          val _ = receive(simpleStringReply)
           Queued.pure[F]
 
         }
@@ -101,7 +101,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
           } else {
             write(cmd)
             handlers :+= ((command, () => result))
-            val _ = receive(singleLineReply)
+            val _ = receive(simpleStringReply)
             Queued.pure[F]
           }
         }

@@ -21,7 +21,6 @@ import javax.net.ssl.SSLContext
 
 import shapeless.HList
 
-import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
 
@@ -91,48 +90,6 @@ object RedisClient {
       blocker <- RedisBlocker.make
       client <- acquireAndRelease(uri, blocker, SINGLE)
     } yield client
-
-  /**
-    * Creates a single connection out of the first working one from the
-    * list supplied. This is used to find out one of the seed connections
-    * in a Redis Cluster
-    *
-    * @param uris the list of uris from which at least one needs to work
-    * @return a resource for a working client in F
-    */
-  def single[F[+_]: ContextShift: Concurrent: Log](
-      uris: NonEmptyList[URI]
-  ): F[Resource[F, RedisClient[F, SINGLE.type]]] =
-    firstWorking(uris.toList).flatMap {
-      case Some(uri) => single(uri).pure[F]
-      case _ =>
-        F.raiseError(new IllegalArgumentException(s"None of the supplied URIs $uris could connect to the cluster"))
-    }
-
-  private def clientPings[F[+_]: ContextShift: Concurrent: Log](r: RedisClient[F, SINGLE.type]): F[Boolean] =
-    r.ping.flatMap {
-      case Value(_) => true.pure[F]
-      case _        => false.pure[F]
-    }
-
-  private def firstWorking[F[+_]: ContextShift: Concurrent: Log](uris: List[URI]): F[Option[URI]] = {
-    def firstWorkingRec(uris: List[URI], workingURI: Option[URI]): F[Option[URI]] =
-      if (uris.isEmpty) None.pure[F]
-      else if (workingURI.isDefined) workingURI.pure[F]
-      else {
-        single(uris.head).use { client =>
-          F.info(s"Trying ${uris.head} ..") *>
-            clientPings(client).flatMap {
-              case true => {
-                F.info(s"Worked ${uris.head}!") *>
-                  Some(uris.head).pure[F]
-              }
-              case false => firstWorkingRec(uris.tail, None)
-            }
-        }
-      }
-    firstWorkingRec(uris, None)
-  }
 
   /**
     * Make a connection for transaction
@@ -205,95 +162,6 @@ object RedisClient {
     } catch {
       case e: Exception => F.delay(Error(e.getMessage))
     }
-
-  /**
-    * API for transaction. Allows HList to be used for setting up
-    * the transaction set
-    *
-    * @param client the transaction client
-    * @param f the pipeline of functions
-    * @return response from server
-    */
-  def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
-      client: RedisClient[F, TRANSACT.type]
-  )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
-    client.multi.flatMap { _ =>
-      try {
-        commands().flatMap { _ =>
-          if (client.handlers
-                .map(_._1)
-                .filter(_ == "DISCARD")
-                .isEmpty) {
-
-            // exec only if no discard
-            F.debug(s"Executing transaction ..") >> {
-              try {
-                client.exec(client.handlers.map(_._2)).flatTap { _ =>
-                  client.handlers = Vector.empty
-                  ().pure[F]
-                }
-              } catch {
-                case e: Exception =>
-                  Error(e.getMessage()).pure[F]
-              }
-            }
-
-          } else {
-            // no exec if discard
-            F.debug(s"Got DISCARD .. discarding transaction") >> {
-              TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-                client.handlers = Vector.empty
-                r.pure[F]
-              }
-            }
-          }
-        }
-      } catch {
-        case e: Exception =>
-          Error(e.getMessage()).pure[F]
-      }
-    }
-
-  /**
-    * API for transaction. Allows HList to be used for setting up
-    * the transaction set
-    *
-    * @param client the transaction client
-    * @param f the pipeline of functions
-    * @return response from server
-    */
-  def transaction[F[+_]: Concurrent: ContextShift: Log, A](
-      client: RedisClient[F, TRANSACT.type]
-  )(f: RedisClient[F, TRANSACT.type] => F[A]): F[Resp[Option[List[Any]]]] = {
-
-    import client._
-
-    send("MULTI")(asString).flatMap { _ =>
-      try {
-        f(client).flatMap { _ =>
-          // no exec if discard
-          if (client.handlers
-                .map(_._1)
-                .filter(_ == "DISCARD")
-                .isEmpty) {
-
-            send("EXEC")(asExec(client.handlers.map(_._2))).flatTap { _ =>
-              client.handlers = Vector.empty
-              ().pure[F]
-            }
-          } else {
-            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-              client.handlers = Vector.empty
-              r.pure[F]
-            }
-          }
-        }
-      } catch {
-        case e: Exception =>
-          Error(e.getMessage()).pure[F]
-      }
-    }
-  }
 }
 
 class RedisClient[F[+_]: Concurrent: ContextShift: Log, M <: RedisClient.Mode] private (

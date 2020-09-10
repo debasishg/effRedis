@@ -30,11 +30,6 @@ trait TestListScenarios {
       x <- lpush("list-1", "bar")
       _ <- IO(assert(getResp(x).get == 2))
 
-      x <- set("anshin-1", "debasish")
-      _ <- IO(assert(getBoolean(x)))
-      x <- lpush("anshin-1", "bar")
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
-
       // lpush with variadic arguments
       x <- lpush("list-2", "foo", "bar", "baz")
       _ <- IO(assert(getResp(x).get == 3))
@@ -49,11 +44,6 @@ trait TestListScenarios {
       x <- lpushx("list-3", "bar")
       _ <- IO(assert(getResp(x).get == 2))
 
-      x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getBoolean(x)))
-      x <- lpushx("anshin-2", "bar")
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
-
     } yield ()
   }
 
@@ -64,11 +54,6 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 1))
       x <- rpush("list-1", "bar")
       _ <- IO(assert(getResp(x).get == 2))
-
-      x <- set("anshin-1", "debasish")
-      _ <- IO(assert(getBoolean(x)))
-      x <- rpush("anshin-1", "bar")
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
       // rpush with variadic arguments
       x <- rpush("list-2", "foo", "bar", "baz")
@@ -84,11 +69,6 @@ trait TestListScenarios {
       x <- rpushx("list-3", "bar")
       _ <- IO(assert(getResp(x).get == 2))
 
-      x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getBoolean(x)))
-      x <- rpushx("anshin-2", "bar")
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
-
     } yield ()
   }
 
@@ -102,10 +82,6 @@ trait TestListScenarios {
       x <- llen("list-2")
       _ <- IO(assert(getResp(x).get == 0))
 
-      x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getBoolean(x)))
-      x <- llen("anshin-2")
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
     } yield ()
   }
 
@@ -118,10 +94,11 @@ trait TestListScenarios {
       _ <- lpush("list-1", "3")
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
+      _ <- lpush("list-1", "")
       x <- llen("list-1")
-      _ <- IO(assert(getResp(x).get == 6))
+      _ <- IO(assert(getResp(x).get == 7))
       x <- lrange("list-1", 0, 4)
-      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("2"), Some("3"), Some("4"), Some("5"))))
+      _ <- IO(assert(getResp(x).get == List("", "1", "2", "3", "4")))
 
       // should return empty list if start > end
       _ <- lpush("list-2", "3")
@@ -135,7 +112,7 @@ trait TestListScenarios {
       _ <- lpush("list-3", "2")
       _ <- lpush("list-3", "1")
       x <- lrange("list-3", 0, 7)
-      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("2"), Some("3"))))
+      _ <- IO(assert(getResp(x).get == List("1", "2", "3")))
     } yield ()
   }
 
@@ -149,7 +126,7 @@ trait TestListScenarios {
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
       x <- ltrim("list-1", 0, 3)
-      _ <- IO(assert(getBoolean(x)))
+      _ <- IO(assert(getResp(x) == Some("OK")))
       x <- llen("list-1")
       _ <- IO(assert(getResp(x).get == 4))
 
@@ -187,10 +164,6 @@ trait TestListScenarios {
       x <- lindex("list-1", -1)
       _ <- IO(assert(getResp(x).get == "6"))
 
-      _ <- set("anshin-1", "debasish")
-      x <- lindex("anshin-1", 0)
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
-
       // should return empty string for an index out of range
       _ <- lpush("list-2", "6")
       _ <- lpush("list-2", "5")
@@ -210,7 +183,7 @@ trait TestListScenarios {
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
       x <- lset("list-1", 2, "30")
-      _ <- IO(assert(getBoolean(x)))
+      _ <- IO(assert(getResp(x) == Some("OK")))
       x <- lindex("list-1", 2)
       _ <- IO(assert(getResp(x).get == "30"))
 

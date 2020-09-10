@@ -21,18 +21,8 @@ import RedisClient._
 
 abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M)
     extends Redis[F, M](mode)
-    with StringOperations[F]
     with BaseOperations[F]
     with ListOperations[F]
-    with SetOperations[F]
-    with HashOperations[F]
-    with SortedSetOperations[F]
-    with NodeOperations[F]
-    with GeoOperations[F]
-    with EvalOperations[F]
-    with HyperLogLogOperations[F]
-    with TransactionOperations[F]
-    with cluster.ClusterOperations[F]
     with AutoCloseable {
 
   val database: Int       = 0
