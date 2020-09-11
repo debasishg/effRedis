@@ -49,6 +49,41 @@ case class RedisArray(value: List[RedisValue]) extends RedisValue {
     }
 }
 
+// Response codes from the Redis server
+object RespValues {
+  final val ERR              = '-'
+  final val OK               = "OK".getBytes("UTF-8")
+  final val QUEUED           = "QUEUED".getBytes("UTF-8")
+  final val SIMPLE_STRING_ID = '+'
+  final val BULK_STRING_ID   = '$'
+  final val ARRAY_ID         = '*'
+  final val INTEGER_ID       = ':'
+  final val LS               = "\r\n".getBytes("UTF-8")
+  final val REDIS_NIL        = "$-1\r\n"
+  final val NULL_BULK_STRING = REDIS_NIL.getBytes("UTF-8")
+  case object RedisNil
+  final val RedisNilBytes = "__RedisNil__".getBytes("UTF-8")
+}
+
+import RespValues._
+object Request {
+  def request(args: Seq[Array[Byte]]): Array[Byte] = {
+    val b          = new scala.collection.mutable.ArrayBuffer[Byte]
+    val nonNilArgs = args.filter(_ != RedisNilBytes)
+    b ++= "*%d".format(nonNilArgs.size).getBytes
+    b ++= LS
+    nonNilArgs foreach { arg =>
+      b ++= s"${BULK_STRING_ID}%d".format(arg.size).getBytes
+      b ++= LS
+      b ++= arg
+      b ++= LS
+    }
+    b.toArray
+  }
+}
+
+case class RedisConnectionException(message: String) extends RuntimeException(message)
+
 /**
   * In RESP, the type of some data depends on the first byte:
   *
@@ -59,7 +94,6 @@ case class RedisArray(value: List[RedisValue]) extends RedisValue {
   * - For Arrays the first byte of the reply is "*"
   *
   */
-case class RedisConnectionException(message: String) extends RuntimeException(message)
 trait Reply {
   type Reply[+T]      = PartialFunction[(Char, Array[Byte]), T]
   type IntegerReply   = Reply[RedisInteger]
@@ -70,16 +104,6 @@ trait Reply {
 
   def readLine: Array[Byte]
   def readCounted(c: Int): Array[Byte]
-
-  final val ERR              = '-'
-  final val OK               = "OK".getBytes("UTF-8")
-  final val QUEUED           = "QUEUED".getBytes("UTF-8")
-  final val SIMPLE_STRING_ID = '+'
-  final val BULK_STRING_ID   = '$'
-  final val ARRAY_ID         = '*'
-  final val INTEGER_ID       = ':'
-  final val LS               = "\r\n".getBytes("UTF-8")
-  final val NULL_BULK_STRING = "$-1\r\n".getBytes("UTF-8")
 
   val integerReply: IntegerReply = {
     case (INTEGER_ID, str) => RedisInteger(Parsers.parseLong(str))

@@ -22,6 +22,23 @@ import EffRedisFunSuite._
 trait TestListScenarios {
   implicit def cs: ContextShift[IO]
 
+  final def listsLPushNil(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- lpush("list-1", "foo")
+      _ <- lpush("list-1", "")
+      x <- lpush("list-1", "bar", resp.RespValues.RedisNil)
+      _ <- IO(assert(getResp(x).get == 3)) // the last nil value will be ignored and not pushed
+      x <- llen("list-1")
+      _ <- IO(assert(getResp(x).get == 3))
+      x <- lrange("list-1", 0, 2)
+      _ <- IO(assert(getResp(x).get == List("bar", "", "foo")))
+      x <- lpush("list-1", resp.RespValues.RedisNil)
+      _ <- IO(assert(getResp(x).get.toString.contains("wrong number of arguments for 'lpush' command")))
+
+    } yield ()
+  }
+
   final def listsLPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
@@ -29,6 +46,11 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 1))
       x <- lpush("list-1", "bar")
       _ <- IO(assert(getResp(x).get == 2))
+
+      x <- set("anshin-1", "debasish")
+      _ <- IO(assert(getResp(x).get == "OK"))
+      x <- lpush("anshin-1", "bar")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
       // lpush with variadic arguments
       x <- lpush("list-2", "foo", "bar", "baz")
@@ -44,6 +66,11 @@ trait TestListScenarios {
       x <- lpushx("list-3", "bar")
       _ <- IO(assert(getResp(x).get == 2))
 
+      x <- set("anshin-2", "debasish")
+      _ <- IO(assert(getResp(x).get == "OK"))
+      x <- lpushx("anshin-2", "bar")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+
     } yield ()
   }
 
@@ -54,6 +81,11 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 1))
       x <- rpush("list-1", "bar")
       _ <- IO(assert(getResp(x).get == 2))
+
+      x <- set("anshin-1", "debasish")
+      _ <- IO(assert(getResp(x).get == "OK"))
+      x <- rpush("anshin-1", "bar")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
       // rpush with variadic arguments
       x <- rpush("list-2", "foo", "bar", "baz")
@@ -69,6 +101,11 @@ trait TestListScenarios {
       x <- rpushx("list-3", "bar")
       _ <- IO(assert(getResp(x).get == 2))
 
+      x <- set("anshin-2", "debasish")
+      _ <- IO(assert(getResp(x).get == "OK"))
+      x <- rpushx("anshin-2", "bar")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+
     } yield ()
   }
 
@@ -81,6 +118,11 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 2))
       x <- llen("list-2")
       _ <- IO(assert(getResp(x).get == 0))
+
+      x <- set("anshin-2", "debasish")
+      _ <- IO(assert(getResp(x).get == "OK"))
+      x <- llen("anshin-2")
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
     } yield ()
   }
@@ -164,12 +206,16 @@ trait TestListScenarios {
       x <- lindex("list-1", -1)
       _ <- IO(assert(getResp(x).get == "6"))
 
-      // should return empty string for an index out of range
+      // should return redis nil for an index out of range
       _ <- lpush("list-2", "6")
       _ <- lpush("list-2", "5")
       _ <- lpush("list-2", "4")
       x <- lindex("list-2", 8)
       _ <- IO(assert(getResp(x) == None))
+
+      _ <- set("anshin-1", "debasish")
+      x <- lindex("anshin-1", 0)
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
     } yield ()
   }
 

@@ -22,6 +22,7 @@ import RedisClient._
 abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M)
     extends Redis[F, M](mode)
     with BaseOperations[F]
+    with StringOperations[F]
     with ListOperations[F]
     with AutoCloseable {
 

@@ -17,6 +17,7 @@
 package effredis
 
 class EffRedisSpec extends EffRedisFunSuite with TestListScenarios {
+  test("list api lpush")(withRedis(listsLPushNil))
   test("list api lpush")(withRedis(listsLPush))
   test("list api rpush")(withRedis(listsRPush))
   test("list api llen")(withRedis(listsLlen))

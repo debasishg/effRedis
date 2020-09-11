@@ -34,7 +34,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
       result: => A
   )(implicit format: Format): F[Resp[A]] =
     F.debug(s"Sending $command $args") >> {
-      val cmd = Commands.multiBulk(command.getBytes("UTF-8") +: (args map (format.apply)))
+      val cmd = resp.Request.request(command.getBytes("UTF-8") +: (args map (format.apply)))
 
       try {
         if (mode == SINGLE) {
@@ -69,7 +69,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   def send[A](command: String, pipelineSubmissionMode: Boolean = false)(
       result: => A
   ): F[Resp[A]] = {
-    val cmd = Commands.multiBulk(List(command.getBytes("UTF-8")))
+    val cmd = resp.Request.request(List(command.getBytes("UTF-8")))
 
     F.debug(s"Sending ${command}") >> {
       try {
@@ -119,7 +119,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
     }
   }
 
-  def cmd(args: Seq[Array[Byte]]): Array[Byte] = Commands.multiBulk(args)
+  def cmd(args: Seq[Array[Byte]]): Array[Byte] = resp.Request.request(args)
 
   protected def flattenPairs(in: Iterable[Product2[Any, Any]]): List[Any] =
     in.iterator.flatMap(x => Iterator(x._1, x._2)).toList

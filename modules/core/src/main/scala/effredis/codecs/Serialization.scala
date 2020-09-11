@@ -15,6 +15,7 @@
  */
 
 package effredis.codecs
+import effredis.resp.RespValues._
 
 object Format {
   def apply(f: PartialFunction[Any, Any]): Format = new Format(f)
@@ -37,6 +38,7 @@ class Format(val format: PartialFunction[Any, Any]) {
     (if (format.isDefinedAt(in))(format(in)) else (in)) match {
       case b: Array[Byte] => b
       case d: Double      => Format.formatDouble(d, true).getBytes("UTF-8")
+      case RedisNil       => RedisNilBytes
       case x              => x.toString.getBytes("UTF-8")
     }
 
