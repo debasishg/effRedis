@@ -195,6 +195,8 @@ trait Reply {
 
 trait R extends Reply {
   def asSimpleString: String = Parsers.parseString(receive(simpleStringReply).value)
+  def asBoolean: Boolean =
+    if (asSimpleString == "OK") true else false
 
   def asBulkString[T](implicit parse: Parse[T]): Option[T] =
     receive(bulkStringReply).value match {

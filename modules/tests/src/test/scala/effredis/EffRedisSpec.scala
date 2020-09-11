@@ -16,7 +16,28 @@
 
 package effredis
 
-class EffRedisSpec extends EffRedisFunSuite with TestListScenarios {
+// import java.net.URI
+
+class EffRedisSpec
+    extends EffRedisFunSuite
+    with TestListScenarios
+    with TestStringScenarios
+    with TestHashScenarios
+    with cluster.TestClusterScenarios {
+  // test("parse cluster slots")(withRedisForURI(new URI("http://localhost:7000"))(parseClusterSlots))
+  test("strings api get and set")(withRedis(stringsGetAndSet))
+  test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
+  test("strings api getset")(withRedis(stringsGetSet))
+  test("strings api setnx setex")(withRedis(stringsSetNxEx))
+  test("strings api incr")(withRedis(stringsIncr))
+  test("strings api decr")(withRedis(stringsDecr))
+  test("strings api mget")(withRedis(stringsMget))
+  test("strings api mset")(withRedis(stringsMset))
+  test("strings api with spaces in keys")(withRedis(stringsWithSpacesInKeys))
+  test("strings api get set range")(withRedis(stringsGetSetRange))
+  test("strings api strlen")(withRedis(stringsStrlen))
+  test("strings api append")(withRedis(stringsAppend))
+  test("strings api bit manipulation")(withRedis(stringsBitManip))
   test("list api lpush")(withRedis(listsLPushNil))
   test("list api lpush")(withRedis(listsLPush))
   test("list api rpush")(withRedis(listsRPush))
@@ -34,4 +55,7 @@ class EffRedisSpec extends EffRedisFunSuite with TestListScenarios {
   test("list api brpoplpush")(withRedis(listsBRPoplPush))
   test("list api brpoplpush with blocking")(withRedis2(listsBRPoplPushWithBlockingPop))
   test("list api blocking with blpop")(withRedis2(listsBLPop))
+  test("hash hset 1")(withRedis(hashHSet1))
+  test("hash hset 2")(withRedis(hashHSet2))
+  test("hash hgetall")(withRedis(hashHGetAll))
 }

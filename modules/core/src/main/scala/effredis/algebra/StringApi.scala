@@ -49,7 +49,7 @@ trait StringApi[F[+_]] {
   /**
     * sets the value for the specified key, only if the key is not there.
     */
-  def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[String]]
+  def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]]
 
   def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[String]]
 
@@ -90,7 +90,7 @@ trait StringApi[F[+_]] {
   /**
     * set the respective key value pairs. Noop if any key exists
     */
-  def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]]
+  def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * SETRANGE key offset value

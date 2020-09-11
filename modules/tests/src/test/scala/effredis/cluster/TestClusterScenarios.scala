@@ -14,30 +14,19 @@
  * limitations under the License.
  */
 
-package effredis
+package effredis.cluster
 
 import cats.effect._
-import RedisClient._
 
-abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M)
-    extends Redis[F, M](mode)
-    with BaseOperations[F]
-    with StringOperations[F]
-    with ListOperations[F]
-    with HashOperations[F]
-    with cluster.ClusterOperations[F]
-    with AutoCloseable {
+import effredis.RedisClient
 
-  val database: Int       = 0
-  val secret: Option[Any] = None
+trait TestClusterScenarios {
+  implicit def cs: ContextShift[IO]
 
-  override def onConnect(): Unit = {
-    secret.foreach(s => auth(s))
-    selectDatabase()
-  }
-
-  private def selectDatabase(): Unit = {
-    val _ = if (database != 0) select(database)
-    ()
+  final def parseClusterSlots(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    println(client.clusterSlots.unsafeRunSync())
+    for {
+      _ <- client.flushdb
+    } yield ()
   }
 }

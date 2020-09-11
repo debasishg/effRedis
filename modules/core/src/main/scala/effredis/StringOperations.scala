@@ -51,8 +51,8 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
   override def getset[A](key: Any, value: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("GETSET", List(key, value))(asBulkString)
 
-  override def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[String]] =
-    send("SETNX", List(key, value))(asSimpleString)
+  override def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]] =
+    send("SETNX", List(key, value))(asInteger)
 
   override def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[String]] =
     send("SETEX", List(key, expiry, value))(asSimpleString)
@@ -84,8 +84,8 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
   override def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]] =
     send("MSET", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asSimpleString)
 
-  override def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]] =
-    send("MSETNX", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asSimpleString)
+  override def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Long]] =
+    send("MSETNX", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asInteger)
 
   override def setrange(key: Any, offset: Int, value: Any)(implicit format: Format): F[Resp[Long]] =
     send("SETRANGE", List(key, offset, value))(asInteger)
