@@ -43,7 +43,7 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
       key: Any,
       fields: K*
   )(implicit format: Format, parseV: Parse[V]): F[Resp[List[V]]] =
-    send("HMGET", key :: fields.toList)(asFlatList[V])
+    send("HMGET", List(key) ::: fields.toList)(asFlatList[V])
 
   override def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Long]] =
     send("HINCRBY", List(key, field, value))(asInteger)

@@ -26,6 +26,8 @@ class EffRedisSpec
     with TestSetScenarios
     with TestSortedSetScenarios
     with TestBaseScenarios
+    with TestHyperLogLogScenarios
+    with TestGeoScenarios
     with cluster.TestClusterScenarios {
   // test("parse cluster slots")(withRedisForURI(new URI("http://localhost:7000"))(parseClusterSlots))
   test("strings api get and set")(withRedis(stringsGetAndSet))
@@ -93,4 +95,8 @@ class EffRedisSpec
   test("base api misc-3")(withRedis(baseMisc3))
   test("base api misc-4")(withRedis(baseMisc4))
   test("base api misc-5")(withRedis(baseMisc5))
+  test("hll pfadd")(withRedis(hllPfAdd))
+  test("hll pfcount")(withRedis(hllPfCount))
+  test("hll pfmerge")(withRedis(hllPfMerge))
+  test("geo")(withRedis(geosGeoAdd))
 }

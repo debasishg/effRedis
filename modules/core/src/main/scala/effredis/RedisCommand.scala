@@ -28,6 +28,9 @@ abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mod
     with SetOperations[F]
     with SortedSetOperations[F]
     with NodeOperations[F]
+    with TransactionOperations[F]
+    with HyperLogLogOperations[F]
+    with GeoOperations[F]
     with cluster.ClusterOperations[F]
     with AutoCloseable {
 

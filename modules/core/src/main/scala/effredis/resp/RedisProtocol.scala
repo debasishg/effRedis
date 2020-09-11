@@ -155,7 +155,7 @@ trait Reply {
     case (ARRAY_ID, str) => {
       val size = Parsers.parseInt(str)
       size match {
-        case -1 => throw new RuntimeException(s"Expected integer value in arrayReply .. got $size")
+        case -1 => RedisArray(List(RedisBulkString(NULL_BULK_STRING))) 
         case n =>
           RedisArray(
             List.fill(n)(
@@ -176,6 +176,24 @@ trait Reply {
       Parsers.parseInt(str) match {
         case 2 => Some((receive(bulkStringReply orElse simpleStringReply), receive(flatArrayReply)))
         case _ => None
+      }
+  }
+
+  def execReply(handlers: Seq[() => Any]): PartialFunction[(Char, Array[Byte]), Option[List[Any]]] = {
+    case (ARRAY_ID, str) =>
+      Parsers.parseInt(str) match {
+        case -1 => None
+        case n if n == handlers.size =>
+          Some(
+            handlers.map { h =>
+              try {
+                h.apply()
+              } catch {
+                case e: Exception => e.getMessage()
+              }
+            }.toList
+          )
+        case n => throw new Exception("Protocol error: Expected " + handlers.size + " results, but got " + n)
       }
   }
 
@@ -230,6 +248,8 @@ trait R extends Reply {
       case Some((single, multi)) => Some((Parsers.parseInt(single.value), multi.map))
       case _                     => None
     }
+
+  def asExec(handlers: Seq[() => Any]): Option[List[Any]] = receive(execReply(handlers))
 }
 
 trait Protocol extends R
