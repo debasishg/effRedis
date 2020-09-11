@@ -73,8 +73,8 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
     send("KEYS", List(pattern))(asFlatList)
 
-  override def time[A](implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
-    send("TIME")(asFlatList)
+  override def time: F[Resp[List[Long]]] =
+    send("TIME")(asFlatList(Parse.Implicits.parseLong))
 
   @deprecated("use randomkey", "2.8")
   def randkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
@@ -83,35 +83,35 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   override def randomkey[A](implicit parse: Parse[A]): F[Resp[Option[A]]] =
     send("RANDOMKEY")(asBulkString)
 
-  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]] =
-    send("RENAME", List(oldkey, newkey))(asSimpleString)
+  override def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("RENAME", List(oldkey, newkey))(asBoolean)
 
-  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]] =
-    send("RENAMENX", List(oldkey, newkey))(asSimpleString)
+  override def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("RENAMENX", List(oldkey, newkey))(if (asInteger == 1) true else false)
 
   override def dbsize: F[Resp[Long]] =
     send("DBSIZE")(asInteger)
 
-  override def exists(key: Any)(implicit format: Format): F[Resp[String]] =
-    send("EXISTS", List(key))(asSimpleString)
+  override def exists(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("EXISTS", List(key) ::: keys.toList)(asInteger)
 
   override def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
-    send("DEL", key :: keys.toList)(asInteger)
+    send("DEL", List(key) ::: keys.toList)(asInteger)
 
   override def getType(key: Any)(implicit format: Format): F[Resp[String]] =
     send("TYPE", List(key))(asSimpleString)
 
-  override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[String]] =
-    send("EXPIRE", List(key, ttl))(asSimpleString)
+  override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[Boolean]] =
+    send("EXPIRE", List(key, ttl))(if (asInteger == 1) true else false)
 
-  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[String]] =
-    send("PEXPIRE", List(key, ttlInMillis))(asSimpleString)
+  override def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[Boolean]] =
+    send("PEXPIRE", List(key, ttlInMillis))(if (asInteger == 1) true else false)
 
-  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[String]] =
-    send("EXPIREAT", List(key, timestamp))(asSimpleString)
+  override def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[Boolean]] =
+    send("EXPIREAT", List(key, timestamp))(if (asInteger == 1) true else false)
 
-  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[String]] =
-    send("PEXPIREAT", List(key, timestampInMillis))(asSimpleString)
+  override def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[Boolean]] =
+    send("PEXPIREAT", List(key, timestampInMillis))(if (asInteger == 1) true else false)
 
   override def ttl(key: Any)(implicit format: Format): F[Resp[Long]] =
     send("TTL", List(key))(asInteger)
@@ -142,8 +142,8 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   override def auth(secret: Any)(implicit format: Format): F[Resp[String]] =
     send("AUTH", List(secret))(asSimpleString)
 
-  override def persist(key: Any)(implicit format: Format): F[Resp[String]] =
-    send("PERSIST", List(key))(asSimpleString)
+  override def persist(key: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("PERSIST", List(key))(if (asInteger == 1) true else false)
 
   override def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,

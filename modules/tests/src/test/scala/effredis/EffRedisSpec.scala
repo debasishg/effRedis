@@ -23,6 +23,9 @@ class EffRedisSpec
     with TestListScenarios
     with TestStringScenarios
     with TestHashScenarios
+    with TestSetScenarios
+    with TestSortedSetScenarios
+    with TestBaseScenarios
     with cluster.TestClusterScenarios {
   // test("parse cluster slots")(withRedisForURI(new URI("http://localhost:7000"))(parseClusterSlots))
   test("strings api get and set")(withRedis(stringsGetAndSet))
@@ -58,4 +61,36 @@ class EffRedisSpec
   test("hash hset 1")(withRedis(hashHSet1))
   test("hash hset 2")(withRedis(hashHSet2))
   test("hash hgetall")(withRedis(hashHGetAll))
+  test("sets api add")(withRedis(setsAdd))
+  test("sets api add variadic")(withRedis(setsAddVariadic))
+  test("sets api rem")(withRedis(setsRem))
+  test("sets api rem variadic")(withRedis(setsRemVariadic))
+  test("sets api pop")(withRedis(setsPop))
+  test("sets api pop with count")(withRedis(setsPopWithCount))
+  test("sets api move")(withRedis(setsMove))
+  test("sets api card")(withRedis(setsCard))
+  test("sets api ismember")(withRedis(setsIsMember))
+  test("sets api intersection")(withRedis(setsInter))
+  test("sets api intersection")(withRedis(setsInterstore))
+  test("sets api union")(withRedis(setsUnion))
+  test("sets api unionstore")(withRedis(setsUnionstore))
+  test("sets api diff")(withRedis(setsDiff))
+  test("sets api member")(withRedis(setsMember))
+  test("sets api random member")(withRedis(setsRandomMemberWithCount))
+  test("sortedsets zrangebylex")(withRedis(sortedSetsZrangeByLex))
+  test("sortedsets zadd")(withRedis(sortedSetsZAdd))
+  test("sortedsets zrem")(withRedis(sortedSetsZRem))
+  test("sortedsets zrange")(withRedis(sortedSetsZRange))
+  test("sortedsets zrank")(withRedis(sortedSetsZRank))
+  test("sortedsets zremrange")(withRedis(sortedSetsZRemRange))
+  test("sortedsets zunion")(withRedis(sortedSetsZUnion))
+  test("sortedsets zinter")(withRedis(sortedSetsZInter))
+  test("sortedsets zcount")(withRedis(sortedSetsZCount))
+  test("sortedsets zrangebyscore")(withRedis(sortedSetsZRangeByScore))
+  test("sortedsets zrangebyscorewithscore")(withRedis(sortedSetsZRangeByScoreWithScore))
+  test("base api misc-1")(withRedis(baseMisc1))
+  test("base api misc-2")(withRedis(baseMisc2))
+  test("base api misc-3")(withRedis(baseMisc3))
+  test("base api misc-4")(withRedis(baseMisc4))
+  test("base api misc-5")(withRedis(baseMisc5))
 }

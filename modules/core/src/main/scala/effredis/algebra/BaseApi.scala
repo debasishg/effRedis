@@ -55,7 +55,7 @@ trait BaseApi[F[+_]] {
     * returns the current server time as a two items lists:
     * a Unix timestamp and the amount of microseconds already elapsed in the current second.
     */
-  def time[A](implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  def time: F[Resp[List[Long]]]
 
   /**
     * returns a randomly selected key from the currently selected DB.
@@ -65,12 +65,12 @@ trait BaseApi[F[+_]] {
   /**
     * atomically renames the key oldkey to newkey.
     */
-  def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]]
+  def rename(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * rename oldkey into newkey but fails if the destination key newkey already exists.
     */
-  def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[String]]
+  def renamenx(oldkey: Any, newkey: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * returns the size of the db.
@@ -80,7 +80,7 @@ trait BaseApi[F[+_]] {
   /**
     * test if the specified key exists.
     */
-  def exists(key: Any)(implicit format: Format): F[Resp[String]]
+  def exists(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * deletes the specified keys.
@@ -95,22 +95,22 @@ trait BaseApi[F[+_]] {
   /**
     * sets the expire time (in sec.) for the specified key.
     */
-  def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[String]]
+  def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * sets the expire time (in milli sec.) for the specified key.
     */
-  def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[String]]
+  def pexpire(key: Any, ttlInMillis: Int)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * sets the expire time for the specified key.
     */
-  def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[String]]
+  def expireat(key: Any, timestamp: Long)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * sets the expire timestamp in millis for the specified key.
     */
-  def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[String]]
+  def pexpireat(key: Any, timestampInMillis: Long)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * returns the remaining time to live of a key that has a timeout
@@ -156,7 +156,7 @@ trait BaseApi[F[+_]] {
     * Remove the existing timeout on key, turning the key from volatile (a key with an expire set)
     * to persistent (a key that will never expire as no timeout is associated).
     */
-  def persist(key: Any)(implicit format: Format): F[Resp[String]]
+  def persist(key: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * Incrementally iterate the keys space (since 2.8)

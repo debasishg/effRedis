@@ -215,6 +215,8 @@ trait R extends Reply {
 
   def asFlatList[T](implicit parse: Parse[T]): List[T] = receive(flatArrayReply).map
 
+  def asSet[T: Parse]: Set[T] = asFlatList.toSet
+
   def asFlatListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): List[(A, B)] =
     receive(flatArrayReply).value
       .grouped(2)

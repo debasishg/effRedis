@@ -111,10 +111,10 @@ object EffRedisFunSuite {
       case _           => false
     }
 
-  final def getLong(resp: Resp[Option[Long]]): Option[Long] =
+  final def getLong(resp: Resp[Long]): Option[Long] =
     resp match {
-      case Value(Some(value)) => Some(value)
-      case _                  => None
+      case Value(value) => Some(value)
+      case _            => None
     }
 
   final def getResp(resp: Resp[_]): Option[_] = resp match {
@@ -127,11 +127,13 @@ object EffRedisFunSuite {
 
   final def getRespListSize(resp: Resp[_]): Option[Int] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.size)
+    case Value(ls: List[_])       => Some(ls.size)
     case _                        => None
   }
 
   final def getRespList[A](resp: Resp[_]): Option[List[A]] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.asInstanceOf[List[A]])
+    case Value(ls: List[_])       => Some(ls.asInstanceOf[List[A]])
     case _                        => None
   }
 }
