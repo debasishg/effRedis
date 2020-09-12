@@ -20,7 +20,6 @@ import cats.effect._
 import algebra.GeoApi
 import codecs._
 import Containers._
-import resp.RespValues._
 
 trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
@@ -34,15 +33,18 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
 
   def geopos(key: Any, members: Any*)(
       implicit format: Format
-  ): F[Resp[List[GeoCoordinate]]] =
+  ): F[Resp[List[Option[GeoCoordinate]]]] =
     send("GEOPOS", List(key) ::: members.toList) {
       asList.map {
-        case List(lo, la) =>
-          ValidGeoCoordinate(
-            Longitude(Parse.Implicits.parseDouble(lo.toString.getBytes("UTF-8"))),
-            Latitude(Parse.Implicits.parseDouble(la.toString.getBytes("UTF-8")))
+        case List(Some(lo), Some(la)) => {
+          Some(
+            GeoCoordinate(
+              Longitude(Parse.Implicits.parseDouble(lo.toString.getBytes("UTF-8"))),
+              Latitude(Parse.Implicits.parseDouble(la.toString.getBytes("UTF-8")))
+            )
           )
-        case List(REDIS_NIL) => UnknownGeoCoordinate
+        }
+        case List(None) => None
       }
     }
 

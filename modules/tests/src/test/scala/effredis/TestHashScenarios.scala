@@ -48,11 +48,11 @@ trait TestHashScenarios {
       x <- hmset("hash2", Map("field1" -> "val1", "field2" -> "val2"))
       _ <- IO(assert(getBoolean(x)))
       x <- hmget("hash2", "field1")
-      _ <- IO(assert(getResp(x).get == List("val1")))
+      _ <- IO(assert(getResp(x).get == List(Some("val1"))))
       x <- hmget("hash2", "field1", "field2")
-      _ <- IO(assert(getResp(x).get == List("val1", "val2")))
+      _ <- IO(assert(getResp(x).get == List(Some("val1"), Some("val2"))))
       x <- hmget("hash2", "field1", "field2", "field3")
-      _ <- IO(assert(getResp(x).get == List("val1", "val2", resp.RespValues.REDIS_NIL)))
+      _ <- IO(assert(getResp(x).get == List(Some("val1"), Some("val2"), None)))
 
       // should increment map values
       _ <- hincrby("hash3", "field1", 1)
@@ -92,9 +92,9 @@ trait TestHashScenarios {
       // should return the aggregates
       _ <- hmset("hash7", Map("field1" -> "val1", "field2" -> "val2"))
       x <- hkeys("hash7")
-      _ <- IO(assert(getResp(x).get == List("field1", "field2")))
+      _ <- IO(assert(getResp(x).get == List(Some("field1"), Some("field2"))))
       x <- hvals("hash7")
-      _ <- IO(assert(getResp(x).get == List("val1", "val2")))
+      _ <- IO(assert(getResp(x).get == List(Some("val1"), Some("val2"))))
 
       // should increment map values by floats
       _ <- hset("hash1", "field1", 10.50f)
@@ -114,7 +114,7 @@ trait TestHashScenarios {
       _ <- hset("hash100", "key4", 10.50f)
       _ <- hset("hash100", "key5", 10.60f)
       x <- hkeys("hash100")
-      _ <- IO(assert(getResp(x).get == List("key1", "key2", "key3", "key4", "key5")))
+      _ <- IO(assert(getResp(x).get == List(Some("key1"), Some("key2"), Some("key3"), Some("key4"), Some("key5"))))
       x <- hdel("hash100", "key1", "key2", "key3", "key4", "key5")
       _ <- IO(assert(getResp(x).get == 5))
       x <- hkeys("hash100")

@@ -30,7 +30,6 @@ class EffRedisSpec
     with TestGeoScenarios
     with cluster.TestClusterScenarios {
   // test("parse cluster slots")(withRedisForURI(new URI("http://localhost:7000"))(parseClusterSlots))
-  /*
   test("strings api get and set")(withRedis(stringsGetAndSet))
   test("strings api get and set if exists or not")(withRedis(stringsGetAndSetIfExistsOrNot))
   test("strings api getset")(withRedis(stringsGetSet))
@@ -38,9 +37,7 @@ class EffRedisSpec
   test("strings api incr")(withRedis(stringsIncr))
   test("strings api decr")(withRedis(stringsDecr))
   test("strings api mget")(withRedis(stringsMget))
-   */
   test("strings api mget")(withRedis(stringsMget1))
-  /*
   test("strings api mset")(withRedis(stringsMset))
   test("strings api with spaces in keys")(withRedis(stringsWithSpacesInKeys))
   test("strings api get set range")(withRedis(stringsGetSetRange))
@@ -103,5 +100,4 @@ class EffRedisSpec
   test("hll pfcount")(withRedis(hllPfCount))
   test("hll pfmerge")(withRedis(hllPfMerge))
   test("geo")(withRedis(geosGeoAdd))
- */
 }

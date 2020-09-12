@@ -47,11 +47,11 @@ trait TestSortedSetScenarios {
       x <- zadd("hackers-joker", 0, "a", (0, "b"), (0, "c"), (0, "d"))
       _ <- IO(assert(getResp(x).get == 4))
       x <- zrangebylex("hackers-joker", "[a", "[b", None)
-      _ <- IO(assert(getResp(x).get == List("a", "b")))
+      _ <- IO(assert(getResp(x).get == List(Some("a"), Some("b"))))
 
       // should return the elements between min and max with offset and count
       x <- zrangebylex("hackers-joker", "[a", "[c", Some((0, 1)))
-      _ <- IO(assert(getResp(x).get == List("a")))
+      _ <- IO(assert(getResp(x).get == List(Some("a"))))
     } yield ()
   }
 
@@ -183,11 +183,11 @@ trait TestSortedSetScenarios {
       _ <- IO(
             assert(
               getResp(x).get == List(
-                    "richard stallman",
-                    "larry wall",
-                    "guido van rossum",
-                    "paul graham",
-                    "yukihiro matsumoto"
+                    Some("richard stallman"),
+                    Some("larry wall"),
+                    Some("guido van rossum"),
+                    Some("paul graham"),
+                    Some("yukihiro matsumoto")
                   )
             )
           )
@@ -215,32 +215,50 @@ trait TestSortedSetScenarios {
       // should return the elements between min and max") {
       _ <- add(client)
       x <- zrangebyscore("hackers", 1940, true, 1969, true, None)
-      _ <- IO(assert(getResp(x).get == List("alan kay", "richard stallman", "yukihiro matsumoto", "linus torvalds")))
+      _ <- IO(
+            assert(
+              getResp(x).get == List(
+                    Some("alan kay"),
+                    Some("richard stallman"),
+                    Some("yukihiro matsumoto"),
+                    Some("linus torvalds")
+                  )
+            )
+          )
 
       x <- zrangebyscore("hackers", 1940, true, 1969, true, None, DESC)
-      _ <- IO(assert(getResp(x).get == List("linus torvalds", "yukihiro matsumoto", "richard stallman", "alan kay")))
+      _ <- IO(
+            assert(
+              getResp(x).get == List(
+                    Some("linus torvalds"),
+                    Some("yukihiro matsumoto"),
+                    Some("richard stallman"),
+                    Some("alan kay")
+                  )
+            )
+          )
 
       _ <- flushdb
 
       // should return the elements between min and max and allow offset and limit
       _ <- add(client)
       x <- zrangebyscore("hackers", 1940, true, 1969, true, Some((0, 2)))
-      _ <- IO(assert(getResp(x).get == List("alan kay", "richard stallman")))
+      _ <- IO(assert(getResp(x).get == List(Some("alan kay"), Some("richard stallman"))))
 
       x <- zrangebyscore("hackers", 1940, true, 1969, true, Some((0, 2)), DESC)
-      _ <- IO(assert(getResp(x).get == List("linus torvalds", "yukihiro matsumoto")))
+      _ <- IO(assert(getResp(x).get == List(Some("linus torvalds"), Some("yukihiro matsumoto"))))
 
       x <- zrangebyscore("hackers", 1940, true, 1969, true, Some((3, 1)))
-      _ <- IO(assert(getResp(x).get == List("linus torvalds")))
+      _ <- IO(assert(getResp(x).get == List(Some("linus torvalds"))))
 
       x <- zrangebyscore("hackers", 1940, true, 1969, true, Some((3, 1)), DESC)
-      _ <- IO(assert(getResp(x).get == List("alan kay")))
+      _ <- IO(assert(getResp(x).get == List(Some("alan kay"))))
 
       x <- zrangebyscore("hackers", 1940, false, 1969, true, Some((0, 2)))
-      _ <- IO(assert(getResp(x).get == List("richard stallman", "yukihiro matsumoto")))
+      _ <- IO(assert(getResp(x).get == List(Some("richard stallman"), Some("yukihiro matsumoto"))))
 
       x <- zrangebyscore("hackers", 1940, true, 1969, false, Some((0, 2)), DESC)
-      _ <- IO(assert(getResp(x).get == List("yukihiro matsumoto", "richard stallman")))
+      _ <- IO(assert(getResp(x).get == List(Some("yukihiro matsumoto"), Some("richard stallman"))))
     } yield ()
   }
 

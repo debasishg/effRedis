@@ -27,7 +27,7 @@ trait GeoApi[F[+_]] {
 
   def geopos(key: Any, members: Any*)(
       implicit format: Format
-  ): F[Resp[List[GeoCoordinate]]]
+  ): F[Resp[List[Option[GeoCoordinate]]]]
 
   /*
   def geohash(key: Any, members: Iterable[Any])(

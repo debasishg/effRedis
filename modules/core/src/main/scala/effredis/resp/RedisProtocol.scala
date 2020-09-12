@@ -35,7 +35,8 @@ case class RedisFlatArray(value: List[SingleRedisValue]) extends RedisValue {
   def map[T](implicit parse: Parse[T]): List[Option[T]] =
     value.map { e =>
       try {
-        Some(parse(e.value))
+        if (e.value == RespValues.NULL_BULK_STRING) None
+        else Some(parse(e.value))
       } catch {
         case _: Exception => None
       }
@@ -55,8 +56,10 @@ case class RedisArray(value: List[RedisValue]) extends RedisValue {
         try { Some(parse(value)) }
         catch { case _: Exception => None }
       case RedisBulkString(value) =>
-        try { Some(parse(value)) }
-        catch { case _: Exception => None }
+        try {
+          if (value == RespValues.NULL_BULK_STRING) None
+          else Some(parse(value))
+        } catch { case e: Exception => e.printStackTrace; None }
       case a @ RedisArray(_)     => a.map
       case a @ RedisFlatArray(_) => a.map
     }
@@ -133,7 +136,6 @@ trait Reply {
 
   private def bulkRead(s: Array[Byte]): Array[Byte] = {
     val size = Parsers.parseInt(s)
-    println(s"bs size $size")
     size match {
       // this means we have received "$-1\r\n" which is the null bulk string
       case -1 => NULL_BULK_STRING
@@ -150,7 +152,6 @@ trait Reply {
   val flatArrayReply: FlatArrayReply = {
     case (ARRAY_ID, str) => {
       val size = Parsers.parseInt(str)
-      println(s"size $size")
       size match {
         // this means we have received "$-1\r\n" which is the null bulk string
         case -1 => RedisFlatArray(List(RedisBulkString(NULL_BULK_STRING)))

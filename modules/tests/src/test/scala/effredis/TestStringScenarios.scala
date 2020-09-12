@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit
 import cats.effect._
 import EffRedisFunSuite._
 import algebra.StringApi.{ NX, XX }
-import effredis.resp.RespValues.REDIS_NIL
 
 trait TestStringScenarios {
   implicit def cs: ContextShift[IO]
@@ -194,9 +193,9 @@ trait TestStringScenarios {
       x <- set("anshin-3", "nilanjan")
       _ <- IO(assert(getBoolean(x)))
       x <- mget("anshin-1", "anshin-2", "anshin-3")
-      _ <- IO(assert(getResp(x).get == List("debasish", "maulindu", "nilanjan")))
+      _ <- IO(assert(getResp(x).get == List(Some("debasish"), Some("maulindu"), Some("nilanjan"))))
       x <- mget("anshin-1", "anshin-2", "anshin-4")
-      _ <- IO(assert(getResp(x).get == List("debasish", "maulindu", REDIS_NIL)))
+      _ <- IO(assert(getResp(x).get == List(Some("debasish"), Some("maulindu"), None)))
     } yield ()
   }
 
@@ -205,9 +204,8 @@ trait TestStringScenarios {
     for {
       _ <- set("anshin-1", 100.23d)
       _ <- set("anshin-2", 500.23d)
-      // x <- mget("anshin-1", "anshin-2")(codecs.Format.default, codecs.Parse.Implicits.parseDouble)
       x <- mget("anshin-1", "anshin-2", "anshin-4")(codecs.Format.default, codecs.Parse.Implicits.parseDouble)
-      _ <- IO(println(getResp(x)))
+      _ <- IO(assert(getResp(x).get == List(Some(100.23), Some(500.23), None)))
     } yield ()
   }
 

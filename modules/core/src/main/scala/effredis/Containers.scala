@@ -20,9 +20,7 @@ object Containers {
   final case class Latitude(value: Double) extends AnyVal
   final case class Longitude(value: Double) extends AnyVal
 
-  sealed trait GeoCoordinate
-  final case class ValidGeoCoordinate(longitude: Longitude, latitude: Latitude) extends GeoCoordinate
-  case object UnknownGeoCoordinate extends GeoCoordinate
+  final case class GeoCoordinate(longitude: Longitude, latitude: Latitude)
 
   final case class GeoLocation(longitude: Longitude, latitude: Latitude, member: String)
 

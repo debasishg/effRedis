@@ -55,12 +55,7 @@ object Parse {
     implicit val parseByteArray: Parse[Array[Byte]] = Parse[Array[Byte]](identity)
     implicit val parseInt: Parse[Int]               = Parse[Int](new String(_, "UTF-8").toInt)
     implicit val parseLong: Parse[Long]             = Parse[Long](new String(_, "UTF-8").toLong)
-    implicit val parseDouble: Parse[Double] = {
-      Parse[Double] { b =>
-        println(s"""In parseDouble ${new String(b, "UTF-8")}""")
-        new String(b, "UTF-8").toDouble
-      }
-    }
+    implicit val parseDouble: Parse[Double]         = Parse[Double](new String(_, "UTF-8").toDouble)
   }
 
   implicit val parseDefault: Parse[String] = Parse[String](new String(_, "UTF-8"))

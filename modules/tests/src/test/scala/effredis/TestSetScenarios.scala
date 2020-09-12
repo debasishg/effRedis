@@ -231,7 +231,7 @@ trait TestSetScenarios {
       _ <- sadd("set-3", "bay")
 
       x <- sinter("set-1", "set-2")
-      _ <- IO(assert(getResp(x).get == Set("foo", "baz")))
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("baz"))))
       x <- sinter("set-1", "set-3")
       _ <- IO(assert(getResp(x).get == Set.empty))
 
@@ -300,10 +300,10 @@ trait TestSetScenarios {
       _ <- sadd("set-3", "bay")
 
       x <- sunion("set-1", "set-2")
-      _ <- IO(assert(getResp(x).get == Set("foo", "bar", "baz", "bat")))
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"), Some("bat"))))
       x <- sunion("set-1", "set-3")
       _ <- IO(
-            assert(getResp(x).get == Set("foo", "bar", "baz", "for", "bat", "bay"))
+            assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"), Some("for"), Some("bat"), Some("bay")))
           )
 
       // should return empty set for non-existing key
@@ -312,7 +312,7 @@ trait TestSetScenarios {
       _ <- sadd("set-1", "bar")
       _ <- sadd("set-1", "baz")
       x <- sunion("set-1", "set-2")
-      _ <- IO(assert(getResp(x).get == Set("foo", "bar", "baz")))
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
     } yield ()
   }
 
@@ -368,7 +368,7 @@ trait TestSetScenarios {
       _ <- sadd("set-3", "bay")
 
       x <- sdiff("set-1", "set-2", "set-3")
-      _ <- IO(assert(getResp(x).get == Set("bar")))
+      _ <- IO(assert(getResp(x).get == Set(Some("bar"))))
 
       // should treat non-existing keys as empty sets
       _ <- flushdb
@@ -376,7 +376,7 @@ trait TestSetScenarios {
       _ <- sadd("set-1", "bar")
       _ <- sadd("set-1", "baz")
       x <- sdiff("set-1", "set-2")
-      _ <- IO(assert(getResp(x).get == Set("foo", "bar", "baz")))
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
     } yield ()
   }
 
@@ -387,7 +387,7 @@ trait TestSetScenarios {
       _ <- sadd("set-1", "bar")
       _ <- sadd("set-1", "baz")
       x <- smembers("set-1")
-      _ <- IO(assert(getResp(x).get == Set("foo", "bar", "baz")))
+      _ <- IO(assert(getResp(x).get == Set(Some("foo"), Some("bar"), Some("baz"))))
 
       // should return None for an empty set
       _ <- flushdb

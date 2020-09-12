@@ -78,10 +78,10 @@ trait TestBaseScenarios {
       _ <- IO(assert(getRespListSize(x).get == 2))
       x <- time
       _ <- IO {
-            val r = getRespList[Long](x)
+            val r = getRespList[Option[Long]](x)
             r match {
-              case Some(ts :: et :: Nil) => assert(ts * 1000000L > et)
-              case _                     => false
+              case Some(Some(ts) :: Some(et) :: Nil) => assert(ts * 1000000L > et)
+              case _                                 => false
             }
           }
 
@@ -225,20 +225,20 @@ trait TestBaseScenarios {
       _ <- sadd("alltest", 2)
       _ <- sadd("alltest", 3)
       x <- sort("alltest")
-      _ <- IO(assert(getResp(x).get == List("1", "2", "3")))
+      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("2"), Some("3"))))
       x <- sort("alltest", Some((0, 1)))
-      _ <- IO(assert(getResp(x).getOrElse(Nil) == List("1")))
+      _ <- IO(assert(getResp(x).getOrElse(Nil) == List(Some("1"))))
       x <- sort("alltest", None, true)
-      _ <- IO(assert(getResp(x).getOrElse(Nil) == List("3", "2", "1")))
+      _ <- IO(assert(getResp(x).getOrElse(Nil) == List(Some("3"), Some("2"), Some("1"))))
       x <- sort("alltest", None, false, false, Some("hash-*->order"))
-      _ <- IO(assert(getResp(x).getOrElse(Nil) == List("2", "3", "1")))
+      _ <- IO(assert(getResp(x).getOrElse(Nil) == List(Some("2"), Some("3"), Some("1"))))
       x <- sort("alltest", None, false, false, None, List("hash-*->description"))
-      _ <- IO(assert(getResp(x).getOrElse(Nil) == List("one", "two", "three")))
+      _ <- IO(assert(getResp(x).getOrElse(Nil) == List(Some("one"), Some("two"), Some("three"))))
       x <- sort("alltest", None, false, false, None, List("hash-*->description", "hash-*->order"))
       _ <- IO(
             assert(
               getResp(x)
-                .getOrElse(Nil) == List("one", "100", "two", "25", "three", "50")
+                .getOrElse(Nil) == List(Some("one"), Some("100"), Some("two"), Some("25"), Some("three"), Some("50"))
             )
           )
     } yield ()
@@ -258,7 +258,7 @@ trait TestBaseScenarios {
       x <- sortNStore("alltest", storeAt = "skey")
       _ <- IO(assert(getResp(x).getOrElse(-1) == 4))
       x <- lrange("skey", 0, 10)
-      _ <- IO(assert(getResp(x).get == List("1", "3", "10", "30")))
+      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("3"), Some("10"), Some("30"))))
 
       // Long serialization : return Long
       x <- {
@@ -270,7 +270,7 @@ trait TestBaseScenarios {
         implicit val parseLong = Parse[Long](new String(_).toLong)
         lrange[Long]("skey", 0, 10)
       }
-      _ <- IO(assert(getResp(x).get == List(1, 3, 10, 30)))
+      _ <- IO(assert(getResp(x).get == List(Some(1), Some(3), Some(10), Some(30))))
     } yield ()
   }
 }

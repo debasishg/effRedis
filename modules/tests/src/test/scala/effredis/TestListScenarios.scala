@@ -32,7 +32,7 @@ trait TestListScenarios {
       x <- llen("list-1")
       _ <- IO(assert(getResp(x).get == 3))
       x <- lrange("list-1", 0, 2)
-      _ <- IO(assert(getResp(x).get == List("bar", "", "foo")))
+      _ <- IO(assert(getResp(x).get == List(Some("bar"), Some(""), Some("foo"))))
       x <- lpush("list-1", resp.RespValues.RedisNil)
       _ <- IO(assert(getResp(x).get.toString.contains("wrong number of arguments for 'lpush' command")))
 
@@ -140,7 +140,7 @@ trait TestListScenarios {
       x <- llen("list-1")
       _ <- IO(assert(getResp(x).get == 7))
       x <- lrange("list-1", 0, 4)
-      _ <- IO(assert(getResp(x).get == List("", "1", "2", "3", "4")))
+      _ <- IO(assert(getResp(x).get == List(Some(""), Some("1"), Some("2"), Some("3"), Some("4"))))
 
       // should return empty list if start > end
       _ <- lpush("list-2", "3")
@@ -154,7 +154,7 @@ trait TestListScenarios {
       _ <- lpush("list-3", "2")
       _ <- lpush("list-3", "1")
       x <- lrange("list-3", 0, 7)
-      _ <- IO(assert(getResp(x).get == List("1", "2", "3")))
+      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("2"), Some("3"))))
     } yield ()
   }
 
