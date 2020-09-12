@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
-package effredis.cluster
-package algebra
+package effredis
 
-import effredis.Resp
+import io.chrisdavenport.log4cats.Logger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import cats.effect.{ ExitCode, IO, IOApp }
 
-trait ClusterApi[F[+_]] {
-  def clusterNodes: F[Resp[Option[String]]]
-  // def clusterSlots: F[Resp[Option[List[Option[List[Option[String]]]]]]]
-  def clusterSlots: F[Resp[List[Any]]]
-  def asking: F[Resp[Boolean]]
+/**
+  * Provides an instance of `Log` given an instance of `Logger`.
+  *
+  * For simplicity and re-usability in all the examples.
+  * */
+trait LoggerIOApp extends IOApp {
+
+  implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+
+  override def run(args: List[String]): IO[ExitCode] =
+    IO(ExitCode.Success)
+
 }

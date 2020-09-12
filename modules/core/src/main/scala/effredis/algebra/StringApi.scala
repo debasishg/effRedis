@@ -34,7 +34,7 @@ trait StringApi[F[+_]] {
     */
   def set(key: Any, value: Any, whenSet: SetBehaviour = Always, expire: Duration = null, keepTTL: Boolean = false)(
       implicit format: Format
-  ): F[Resp[String]]
+  ): F[Resp[Boolean]]
 
   /**
     * gets the value for the specified key.
@@ -49,11 +49,11 @@ trait StringApi[F[+_]] {
   /**
     * sets the value for the specified key, only if the key is not there.
     */
-  def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]]
+  def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
-  def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[String]]
+  def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
-  def psetex(key: Any, expiryInMillis: Long, value: Any)(implicit format: Format): F[Resp[String]]
+  def psetex(key: Any, expiryInMillis: Long, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * increments the specified key by 1
@@ -85,12 +85,12 @@ trait StringApi[F[+_]] {
   /**
     * set the respective key value pairs. Overwrite value if key exists
     */
-  def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]]
+  def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * set the respective key value pairs. Noop if any key exists
     */
-  def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Long]]
+  def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * SETRANGE key offset value

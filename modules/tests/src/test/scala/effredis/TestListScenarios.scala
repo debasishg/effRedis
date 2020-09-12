@@ -48,7 +48,7 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 2))
 
       x <- set("anshin-1", "debasish")
-      _ <- IO(assert(getResp(x).get == "OK"))
+      _ <- IO(assert(getBoolean(x)))
       x <- lpush("anshin-1", "bar")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
@@ -67,7 +67,7 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 2))
 
       x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getResp(x).get == "OK"))
+      _ <- IO(assert(getBoolean(x)))
       x <- lpushx("anshin-2", "bar")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
@@ -83,7 +83,7 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 2))
 
       x <- set("anshin-1", "debasish")
-      _ <- IO(assert(getResp(x).get == "OK"))
+      _ <- IO(assert(getBoolean(x)))
       x <- rpush("anshin-1", "bar")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
@@ -102,7 +102,7 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 2))
 
       x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getResp(x).get == "OK"))
+      _ <- IO(assert(getBoolean(x)))
       x <- rpushx("anshin-2", "bar")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
@@ -120,7 +120,7 @@ trait TestListScenarios {
       _ <- IO(assert(getResp(x).get == 0))
 
       x <- set("anshin-2", "debasish")
-      _ <- IO(assert(getResp(x).get == "OK"))
+      _ <- IO(assert(getBoolean(x)))
       x <- llen("anshin-2")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
 
@@ -168,7 +168,7 @@ trait TestListScenarios {
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
       x <- ltrim("list-1", 0, 3)
-      _ <- IO(assert(getResp(x) == Some("OK")))
+      _ <- IO(assert(getBoolean(x)))
       x <- llen("list-1")
       _ <- IO(assert(getResp(x).get == 4))
 
@@ -229,7 +229,7 @@ trait TestListScenarios {
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
       x <- lset("list-1", 2, "30")
-      _ <- IO(assert(getResp(x) == Some("OK")))
+      _ <- IO(assert(getBoolean(x)))
       x <- lindex("list-1", 2)
       _ <- IO(assert(getResp(x).get == "30"))
 

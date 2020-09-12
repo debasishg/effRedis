@@ -90,7 +90,7 @@ trait BaseApi[F[+_]] {
   /**
     * returns the type of the value stored at key in form of a string.
     */
-  def getType(key: Any)(implicit format: Format): F[Resp[String]]
+  def getType(key: Any)(implicit format: Format): F[Resp[Option[String]]]
 
   /**
     * sets the expire time (in sec.) for the specified key.
@@ -130,17 +130,17 @@ trait BaseApi[F[+_]] {
   /**
     * removes all the DB data.
     */
-  def flushdb: F[Resp[String]]
+  def flushdb: F[Resp[Boolean]]
 
   /**
     * removes data from all the DB's.
     */
-  def flushall: F[Resp[String]]
+  def flushall: F[Resp[Boolean]]
 
   /**
     * Move the specified key from the currently selected DB to the specified destination DB.
     */
-  def move(key: Any, db: Int)(implicit format: Format): F[Resp[String]]
+  def move(key: Any, db: Int)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * exits the server.
@@ -150,7 +150,7 @@ trait BaseApi[F[+_]] {
   /**
     * auths with the server.
     */
-  def auth(secret: Any)(implicit format: Format): F[Resp[String]]
+  def auth(secret: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * Remove the existing timeout on key, turning the key from volatile (a key with an expire set)
@@ -176,12 +176,12 @@ trait BaseApi[F[+_]] {
   /**
     * Marks the given keys to be watched for conditional execution of a transaction.
     */
-  def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[String]]
+  def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * Flushes all the previously watched keys for a transaction
     */
-  def unwatch(): F[Resp[String]]
+  def unwatch(): F[Resp[Boolean]]
 
   /**
     * CONFIG GET
@@ -191,7 +191,7 @@ trait BaseApi[F[+_]] {
   /**
     * CONFIG SET
     */
-  def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[String]]
+  def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
   def echo(message: Any)(implicit format: Format): F[Resp[String]]
 }

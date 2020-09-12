@@ -34,7 +34,7 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
       whenSet: SetBehaviour = Always,
       expire: Duration = null,
       keepTTL: Boolean = false
-  )(implicit format: Format): F[Resp[String]] = {
+  )(implicit format: Format): F[Resp[Boolean]] = {
 
     val expireCmd = if (expire != null) {
       List("PX", expire.toMillis.toString)
@@ -42,7 +42,7 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
       List.empty
     }
     val cmd = List(key, value) ::: expireCmd ::: whenSet.command ::: (if (keepTTL) List("KEEPTTL") else List.empty)
-    send("SET", cmd)(asSimpleString)
+    send("SET", cmd)(asBoolean)
   }
 
   override def get[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
@@ -51,14 +51,14 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
   override def getset[A](key: Any, value: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("GETSET", List(key, value))(asBulkString)
 
-  override def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]] =
-    send("SETNX", List(key, value))(asInteger)
+  override def setnx(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("SETNX", List(key, value))(if (asInteger == 1) true else false)
 
-  override def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[String]] =
-    send("SETEX", List(key, expiry, value))(asSimpleString)
+  override def setex(key: Any, expiry: Long, value: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("SETEX", List(key, expiry, value))(asBoolean)
 
-  override def psetex(key: Any, expiryInMillis: Long, value: Any)(implicit format: Format): F[Resp[String]] =
-    send("PSETEX", List(key, expiryInMillis, value))(asSimpleString)
+  override def psetex(key: Any, expiryInMillis: Long, value: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("PSETEX", List(key, expiryInMillis, value))(asBoolean)
 
   override def incr(key: Any)(implicit format: Format): F[Resp[Long]] =
     send("INCR", List(key))(asInteger)
@@ -81,11 +81,11 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
   )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
     send("MGET", List(key) ::: keys.toList)(asFlatList)
 
-  override def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]] =
-    send("MSET", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asSimpleString)
+  override def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Boolean]] =
+    send("MSET", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asBoolean)
 
-  override def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Long]] =
-    send("MSETNX", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asInteger)
+  override def msetnx(kvs: (Any, Any)*)(implicit format: Format): F[Resp[Boolean]] =
+    send("MSETNX", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(if (asInteger == 1) true else false)
 
   override def setrange(key: Any, offset: Int, value: Any)(implicit format: Format): F[Resp[Long]] =
     send("SETRANGE", List(key, offset, value))(asInteger)

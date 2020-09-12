@@ -91,13 +91,11 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
   final def withEffectfulRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[PropF[IO]]): Future[Unit] =
     withEffectfulAbstractRedis[A](f)
 
-  private def flushAllCluster(): IO[Unit] = IO(())
-  /*
+  private def flushAllCluster(): IO[Unit] =
     RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use[IO, Unit] { pool =>
       implicit val p = pool
       withRedisCluster(_.flushall)
     }
-   */
 
   private def flushAll(): Future[Unit] =
     withRedis(_.flushall)

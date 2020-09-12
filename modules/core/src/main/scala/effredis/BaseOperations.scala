@@ -98,8 +98,11 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   override def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
     send("DEL", List(key) ::: keys.toList)(asInteger)
 
-  override def getType(key: Any)(implicit format: Format): F[Resp[String]] =
-    send("TYPE", List(key))(asSimpleString)
+  override def getType(key: Any)(implicit format: Format): F[Resp[Option[String]]] =
+    send("TYPE", List(key)) {
+      val r = asSimpleString
+      if (r == "none") None else Some(r)
+    }
 
   override def expire(key: Any, ttl: Int)(implicit format: Format): F[Resp[Boolean]] =
     send("EXPIRE", List(key, ttl))(if (asInteger == 1) true else false)
@@ -127,20 +130,20 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
       false
     })
 
-  override def flushdb: F[Resp[String]] =
-    send("FLUSHDB")(asSimpleString)
+  override def flushdb: F[Resp[Boolean]] =
+    send("FLUSHDB")(asBoolean)
 
-  override def flushall: F[Resp[String]] =
-    send("FLUSHALL")(asSimpleString)
+  override def flushall: F[Resp[Boolean]] =
+    send("FLUSHALL")(asBoolean)
 
-  override def move(key: Any, db: Int)(implicit format: Format): F[Resp[String]] =
-    send("MOVE", List(key, db))(asSimpleString)
+  override def move(key: Any, db: Int)(implicit format: Format): F[Resp[Boolean]] =
+    send("MOVE", List(key, db))(if (asInteger == 1) true else false)
 
   override def quit: F[Resp[Boolean]] =
     send("QUIT")(disconnect)
 
-  override def auth(secret: Any)(implicit format: Format): F[Resp[String]] =
-    send("AUTH", List(secret))(asSimpleString)
+  override def auth(secret: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("AUTH", List(secret))(asBoolean)
 
   override def persist(key: Any)(implicit format: Format): F[Resp[Boolean]] =
     send("PERSIST", List(key))(if (asInteger == 1) true else false)
@@ -159,11 +162,11 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   override def ping: F[Resp[String]] =
     send("PING")(asSimpleString)
 
-  override def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[String]] =
-    send("WATCH", key :: keys.toList)(asSimpleString)
+  override def watch(key: Any, keys: Any*)(implicit format: Format): F[Resp[Boolean]] =
+    send("WATCH", key :: keys.toList)(asBoolean)
 
-  override def unwatch(): F[Resp[String]] =
-    send("UNWATCH")(asSimpleString)
+  override def unwatch(): F[Resp[Boolean]] =
+    send("UNWATCH")(asBoolean)
 
   override def getConfig(key: Any = "*")(
       implicit format: Format
@@ -175,8 +178,8 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
 //     }
 //   }
 
-  override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[String]] =
-    send("CONFIG", List("SET", key, value))(asSimpleString)
+  override def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("CONFIG", List("SET", key, value))(asBoolean)
 
   override def echo(message: Any)(implicit format: Format): F[Resp[String]] =
     send("ECHO", List(message))(asSimpleString)

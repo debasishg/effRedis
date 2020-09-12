@@ -60,7 +60,7 @@ trait ListApi[F[+_]] {
   /**
     * Trim an existing list so that it will contain only the specified range of elements specified.
     */
-  def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[String]]
+  def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * return the especified element of the list stored at the specified key.
@@ -71,7 +71,7 @@ trait ListApi[F[+_]] {
   /**
     * set the list element at index with the new value. Out of range indexes will generate an error
     */
-  def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[Resp[String]]
+  def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
   /**
     * Remove the first count occurrences of the value element from the list.

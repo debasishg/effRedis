@@ -108,9 +108,9 @@ trait TestStringScenarios {
       x <- set("anshin-1", "debasish")
       _ <- IO(assert(getBoolean(x)))
       x <- setnx("anshin-1", "maulindu")
-      _ <- IO(assert(getResp(x).get == 0))
+      _ <- IO(assert(!getBoolean(x)))
       x <- setnx("anshin-2", "maulindu")
-      _ <- IO(assert(getResp(x).get == 1))
+      _ <- IO(assert(getBoolean(x)))
 
       x <- setex(key, 1, value)
       _ <- IO(assert(getBoolean(x)))
@@ -218,11 +218,11 @@ trait TestStringScenarios {
 
       // should set all keys only if none of them exist
       x <- msetnx(("anshin-4", "debasish"), ("anshin-5", "maulindu"), ("anshin-6", "nilanjan"))
-      _ <- IO(assert(getResp(x).get == 1))
+      _ <- IO(assert(getBoolean(x)))
       x <- msetnx(("anshin-7", "debasish"), ("anshin-8", "maulindu"), ("anshin-6", "nilanjan"))
-      _ <- IO(assert(getResp(x).get == 0))
+      _ <- IO(assert(!getBoolean(x)))
       x <- msetnx(("anshin-4", "debasish"), ("anshin-5", "maulindu"), ("anshin-6", "nilanjan"))
-      _ <- IO(assert(getResp(x).get == 0))
+      _ <- IO(assert(!getBoolean(x)))
     } yield ()
   }
 

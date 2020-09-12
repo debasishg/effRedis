@@ -38,7 +38,6 @@ object ClusterTopology {
     ): RedisClusterNode = {
       import ts._
 
-      println(s"uri = ${ts.uri}")
       RedisClusterNode(
         new java.net.URI(s"http://${ts.uri.split("@")(0)}"),
         nodeId,

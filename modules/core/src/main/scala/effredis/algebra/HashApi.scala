@@ -28,7 +28,7 @@ trait HashApi[F[+_]] {
 
   def hget[A](key: Any, field: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]]
 
-  def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[Resp[String]]
+  def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[Resp[Boolean]]
 
   def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[List[Option[V]]]]
 

@@ -45,14 +45,14 @@ trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F, _] =>
   ): F[Resp[List[Option[A]]]] =
     send("LRANGE", List(key, start, end))(asFlatList)
 
-  override def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[String]] =
-    send("LTRIM", List(key, start, end))(asSimpleString)
+  override def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[Boolean]] =
+    send("LTRIM", List(key, start, end))(asBoolean)
 
   override def lindex[A](key: Any, index: Int)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
     send("LINDEX", List(key, index))(asBulkString)
 
-  override def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[Resp[String]] =
-    send("LSET", List(key, index, value))(asSimpleString)
+  override def lset(key: Any, index: Int, value: Any)(implicit format: Format): F[Resp[Boolean]] =
+    send("LSET", List(key, index, value))(asBoolean)
 
   override def lrem(key: Any, count: Int, value: Any)(implicit format: Format): F[Resp[Long]] =
     send("LREM", List(key, count, value))(asInteger)
