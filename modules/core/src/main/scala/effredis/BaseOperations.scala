@@ -31,7 +31,7 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
       alpha: Boolean = false,
       by: Option[String] = None,
       get: List[String] = Nil
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] = {
 
     val commands: List[Any] = makeSortArgs(key, limit, desc, alpha, by, get)
     send("SORT", commands)(asFlatList)
@@ -70,10 +70,10 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
 
   override def keys[A](
       pattern: Any = "*"
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
     send("KEYS", List(pattern))(asFlatList)
 
-  override def time: F[Resp[List[Long]]] =
+  override def time: F[Resp[List[Option[Long]]]] =
     send("TIME")(asFlatList(Parse.Implicits.parseLong))
 
   @deprecated("use randomkey", "2.8")
@@ -148,7 +148,7 @@ trait BaseOperations[F[+_]] extends BaseApi[F] { self: Redis[F, _] =>
   override def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]] =
+  ): F[Resp[Option[(Int, List[Option[A]])]]] =
     send(
       "SCAN",
       cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(

@@ -35,7 +35,7 @@ trait GeoApi[F[+_]] {
   ): F[Resp[List[String]]]
 
   def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit]): F[Resp[Double]]
-  */
+   */
 
 //   def georadius(
 //       key: Any,
@@ -51,7 +51,7 @@ trait GeoApi[F[+_]] {
 //       store: Option[Any],
 //       storeDist: Option[Any]
 //   ): F[Resp[Option[List[Option[GeoRadiusMember]]]]]
-// 
+//
 //   def georadiusbymember[A](
 //       key: Any,
 //       member: Any,

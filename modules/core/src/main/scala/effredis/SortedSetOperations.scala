@@ -45,7 +45,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   override def zrange[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]] =
+  ): F[Resp[List[Option[A]]]] =
     send(if (sortAs == ASC) "ZRANGE" else "ZREVRANGE", List(key, start, end))(asFlatList)
 
   override def zrangeWithScore[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
@@ -59,7 +59,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   override def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]] =
+  ): F[Resp[List[Option[A]]]] =
     if (!limit.isEmpty) {
       val params = limit.toList.flatMap(l => List(key, min, max, "LIMIT", l._1, l._2))
       send("ZRANGEBYLEX", params)(asFlatList)
@@ -75,7 +75,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] = {
 
     val (limitEntries, minParam, maxParam) =
       zrangebyScoreWithScoreInternal(min, minInclusive, max, maxInclusive, limit)
@@ -188,7 +188,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   override def zscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]] =
+  ): F[Resp[Option[(Int, List[Option[A]])]]] =
     send(
       "ZSCAN",
       key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(

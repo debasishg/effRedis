@@ -30,7 +30,7 @@ trait HashApi[F[+_]] {
 
   def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[Resp[String]]
 
-  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[List[V]]]
+  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[List[Option[V]]]]
 
   def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Long]]
 
@@ -42,14 +42,10 @@ trait HashApi[F[+_]] {
 
   def hlen(key: Any)(implicit format: Format): F[Resp[Long]]
 
-  def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
-  def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
-  @deprecated(
-    "Use the more idiomatic variant hgetall1, which has the returned Map behavior more consistent. See issue https://github.com/debasishg/scala-redis/issues/122",
-    "3.2"
-  )
   def hgetall[K, V](
       key: Any
   )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Map[K, V]]]
@@ -60,5 +56,5 @@ trait HashApi[F[+_]] {
   def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]]
+  ): F[Resp[Option[(Int, List[Option[A]])]]]
 }

@@ -43,7 +43,7 @@ trait SortedSetApi[F[+_]] {
   def zrange[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]]
+  ): F[Resp[List[Option[A]]]]
 
   def zrangeWithScore[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
@@ -53,7 +53,7 @@ trait SortedSetApi[F[+_]] {
   def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]]
+  ): F[Resp[List[Option[A]]]]
 
   def zrangebyscore[A](
       key: Any,
@@ -63,7 +63,7 @@ trait SortedSetApi[F[+_]] {
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   def zrangebyscoreWithScore[A](
       key: Any,
@@ -113,5 +113,5 @@ trait SortedSetApi[F[+_]] {
   def zscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]]
+  ): F[Resp[Option[(Int, List[Option[A]])]]]
 }

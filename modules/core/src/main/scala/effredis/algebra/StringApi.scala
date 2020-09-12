@@ -80,7 +80,7 @@ trait StringApi[F[+_]] {
   /**
     * get the values of all the specified keys.
     */
-  def mget[A](key: Any, keys: Any*)(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  def mget[A](key: Any, keys: Any*)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   /**
     * set the respective key value pairs. Overwrite value if key exists

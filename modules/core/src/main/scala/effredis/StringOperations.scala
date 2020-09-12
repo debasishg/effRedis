@@ -78,8 +78,8 @@ trait StringOperations[F[+_]] extends StringApi[F] { self: Redis[F, _] =>
   override def mget[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
-    send("MGET", key :: keys.toList)(asFlatList)
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
+    send("MGET", List(key) ::: keys.toList)(asFlatList)
 
   override def mset(kvs: (Any, Any)*)(implicit format: Format): F[Resp[String]] =
     send("MSET", kvs.foldRight(List[Any]()) { case ((k, v), l) => k :: v :: l })(asSimpleString)

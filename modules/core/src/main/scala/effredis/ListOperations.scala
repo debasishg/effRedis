@@ -42,7 +42,7 @@ trait ListOperations[F[+_]] extends ListApi[F] { self: Redis[F, _] =>
   override def lrange[A](key: Any, start: Int, end: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]] =
+  ): F[Resp[List[Option[A]]]] =
     send("LRANGE", List(key, start, end))(asFlatList)
 
   override def ltrim(key: Any, start: Int, end: Int)(implicit format: Format): F[Resp[String]] =

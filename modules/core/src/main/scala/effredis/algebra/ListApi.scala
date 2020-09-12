@@ -55,7 +55,7 @@ trait ListApi[F[+_]] {
   def lrange[A](key: Any, start: Int, end: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[A]]]
+  ): F[Resp[List[Option[A]]]]
 
   /**
     * Trim an existing list so that it will contain only the specified range of elements specified.

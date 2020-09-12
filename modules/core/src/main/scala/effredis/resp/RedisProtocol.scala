@@ -32,8 +32,17 @@ case class RedisSimpleString(value: Array[Byte]) extends SingleRedisValue
 case class RedisBulkString(value: Array[Byte]) extends SingleRedisValue
 // redis array that is homogeneous and single level (no nested arrays)
 case class RedisFlatArray(value: List[SingleRedisValue]) extends RedisValue {
-  def map[T](implicit parse: Parse[T]): List[T] = value.map(e => parse(e.value))
+  def map[T](implicit parse: Parse[T]): List[Option[T]] =
+    value.map { e =>
+      try {
+        Some(parse(e.value))
+      } catch {
+        case _: Exception => None
+      }
+    }
 }
+
+// import scala.util.Try
 
 // integer value
 case class RedisInteger(value: Long) extends RedisValue
@@ -41,11 +50,15 @@ case class RedisInteger(value: Long) extends RedisValue
 case class RedisArray(value: List[RedisValue]) extends RedisValue {
   def map[T](implicit parse: Parse[T]): List[Any] =
     value.map {
-      case RedisInteger(v)          => v
-      case RedisSimpleString(value) => parse(value)
-      case RedisBulkString(value)   => parse(value)
-      case a @ RedisArray(_)        => a.map
-      case a @ RedisFlatArray(_)    => a.map
+      case RedisInteger(v) => Some(v)
+      case RedisSimpleString(value) =>
+        try { Some(parse(value)) }
+        catch { case _: Exception => None }
+      case RedisBulkString(value) =>
+        try { Some(parse(value)) }
+        catch { case _: Exception => None }
+      case a @ RedisArray(_)     => a.map
+      case a @ RedisFlatArray(_) => a.map
     }
 }
 
@@ -120,6 +133,7 @@ trait Reply {
 
   private def bulkRead(s: Array[Byte]): Array[Byte] = {
     val size = Parsers.parseInt(s)
+    println(s"bs size $size")
     size match {
       // this means we have received "$-1\r\n" which is the null bulk string
       case -1 => NULL_BULK_STRING
@@ -136,6 +150,7 @@ trait Reply {
   val flatArrayReply: FlatArrayReply = {
     case (ARRAY_ID, str) => {
       val size = Parsers.parseInt(str)
+      println(s"size $size")
       size match {
         // this means we have received "$-1\r\n" which is the null bulk string
         case -1 => RedisFlatArray(List(RedisBulkString(NULL_BULK_STRING)))
@@ -155,7 +170,7 @@ trait Reply {
     case (ARRAY_ID, str) => {
       val size = Parsers.parseInt(str)
       size match {
-        case -1 => RedisArray(List(RedisBulkString(NULL_BULK_STRING))) 
+        case -1 => RedisArray(List(RedisBulkString(NULL_BULK_STRING)))
         case n =>
           RedisArray(
             List.fill(n)(
@@ -231,9 +246,9 @@ trait R extends Reply {
 
   def asList[T](implicit parse: Parse[T]): List[Any] = receive(arrayReply).map
 
-  def asFlatList[T](implicit parse: Parse[T]): List[T] = receive(flatArrayReply).map
+  def asFlatList[T](implicit parse: Parse[T]): List[Option[T]] = receive(flatArrayReply).map
 
-  def asSet[T: Parse]: Set[T] = asFlatList.toSet
+  def asSet[T: Parse]: Set[Option[T]] = asFlatList.toSet
 
   def asFlatListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): List[(A, B)] =
     receive(flatArrayReply).value
@@ -243,7 +258,7 @@ trait R extends Reply {
       }
       .toList
 
-  def asPair[T](implicit parse: Parse[T]): Option[(Int, List[T])] =
+  def asPair[T](implicit parse: Parse[T]): Option[(Int, List[Option[T]])] =
     receive(pairBulkReply) match {
       case Some((single, multi)) => Some((Parsers.parseInt(single.value), multi.map))
       case _                     => None

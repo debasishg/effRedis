@@ -42,7 +42,7 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   override def hmget[K, V](
       key: Any,
       fields: K*
-  )(implicit format: Format, parseV: Parse[V]): F[Resp[List[V]]] =
+  )(implicit format: Format, parseV: Parse[V]): F[Resp[List[Option[V]]]] =
     send("HMGET", List(key) ::: fields.toList)(asFlatList[V])
 
   override def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Long]] =
@@ -62,10 +62,10 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   override def hlen(key: Any)(implicit format: Format): F[Resp[Long]] =
     send("HLEN", List(key))(asInteger)
 
-  override def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
+  override def hkeys[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
     send("HKEYS", List(key))(asFlatList)
 
-  override def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]] =
+  override def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
     send("HVALS", List(key))(asFlatList)
 
   override def hgetall[K, V](
@@ -76,7 +76,7 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   override def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]] =
+  ): F[Resp[Option[(Int, List[Option[A]])]]] =
     send(
       "HSCAN",
       key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(

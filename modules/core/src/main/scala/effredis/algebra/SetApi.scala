@@ -39,7 +39,7 @@ trait SetApi[F[+_]] {
   /**
     * Remove and return multiple random elements (pop) from the Set value at key since (3.2).
     */
-  def spop[A](key: Any, count: Int)(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]]
+  def spop[A](key: Any, count: Int)(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]]
 
   /**
     * Move the specified member from one Set to another atomically.
@@ -62,7 +62,7 @@ trait SetApi[F[+_]] {
   def sinter[A](key: Any, keys: Any*)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Set[A]]]
+  ): F[Resp[Set[Option[A]]]]
 
   /**
     * Compute the intersection between the Sets stored at key1, key2, ..., keyN,
@@ -78,7 +78,7 @@ trait SetApi[F[+_]] {
   def sunion[A](key: Any, keys: Any*)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Set[A]]]
+  ): F[Resp[Set[Option[A]]]]
 
   /**
     * Compute the union between the Sets stored at key1, key2, ..., keyN,
@@ -91,7 +91,7 @@ trait SetApi[F[+_]] {
   /**
     * Return the difference between the Set stored at key1 and all the Sets key2, ..., keyN.
     */
-  def sdiff[A](key: Any, keys: Any*)(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]]
+  def sdiff[A](key: Any, keys: Any*)(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]]
 
   /**
     * Compute the difference between the Set key1 and all the Sets key2, ..., keyN,
@@ -102,7 +102,7 @@ trait SetApi[F[+_]] {
   /**
     * Return all the members of the Set value at key.
     */
-  def smembers[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]]
+  def smembers[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]]
 
   /**
     * Return a random element from a Set
@@ -115,7 +115,7 @@ trait SetApi[F[+_]] {
   def srandmember[A](key: Any, count: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Set[A]]]
+  ): F[Resp[Set[Option[A]]]]
 
   /**
     * Incrementally iterate Set elements (since 2.8)
@@ -123,5 +123,5 @@ trait SetApi[F[+_]] {
   def sscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]]
+  ): F[Resp[Option[(Int, List[Option[A]])]]]
 }

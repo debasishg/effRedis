@@ -31,7 +31,7 @@ trait BaseApi[F[+_]] {
       alpha: Boolean = false,
       by: Option[String] = None,
       get: List[String] = Nil
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   /**
     * sort keys in a set, and stores result in the supplied key
@@ -49,13 +49,13 @@ trait BaseApi[F[+_]] {
   /**
     * returns all the keys matching the glob-style pattern.
     */
-  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[List[A]]]
+  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   /**
     * returns the current server time as a two items lists:
     * a Unix timestamp and the amount of microseconds already elapsed in the current second.
     */
-  def time: F[Resp[List[Long]]]
+  def time: F[Resp[List[Option[Long]]]]
 
   /**
     * returns a randomly selected key from the currently selected DB.
@@ -164,7 +164,7 @@ trait BaseApi[F[+_]] {
   def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]]
+  ): F[Resp[Option[(Int, List[Option[A]])]]]
 
   /**
     * ping

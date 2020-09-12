@@ -26,21 +26,27 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
-  override def geoadd(key: Any, members: GeoLocation*): F[Resp[Long]] ={
-    val l: List[Any] = List(key) ::: members.toList.flatMap(m => List(m.longitude.value.toString, m.latitude.value.toString, m.member))
+  override def geoadd(key: Any, members: GeoLocation*): F[Resp[Long]] = {
+    val l: List[Any] =
+      List(key) ::: members.toList.flatMap(m => List(m.longitude.value.toString, m.latitude.value.toString, m.member))
     send("GEOADD", l)(asInteger)
   }
 
   def geopos(key: Any, members: Any*)(
       implicit format: Format
-  ): F[Resp[List[GeoCoordinate]]] = {
-    send("GEOPOS", List(key) ::: members.toList){ asList.map {
-      case List(lo, la) => ValidGeoCoordinate(Longitude(Parse.Implicits.parseDouble(lo.toString.getBytes("UTF-8"))), Latitude(Parse.Implicits.parseDouble(la.toString.getBytes("UTF-8"))))
-      case List(REDIS_NIL) => UnknownGeoCoordinate
-    }}
-  }
+  ): F[Resp[List[GeoCoordinate]]] =
+    send("GEOPOS", List(key) ::: members.toList) {
+      asList.map {
+        case List(lo, la) =>
+          ValidGeoCoordinate(
+            Longitude(Parse.Implicits.parseDouble(lo.toString.getBytes("UTF-8"))),
+            Latitude(Parse.Implicits.parseDouble(la.toString.getBytes("UTF-8")))
+          )
+        case List(REDIS_NIL) => UnknownGeoCoordinate
+      }
+    }
 
-    /*
+  /*
   override def geohash[A](
       key: Any,
       members: Iterable[Any]
@@ -49,7 +55,7 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
 
   override def geodist(key: Any, m1: Any, m2: Any, unit: Option[Any]): F[Resp[Option[String]]] =
     send("GEODIST", List(key, m1, m2) ++ unit.toList)(asBulk[String])
-    */
+   */
 
 //   override def georadius(
 //       key: Any,
@@ -76,7 +82,7 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
 //     ).flatten
 //     send("GEORADIUS", List(key, longitude, latitude, radius, unit) ++ radArgs)(receive(geoRadiusMemberReply))
 //   }
-// 
+//
 //   override def georadiusbymember[A](
 //       key: Any,
 //       member: Any,

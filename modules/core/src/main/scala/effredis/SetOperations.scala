@@ -36,7 +36,7 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   override def spop[A](
       key: Any,
       count: Int
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SPOP", List(key, count))(asSet)
 
   override def smove(sourceKey: Any, destKey: Any, value: Any)(
@@ -53,7 +53,7 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   override def sinter[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SINTER", key :: keys.toList)(asSet)
 
   override def sinterstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
@@ -62,7 +62,7 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   override def sunion[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SUNION", key :: keys.toList)(asSet)
 
   override def sunionstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
@@ -71,7 +71,7 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   override def sdiff[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SDIFF", key :: keys.toList)(asSet)
 
   override def sdiffstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
@@ -79,7 +79,7 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
 
   override def smembers[A](
       key: Any
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SMEMBERS", List(key))(asSet)
 
   override def srandmember[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
@@ -88,13 +88,13 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   override def srandmember[A](
       key: Any,
       count: Int
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[A]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SRANDMEMBER", List(key, count))(asSet)
 
   override def sscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Int, List[A])]]] =
+  ): F[Resp[Option[(Int, List[Option[A]])]]] =
     send(
       "SSCAN",
       key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(
