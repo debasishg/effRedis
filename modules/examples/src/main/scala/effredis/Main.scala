@@ -38,8 +38,8 @@ object Main extends LoggerIOApp {
 
       val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).mapN { (_, _, k1val, k2val) =>
         (k1val, k2val) match {
-          case (Value(Some(k1)), Value(Some(k2))) => Foo(k1, k2)
-          case err                                => println(s"Error $err")
+          case (Value(Some(k1)), Value(k2)) => Foo(k1, k2)
+          case err                          => println(s"Error $err")
         }
       }
       println(res.unsafeRunSync())

@@ -199,6 +199,16 @@ trait TestStringScenarios {
     } yield ()
   }
 
+  final def stringsMget1(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- set("anshin-1", 100.23d)
+      _ <- set("anshin-2", 500.23d)
+      x <- mget("anshin-1", "anshin-2", "anshin-4")(codecs.Format.default, codecs.Parse.Implicits.parseDouble)
+      _ <- IO(assert(getResp(x).get == List(Some(100.23), Some(500.23), None)))
+    } yield ()
+  }
+
   final def stringsMset(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {

@@ -22,6 +22,23 @@ import EffRedisFunSuite._
 trait TestListScenarios {
   implicit def cs: ContextShift[IO]
 
+  final def listsLPushNil(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- lpush("list-1", "foo")
+      _ <- lpush("list-1", "")
+      x <- lpush("list-1", "bar", RespValues.RedisNil)
+      _ <- IO(assert(getResp(x).get == 3)) // the last nil value will be ignored and not pushed
+      x <- llen("list-1")
+      _ <- IO(assert(getResp(x).get == 3))
+      x <- lrange("list-1", 0, 2)
+      _ <- IO(assert(getResp(x).get == List(Some("bar"), Some(""), Some("foo"))))
+      x <- lpush("list-1", RespValues.RedisNil)
+      _ <- IO(assert(getResp(x).get.toString.contains("wrong number of arguments for 'lpush' command")))
+
+    } yield ()
+  }
+
   final def listsLPush(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import cmd._
     for {
@@ -106,6 +123,7 @@ trait TestListScenarios {
       _ <- IO(assert(getBoolean(x)))
       x <- llen("anshin-2")
       _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+
     } yield ()
   }
 
@@ -118,10 +136,11 @@ trait TestListScenarios {
       _ <- lpush("list-1", "3")
       _ <- lpush("list-1", "2")
       _ <- lpush("list-1", "1")
+      _ <- lpush("list-1", "")
       x <- llen("list-1")
-      _ <- IO(assert(getResp(x).get == 6))
+      _ <- IO(assert(getResp(x).get == 7))
       x <- lrange("list-1", 0, 4)
-      _ <- IO(assert(getResp(x).get == List(Some("1"), Some("2"), Some("3"), Some("4"), Some("5"))))
+      _ <- IO(assert(getResp(x).get == List(Some(""), Some("1"), Some("2"), Some("3"), Some("4"))))
 
       // should return empty list if start > end
       _ <- lpush("list-2", "3")
@@ -187,16 +206,16 @@ trait TestListScenarios {
       x <- lindex("list-1", -1)
       _ <- IO(assert(getResp(x).get == "6"))
 
-      _ <- set("anshin-1", "debasish")
-      x <- lindex("anshin-1", 0)
-      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
-
-      // should return empty string for an index out of range
+      // should return redis nil for an index out of range
       _ <- lpush("list-2", "6")
       _ <- lpush("list-2", "5")
       _ <- lpush("list-2", "4")
       x <- lindex("list-2", 8)
       _ <- IO(assert(getResp(x) == None))
+
+      _ <- set("anshin-1", "debasish")
+      x <- lindex("anshin-1", 0)
+      _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
     } yield ()
   }
 

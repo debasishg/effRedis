@@ -75,20 +75,15 @@ trait TestBaseScenarios {
 
       // time
       x <- time
-      _ <- IO(assert {
-            getResp(x) match {
-              case Some(s: List[_]) => s.size == 2
-              case _                => false
-            }
-          })
+      _ <- IO(assert(getRespListSize(x).get == 2))
       x <- time
-      _ <- IO(assert {
-            getResp(x) match {
-              case Some(Some(timestamp) :: Some(elapsedtime) :: Nil) =>
-                (timestamp.toString.toLong * 1000000L) > elapsedtime.toString.toLong
-              case _ => false
+      _ <- IO {
+            val r = getRespList[Option[Long]](x)
+            r match {
+              case Some(Some(ts) :: Some(et) :: Nil) => assert(ts * 1000000L > et)
+              case _                                 => false
             }
-          })
+          }
 
       // dbsize
       _ <- flushdb
@@ -108,11 +103,13 @@ trait TestBaseScenarios {
       _ <- set("anshin-1", "debasish")
       _ <- set("anshin-2", "maulindu")
       x <- exists("anshin-2")
-      _ <- IO(assert(getBoolean(x)))
+      _ <- IO(assert(getResp(x).get == 1))
       x <- exists("anshin-1")
-      _ <- IO(assert(getBoolean(x)))
+      _ <- IO(assert(getResp(x).get == 1))
       x <- exists("anshin-3")
-      _ <- IO(assert(!getBoolean(x)))
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- exists("anshin-1", "anshin-2", "anshin-3")
+      _ <- IO(assert(getResp(x).get == 2))
 
       // del
       x <- del("anshin-2", "anshin-1")

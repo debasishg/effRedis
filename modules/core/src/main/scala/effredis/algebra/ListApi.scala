@@ -15,7 +15,7 @@
  */
 
 package effredis
-package algebra
+package contract
 
 import codecs.{ Format, Parse }
 
@@ -24,29 +24,29 @@ trait ListApi[F[+_]] {
   /**
     * add values to the head of the list stored at key (Variadic: >= 2.4)
     */
-  def lpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]]
+  def lpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * add value to the head of the list stored at key (Variadic: >= 2.4)
     */
-  def lpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def lpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * add values to the tail of the list stored at key (Variadic: >= 2.4)
     */
-  def rpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]]
+  def rpush(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * add value to the tail of the list stored at key (Variadic: >= 2.4)
     */
-  def rpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def rpushx(key: Any, value: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * return the length of the list stored at the specified key.
     * If the key does not exist zero is returned (the same behaviour as for empty lists).
     * If the value stored at key is not a list an error is returned.
     */
-  def llen(key: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def llen(key: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * return the specified elements of the list stored at the specified key.
@@ -55,7 +55,7 @@ trait ListApi[F[+_]] {
   def lrange[A](key: Any, start: Int, end: Int)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[List[Option[A]]]]]
+  ): F[Resp[List[Option[A]]]]
 
   /**
     * Trim an existing list so that it will contain only the specified range of elements specified.
@@ -76,7 +76,7 @@ trait ListApi[F[+_]] {
   /**
     * Remove the first count occurrences of the value element from the list.
     */
-  def lrem(key: Any, count: Int, value: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def lrem(key: Any, count: Int, value: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * atomically return and remove the first (LPOP) or last (RPOP) element of the list

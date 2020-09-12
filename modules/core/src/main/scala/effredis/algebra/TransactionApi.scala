@@ -27,7 +27,7 @@ trait TransactionApi[F[+_]] {
   /**
     * multi to start the transaction
     */
-  def multi: F[Resp[Option[String]]]
+  def multi: F[Resp[Boolean]]
 
   /**
     * exec to complete the transaction

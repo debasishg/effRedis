@@ -24,77 +24,77 @@ trait SetOperations[F[+_]] extends SetApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
-  override def sadd(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SADD", List(key, value) ::: values.toList)(asLong)
+  override def sadd(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("SADD", List(key, value) ::: values.toList)(asInteger)
 
-  override def srem(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SREM", List(key, value) ::: values.toList)(asLong)
+  override def srem(key: Any, value: Any, values: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("SREM", List(key, value) ::: values.toList)(asInteger)
 
   override def spop[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
-    send("SPOP", List(key))(asBulk)
+    send("SPOP", List(key))(asBulkString)
 
   override def spop[A](
       key: Any,
       count: Int
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Set[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SPOP", List(key, count))(asSet)
 
   override def smove(sourceKey: Any, destKey: Any, value: Any)(
       implicit format: Format
-  ): F[Resp[Option[Long]]] =
-    send("SMOVE", List(sourceKey, destKey, value))(asLong)
+  ): F[Resp[Boolean]] =
+    send("SMOVE", List(sourceKey, destKey, value))(if (asInteger == 1) true else false)
 
-  override def scard(key: Any)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SCARD", List(key))(asLong)
+  override def scard(key: Any)(implicit format: Format): F[Resp[Long]] =
+    send("SCARD", List(key))(asInteger)
 
   override def sismember(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]] =
-    send("SISMEMBER", List(key, value))(asBoolean)
+    send("SISMEMBER", List(key, value))(if (asInteger == 1) true else false)
 
   override def sinter[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Set[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SINTER", key :: keys.toList)(asSet)
 
-  override def sinterstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SINTERSTORE", key :: keys.toList)(asLong)
+  override def sinterstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("SINTERSTORE", key :: keys.toList)(asInteger)
 
   override def sunion[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Set[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SUNION", key :: keys.toList)(asSet)
 
-  override def sunionstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SUNIONSTORE", key :: keys.toList)(asLong)
+  override def sunionstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("SUNIONSTORE", key :: keys.toList)(asInteger)
 
   override def sdiff[A](
       key: Any,
       keys: Any*
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Set[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SDIFF", key :: keys.toList)(asSet)
 
-  override def sdiffstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]] =
-    send("SDIFFSTORE", key :: keys.toList)(asLong)
+  override def sdiffstore(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]] =
+    send("SDIFFSTORE", key :: keys.toList)(asInteger)
 
   override def smembers[A](
       key: Any
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Set[Option[A]]]]] =
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
     send("SMEMBERS", List(key))(asSet)
 
   override def srandmember[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[Option[A]]] =
-    send("SRANDMEMBER", List(key))(asBulk)
+    send("SRANDMEMBER", List(key))(asBulkString)
 
   override def srandmember[A](
       key: Any,
       count: Int
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    send("SRANDMEMBER", List(key, count))(asList)
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Set[Option[A]]]] =
+    send("SRANDMEMBER", List(key, count))(asSet)
 
   override def sscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]] =
+  ): F[Resp[Option[(Int, List[Option[A]])]]] =
     send(
       "SSCAN",
       key :: cursor :: ((x: List[Any]) => if (pattern == "*") x else "match" :: pattern :: x)(

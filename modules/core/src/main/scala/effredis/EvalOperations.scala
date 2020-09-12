@@ -27,56 +27,44 @@ trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F, _] =>
   override def evalMultiBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[List[Option[A]]]]] =
-    send("EVAL", argsForEval(luaCode, keys, args))(asList[A])
+  ): F[Resp[List[Option[A]]]] =
+    send("EVAL", argsForEval(luaCode, keys, args))(asFlatList[A])
 
   override def evalBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
-    send("EVAL", argsForEval(luaCode, keys, args))(asBulk)
+    send("EVAL", argsForEval(luaCode, keys, args))(asBulkString)
 
-  override def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Resp[Option[Int]]] =
-    send("EVAL", argsForEval(luaCode, keys, args))(asInt)
+  override def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Resp[Long]] =
+    send("EVAL", argsForEval(luaCode, keys, args))(asInteger)
 
   override def evalMultiSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[List[Option[A]]]]] =
-    send("EVALSHA", argsForEval(shahash, keys, args))(asList[A])
+  ): F[Resp[List[Option[A]]]] =
+    send("EVALSHA", argsForEval(shahash, keys, args))(asFlatList[A])
 
   override def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
-    send("EVALSHA", argsForEval(shahash, keys, args))(asAny.asInstanceOf[Option[A]])
+    send("EVALSHA", argsForEval(shahash, keys, args))(asBulkString)
 
   override def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]] =
-    send("EVALSHA", argsForEval(shahash, keys, args))(asBulk)
+    send("EVALSHA", argsForEval(shahash, keys, args))(asBulkString)
 
   override def scriptLoad(luaCode: String): F[Resp[Option[String]]] =
-    send("SCRIPT", List("LOAD", luaCode))(asBulk)
+    send("SCRIPT", List("LOAD", luaCode))(asBulkString)
 
-  override def scriptExists(shahash: String): F[Resp[Option[Int]]] = {
-    val fa = send("SCRIPT", List("EXISTS", shahash))(asList[String])
-    val ev = implicitly[Concurrent[F]]
-    ev.fmap(fa) {
-      case Value(Some(list)) => {
-        if (list.size > 0 && list(0).isDefined) {
-          Value(Some(list(0).get.toInt))
-        } else {
-          Value(None)
-        }
-      }
-      case _ => Value(None)
-    }
-  }
+  override def scriptExists(shas: String*): F[Resp[List[Option[Int]]]] =
+    send("SCRIPT", List("EXISTS") ::: shas.toList)(asFlatList[Int](Parse.Implicits.parseInt))
 
-  override def scriptFlush: F[Resp[Option[String]]] =
-    send("SCRIPT", List("FLUSH"))(asString)
+  override def scriptFlush: F[Resp[String]] =
+    send("SCRIPT", List("FLUSH"))(asSimpleString)
 
   private def argsForEval(luaCode: String, keys: List[Any], args: List[Any]): List[Any] =
     luaCode :: keys.length :: keys ::: args

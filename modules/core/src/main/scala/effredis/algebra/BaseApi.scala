@@ -31,7 +31,7 @@ trait BaseApi[F[+_]] {
       alpha: Boolean = false,
       by: Option[String] = None,
       get: List[String] = Nil
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   /**
     * sort keys in a set, and stores result in the supplied key
@@ -44,18 +44,18 @@ trait BaseApi[F[+_]] {
       by: Option[String] = None,
       get: List[String] = Nil,
       storeAt: String
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[Long]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[Long]]
 
   /**
     * returns all the keys matching the glob-style pattern.
     */
-  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]]
+  def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]]
 
   /**
     * returns the current server time as a two items lists:
     * a Unix timestamp and the amount of microseconds already elapsed in the current second.
     */
-  def time[A](implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]]
+  def time: F[Resp[List[Option[Long]]]]
 
   /**
     * returns a randomly selected key from the currently selected DB.
@@ -75,17 +75,17 @@ trait BaseApi[F[+_]] {
   /**
     * returns the size of the db.
     */
-  def dbsize: F[Resp[Option[Long]]]
+  def dbsize: F[Resp[Long]]
 
   /**
     * test if the specified key exists.
     */
-  def exists(key: Any)(implicit format: Format): F[Resp[Boolean]]
+  def exists(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * deletes the specified keys.
     */
-  def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Option[Long]]]
+  def del(key: Any, keys: Any*)(implicit format: Format): F[Resp[Long]]
 
   /**
     * returns the type of the value stored at key in form of a string.
@@ -115,12 +115,12 @@ trait BaseApi[F[+_]] {
   /**
     * returns the remaining time to live of a key that has a timeout
     */
-  def ttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def ttl(key: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * returns the remaining time to live of a key that has a timeout in millis
     */
-  def pttl(key: Any)(implicit format: Format): F[Resp[Option[Long]]]
+  def pttl(key: Any)(implicit format: Format): F[Resp[Long]]
 
   /**
     * selects the DB to connect, defaults to 0 (zero).
@@ -164,12 +164,12 @@ trait BaseApi[F[+_]] {
   def scan[A](cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[(Option[Int], Option[List[Option[A]]])]]]
+  ): F[Resp[Option[(Int, List[Option[A]])]]]
 
   /**
     * ping
     */
-  def ping: F[Resp[Option[String]]]
+  def ping: F[Resp[String]]
 
   protected val pong: Option[String] = Some("PONG")
 
@@ -191,7 +191,7 @@ trait BaseApi[F[+_]] {
   /**
     * CONFIG SET
     */
-  def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Option[String]]]
+  def setConfig(key: Any, value: Any)(implicit format: Format): F[Resp[Boolean]]
 
-  def echo(message: Any)(implicit format: Format): F[Resp[Option[String]]]
+  def echo(message: Any)(implicit format: Format): F[Resp[String]]
 }

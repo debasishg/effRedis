@@ -149,7 +149,7 @@ trait TestSetScenarios {
       _ <- sadd("set-2", "2")
 
       x <- smove("set-1", "set-2", "baz")
-      _ <- IO(assert(getResp(x).get == 1))
+      _ <- IO(assert(getBoolean(x)))
       x <- sadd("set-2", "baz")
       _ <- IO(assert(getResp(x).get == 0))
       x <- sadd("set-1", "baz")
@@ -161,9 +161,9 @@ trait TestSetScenarios {
       _ <- sadd("set-1", "bar")
       _ <- sadd("set-1", "baz")
       x <- smove("set-1", "set-2", "bat")
-      _ <- IO(assert(getResp(x).get == 0))
+      _ <- IO(assert(!getBoolean(x)))
       x <- smove("set-3", "set-2", "bat")
-      _ <- IO(assert(getResp(x).get == 0))
+      _ <- IO(assert(!getBoolean(x)))
 
       // should give error if the source or destination key is not a set
       _ <- flushdb
@@ -439,7 +439,7 @@ trait TestSetScenarios {
       x <- srandmember("set-1", 4)
       _ <- IO {
             getResp(x).get match {
-              case s: List[_] => s.size == 4
+              case s: Set[_] => s.size == 4
             }
           }
 
@@ -447,7 +447,7 @@ trait TestSetScenarios {
       x <- srandmember("set-1", -4)
       _ <- IO {
             getResp(x).get match {
-              case s: List[_] => s.size <= 4
+              case s: Set[_] => s.size <= 4
             }
           }
 
@@ -455,7 +455,7 @@ trait TestSetScenarios {
       x <- srandmember("set-1", 24)
       _ <- IO {
             getResp(x).get match {
-              case s: List[_] => s.size == 8
+              case s: Set[_] => s.size == 8
             }
           }
 

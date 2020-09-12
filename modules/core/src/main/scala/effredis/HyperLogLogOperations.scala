@@ -23,11 +23,11 @@ trait HyperLogLogOperations[F[+_]] extends HyperLogLogApi[F] { self: Redis[F, _]
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
-  override def pfadd(key: Any, value: Any, values: Any*): F[Resp[Option[Long]]] =
-    send("PFADD", List(key, value) ::: values.toList)(asLong)
+  override def pfadd(key: Any, value: Any, values: Any*): F[Resp[Long]] =
+    send("PFADD", List(key, value) ::: values.toList)(asInteger)
 
-  override def pfcount(key: Any, keys: Any*): F[Resp[Option[Long]]] =
-    send("PFCOUNT", key :: keys.toList)(asLong)
+  override def pfcount(key: Any, keys: Any*): F[Resp[Long]] =
+    send("PFCOUNT", List(key) ::: keys.toList)(asInteger)
 
   override def pfmerge(destination: Any, sources: Any*): F[Resp[Boolean]] =
     send("PFMERGE", List(destination) ::: sources.toList)(asBoolean)

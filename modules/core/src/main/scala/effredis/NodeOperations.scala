@@ -29,17 +29,17 @@ trait NodeOperations[F[+_]] extends NodeApi[F] { self: Redis[F, _] =>
   override def bgsave: F[Resp[Boolean]] =
     send("BGSAVE")(asBoolean)
 
-  override def lastsave: F[Resp[Option[Long]]] =
-    send("LASTSAVE")(asLong)
+  override def lastsave: F[Resp[Long]] =
+    send("LASTSAVE")(asInteger)
 
-  override def shutdown: F[Resp[Boolean]] =
-    send("SHUTDOWN")(asBoolean)
+  override def shutdown: F[Resp[String]] =
+    send("SHUTDOWN")(asSimpleString)
 
   override def bgrewriteaof: F[Resp[Boolean]] =
     send("BGREWRITEAOF")(asBoolean)
 
   override def info: F[Resp[Option[String]]] =
-    send("INFO")(asBulk)
+    send("INFO")(asBulkString)
 
   override def monitor: F[Resp[Boolean]] =
     send("MONITOR")(asBoolean)

@@ -21,14 +21,14 @@ package effredis
 
 import java.net.URI
 import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.concurrent.duration.Duration
-import cluster.RedisClusterClient
+import scala.concurrent.duration._
 import cats.data.NonEmptyList
 import cats.effect._
 import Log.NoOp._
 import munit.FunSuite
 import org.scalacheck.effect.PropF
 import RedisClient._
+import cluster.RedisClusterClient
 
 abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
@@ -52,6 +52,9 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
   final def withAbstractRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
     RedisClient.single[IO](new URI("http://localhost:6379")).use(f).as(assert(true)).unsafeToFuture()
 
+  final def withAbstractRedisForURI[A](uri: URI)(f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
+    RedisClient.single[IO](uri).use(f).as(assert(true)).unsafeToFuture()
+
   final def withAbstractRedisCluster[A](f: RedisClusterClient[IO, SINGLE.type] => IO[A]): IO[Unit] =
     RedisClusterClient
       .make[IO, SINGLE.type](NonEmptyList.one(new URI("http://127.0.0.1:7000")))
@@ -73,6 +76,9 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   final def withRedis[A](f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
     withAbstractRedis[A](f)
+
+  final def withRedisForURI[A](uri: URI)(f: RedisClient[IO, RedisClient.SINGLE.type] => IO[A]): Future[Unit] =
+    withAbstractRedisForURI[A](uri)(f)
 
   final def withRedisCluster[A](f: RedisClusterClient[IO, SINGLE.type] => IO[A]): IO[Unit] =
     withAbstractRedisCluster[A](f)
@@ -96,32 +102,36 @@ abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 }
 
 object EffRedisFunSuite {
-  final def getBoolean(resp: Resp[Boolean]): Boolean =
+  final def getBoolean(resp: Resp[_]): Boolean =
     resp match {
-      case Value(value) => value == true
-      case _            => false
+      case Value("OK") => true
+      case Value(true) => true
+      case _           => false
     }
 
-  final def getLong(resp: Resp[Option[Long]]): Option[Long] =
+  final def getLong(resp: Resp[Long]): Option[Long] =
     resp match {
-      case Value(Some(value)) => Some(value)
-      case _                  => None
+      case Value(value) => Some(value)
+      case _            => None
     }
 
   final def getResp(resp: Resp[_]): Option[_] = resp match {
     case Value(s @ Some(_)) => s
     case Value(None)        => None
+    case Value(v)           => Some(v)
     case Error(err)         => Some(err)
     case _                  => None
   }
 
   final def getRespListSize(resp: Resp[_]): Option[Int] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.size)
+    case Value(ls: List[_])       => Some(ls.size)
     case _                        => None
   }
 
   final def getRespList[A](resp: Resp[_]): Option[List[A]] = resp match {
     case Value(Some(ls: List[_])) => Some(ls.asInstanceOf[List[A]])
+    case Value(ls: List[_])       => Some(ls.asInstanceOf[List[A]])
     case _                        => None
   }
 }

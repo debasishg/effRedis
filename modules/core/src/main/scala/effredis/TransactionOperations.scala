@@ -23,8 +23,8 @@ trait TransactionOperations[F[+_]] extends TransactionApi[F] { self: Redis[F, _]
   override def discard: F[Resp[Boolean]] =
     send("DISCARD")(asBoolean)
 
-  override def multi: F[Resp[Option[String]]] =
-    send("MULTI")(asString)
+  override def multi: F[Resp[Boolean]] =
+    send("MULTI")(asBoolean)
 
   override def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]] =
     send("EXEC")(asExec(hs))

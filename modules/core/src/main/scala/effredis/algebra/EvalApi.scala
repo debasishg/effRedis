@@ -27,19 +27,19 @@ trait EvalApi[F[+_]] {
   def evalMultiBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[List[Option[A]]]]]
+  ): F[Resp[List[Option[A]]]]
 
   def evalBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[Option[A]]]
 
-  def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Resp[Option[Int]]]
+  def evalInt(luaCode: String, keys: List[Any], args: List[Any]): F[Resp[Long]]
 
   def evalMultiSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[Option[List[Option[A]]]]]
+  ): F[Resp[List[Option[A]]]]
 
   def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
@@ -53,7 +53,7 @@ trait EvalApi[F[+_]] {
 
   def scriptLoad(luaCode: String): F[Resp[Option[String]]]
 
-  def scriptExists(shahash: String): F[Resp[Option[Int]]]
+  def scriptExists(shas: String*): F[Resp[List[Option[Int]]]]
 
-  def scriptFlush: F[Resp[Option[String]]]
+  def scriptFlush: F[Resp[String]]
 }

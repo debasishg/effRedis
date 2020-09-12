@@ -268,7 +268,7 @@ object RedisClient {
 
     import client._
 
-    send("MULTI")(asString).flatMap { _ =>
+    send("MULTI")(asSimpleString).flatMap { _ =>
       try {
         f(client).flatMap { _ =>
           // no exec if discard

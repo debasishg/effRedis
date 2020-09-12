@@ -32,12 +32,12 @@ trait NodeApi[F[+_]] {
   /**
     * return the UNIX TIME of the last DB SAVE executed with success.
     */
-  def lastsave: F[Resp[Option[Long]]]
+  def lastsave: F[Resp[Long]]
 
   /**
     * Stop all the clients, save the DB, then quit the server.
     */
-  def shutdown: F[Resp[Boolean]]
+  def shutdown: F[Resp[String]]
 
   def bgrewriteaof: F[Resp[Boolean]]
 
