@@ -27,13 +27,13 @@ trait TestListScenarios {
     for {
       _ <- lpush("list-1", "foo")
       _ <- lpush("list-1", "")
-      x <- lpush("list-1", "bar", resp.RespValues.RedisNil)
+      x <- lpush("list-1", "bar", RespValues.RedisNil)
       _ <- IO(assert(getResp(x).get == 3)) // the last nil value will be ignored and not pushed
       x <- llen("list-1")
       _ <- IO(assert(getResp(x).get == 3))
       x <- lrange("list-1", 0, 2)
       _ <- IO(assert(getResp(x).get == List(Some("bar"), Some(""), Some("foo"))))
-      x <- lpush("list-1", resp.RespValues.RedisNil)
+      x <- lpush("list-1", RespValues.RedisNil)
       _ <- IO(assert(getResp(x).get.toString.contains("wrong number of arguments for 'lpush' command")))
 
     } yield ()

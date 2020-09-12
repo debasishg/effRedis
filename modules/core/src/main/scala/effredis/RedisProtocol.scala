@@ -16,38 +16,80 @@
 
 package effredis
 
-import shapeless.{ ::, HList, HNil }
-import cats.effect._
-import cats.syntax.all._
-import codecs.Parse
+import effredis.codecs.Parse
 import Parse.{ Implicits => Parsers }
 
-case class GeoRadiusMember(
-    member: Option[String],
-    hash: Option[Long] = None,
-    dist: Option[String] = None,
-    coords: Option[(String, String)] = None
-)
+// base redis value
+sealed trait RedisValue
 
-private[effredis] object Commands {
+// base redis value holding a single value
+sealed trait SingleRedisValue extends RedisValue {
+  def value: Array[Byte]
+}
+// simple string
+case class RedisSimpleString(value: Array[Byte]) extends SingleRedisValue
+// bulk string
+case class RedisBulkString(value: Array[Byte]) extends SingleRedisValue
+// redis array that is homogeneous and single level (no nested arrays)
+case class RedisFlatArray(value: List[SingleRedisValue]) extends RedisValue {
+  def map[T](implicit parse: Parse[T]): List[Option[T]] =
+    value.map { e =>
+      try {
+        if (e.value == RespValues.NULL_BULK_STRING) None
+        else Some(parse(e.value))
+      } catch {
+        case _: Exception => None
+      }
+    }
+}
 
-  // Response codes from the Redis server
-  val ERR    = '-'
-  val OK     = "OK".getBytes("UTF-8")
-  val QUEUED = "QUEUED".getBytes("UTF-8")
-  val SINGLE = '+'
-  val BULK   = '$'
-  val MULTI  = '*'
-  val INT    = ':'
+// import scala.util.Try
 
-  val LS = "\r\n".getBytes("UTF-8")
+// integer value
+case class RedisInteger(value: Long) extends RedisValue
+// general redis array
+case class RedisArray(value: List[RedisValue]) extends RedisValue {
+  def map[T](implicit parse: Parse[T]): List[Any] =
+    value.map {
+      case RedisInteger(v) => Some(v)
+      case RedisSimpleString(value) =>
+        try { Some(parse(value)) }
+        catch { case _: Exception => None }
+      case RedisBulkString(value) =>
+        try {
+          if (value == RespValues.NULL_BULK_STRING) None
+          else Some(parse(value))
+        } catch { case e: Exception => e.printStackTrace; None }
+      case a @ RedisArray(_)     => a.map
+      case a @ RedisFlatArray(_) => a.map
+    }
+}
 
-  def multiBulk(args: Seq[Array[Byte]]): Array[Byte] = {
-    val b = new scala.collection.mutable.ArrayBuffer[Byte]
-    b ++= "*%d".format(args.size).getBytes
+// Response codes from the Redis server
+object RespValues {
+  final val ERR              = '-'
+  final val OK               = "OK".getBytes("UTF-8")
+  final val QUEUED           = "QUEUED".getBytes("UTF-8")
+  final val SIMPLE_STRING_ID = '+'
+  final val BULK_STRING_ID   = '$'
+  final val ARRAY_ID         = '*'
+  final val INTEGER_ID       = ':'
+  final val LS               = "\r\n".getBytes("UTF-8")
+  final val REDIS_NIL        = "$-1\r\n"
+  final val NULL_BULK_STRING = REDIS_NIL.getBytes("UTF-8")
+  case object RedisNil
+  final val RedisNilBytes = "__RedisNil__".getBytes("UTF-8")
+}
+
+import RespValues._
+object Request {
+  def request(args: Seq[Array[Byte]]): Array[Byte] = {
+    val b          = new scala.collection.mutable.ArrayBuffer[Byte]
+    val nonNilArgs = args.filter(_ != RedisNilBytes)
+    b ++= "*%d".format(nonNilArgs.size).getBytes
     b ++= LS
-    args foreach { arg =>
-      b ++= s"${BULK}%d".format(arg.size).getBytes
+    nonNilArgs foreach { arg =>
+      b ++= s"${BULK_STRING_ID}%d".format(arg.size).getBytes
       b ++= LS
       b ++= arg
       b ++= LS
@@ -56,79 +98,105 @@ private[effredis] object Commands {
   }
 }
 
-import Commands._
-
 case class RedisConnectionException(message: String) extends RuntimeException(message)
-case class RedisMultiExecException(message: String) extends RuntimeException(message)
 
-private[effredis] trait Reply {
-
-  type Reply[+T]        = PartialFunction[(Char, Array[Byte]), T]
-  type SingleReply      = Reply[Option[Array[Byte]]]
-  type MultiReply       = Reply[Option[List[Option[Array[Byte]]]]]
-  type MultiNestedReply = Reply[Option[List[Option[List[Option[Array[Byte]]]]]]]
-  type PairReply        = Reply[Option[(Option[Array[Byte]], Option[List[Option[Array[Byte]]]])]]
+/**
+  * In RESP, the type of some data depends on the first byte:
+  *
+  * - For Simple Strings the first byte of the reply is "+"
+  * - For Errors the first byte of the reply is "-"
+  * - For Integers the first byte of the reply is ":"
+  * - For Bulk Strings the first byte of the reply is "$"
+  * - For Arrays the first byte of the reply is "*"
+  *
+  */
+trait Reply {
+  type Reply[+T]      = PartialFunction[(Char, Array[Byte]), T]
+  type IntegerReply   = Reply[RedisInteger]
+  type SingleReply    = Reply[SingleRedisValue]
+  type ArrayReply     = Reply[RedisArray]
+  type FlatArrayReply = Reply[RedisFlatArray]
+  type PairReply      = Reply[Option[(SingleRedisValue, RedisFlatArray)]]
 
   def readLine: Array[Byte]
   def readCounted(c: Int): Array[Byte]
 
-  val integerReply: Reply[Option[Int]] = {
-    case (INT, s)                               => Some(Parsers.parseInt(s))
-    case (BULK, s) if Parsers.parseInt(s) == -1 => None
+  val integerReply: IntegerReply = {
+    case (INTEGER_ID, str) => RedisInteger(Parsers.parseLong(str))
   }
 
-  val longReply: Reply[Option[Long]] = {
-    case (INT, s)                               => Some(Parsers.parseLong(s))
-    case (BULK, s) if Parsers.parseInt(s) == -1 => None
+  val simpleStringReply: SingleReply = {
+    case (SIMPLE_STRING_ID, str) => RedisSimpleString(str)
+    case (INTEGER_ID, str)       => RedisSimpleString(str)
   }
 
-  val singleLineReply: SingleReply = {
-    case (SINGLE, s) => Some(s)
-    case (INT, s)    => Some(s)
+  val bulkStringReply: SingleReply = {
+    case (BULK_STRING_ID, str) => RedisBulkString(bulkRead(str))
   }
 
-  def bulkRead(s: Array[Byte]): Option[Array[Byte]] =
-    Parsers.parseInt(s) match {
-      case -1 => None
+  private def bulkRead(s: Array[Byte]): Array[Byte] = {
+    val size = Parsers.parseInt(s)
+    size match {
+      // this means we have received "$-1\r\n" which is the null bulk string
+      case -1 => NULL_BULK_STRING
       case l =>
         val str = readCounted(l)
         val _   = readLine // trailing newline
-        Some(str)
+        str
     }
-
-  val bulkReply: SingleReply = {
-    case (BULK, s) =>
-      bulkRead(s)
   }
 
-  val multiBulkReply: MultiReply = {
-    case (MULTI, str) =>
-      Parsers.parseInt(str) match {
-        case -1 => None
-        case n  => Some(List.fill(n)(receive(bulkReply orElse singleLineReply)))
+  // we treat such simple arrays differently to make it more type-safe
+  // so it can be transformed into a List[T]. Generic redis array will always
+  // give me a List[Any]
+  val flatArrayReply: FlatArrayReply = {
+    case (ARRAY_ID, str) => {
+      val size = Parsers.parseInt(str)
+      size match {
+        // this means we have received "$-1\r\n" which is the null bulk string
+        case -1 => RedisFlatArray(List(RedisBulkString(NULL_BULK_STRING)))
+        case n =>
+          RedisFlatArray(
+            List.fill(n)(
+              receive(
+                simpleStringReply orElse bulkStringReply
+              )
+            )
+          )
       }
+    }
   }
 
-  val multiBulkNested: MultiNestedReply = {
-    case (MULTI, str) =>
-      Parsers.parseInt(str) match {
-        case -1 => None
-        case n => {
-          Some(List.fill(n)(receive(multiBulkReply)))
-        }
+  val arrayReply: ArrayReply = {
+    case (ARRAY_ID, str) => {
+      val size = Parsers.parseInt(str)
+      size match {
+        case -1 => RedisArray(List(RedisBulkString(NULL_BULK_STRING)))
+        case n =>
+          RedisArray(
+            List.fill(n)(
+              receive(
+                integerReply orElse
+                    simpleStringReply orElse
+                    bulkStringReply orElse
+                    arrayReply
+              )
+            )
+          )
       }
+    }
   }
 
   val pairBulkReply: PairReply = {
-    case (MULTI, str) =>
+    case (ARRAY_ID, str) =>
       Parsers.parseInt(str) match {
-        case 2 => Some((receive(bulkReply orElse singleLineReply), receive(multiBulkReply)))
+        case 2 => Some((receive(bulkStringReply orElse simpleStringReply), receive(flatArrayReply)))
         case _ => None
       }
   }
 
   def execReply(handlers: Seq[() => Any]): PartialFunction[(Char, Array[Byte]), Option[List[Any]]] = {
-    case (MULTI, str) =>
+    case (ARRAY_ID, str) =>
       Parsers.parseInt(str) match {
         case -1 => None
         case n if n == handlers.size =>
@@ -145,27 +213,9 @@ private[effredis] trait Reply {
       }
   }
 
-  def evaluate[F[_]: Concurrent: ContextShift, In <: HList, Out <: HList](commands: In, res: Out): F[Any] =
-    commands match {
-      case HNil                      => F.pure(res)
-      case (h: F[_] @unchecked) :: t => h.flatMap(fb => evaluate(t, fb :: res))
-    }
-
   val errReply: Reply[Nothing] = {
     case (ERR, s) => throw new Exception(Parsers.parseString(s))
     case x        => throw new Exception("Protocol error: Got " + x + " as initial reply byte")
-  }
-
-  def queuedReplyInt: Reply[Option[Int]] = {
-    case (SINGLE, QUEUED) => Some(Int.MaxValue)
-  }
-
-  def queuedReplyLong: Reply[Option[Long]] = {
-    case (SINGLE, QUEUED) => Some(Long.MaxValue)
-  }
-
-  def queuedReplyList: MultiReply = {
-    case (SINGLE, QUEUED) => Some(List(Some(QUEUED)))
   }
 
   def receive[T](pf: Reply[T]): T = readLine match {
@@ -175,153 +225,73 @@ private[effredis] trait Reply {
       (pf orElse errReply) apply ((line(0).toChar, line.slice(1, line.length)))
     }
   }
-
-  /**
-    * The following partial functions intend to manage the response from the GEORADIUS and GEORADIUSBYMEMBER commands.
-    * The code is not as generic as the previous ones as the exposed types are quite complex and really specific
-    * to these two commands
-    */
-  type FoldReply = PartialFunction[(Char, Array[Byte], Option[GeoRadiusMember]), Option[GeoRadiusMember]]
-
-  /**
-    * dedicated errorReply working with foldReceive.
-    * @tparam A
-    * @return
-    */
-  private def errFoldReply[A]: FoldReply = {
-    case (ERR, s, _) => throw new Exception(Parsers.parseString(s))
-    case x           => throw new Exception("Protocol error: Got " + x + " as initial reply byte")
-  }
-
-  /**
-    * dedicated receive used in our fold strategy
-    * @param pf
-    * @param a
-    * @tparam A
-    * @return
-    */
-  private def foldReceive[A](pf: FoldReply, a: Option[GeoRadiusMember]): Option[GeoRadiusMember] = readLine match {
-    case null =>
-      throw new RedisConnectionException("Connection dropped ..")
-    case line =>
-      (pf orElse errFoldReply) apply ((line(0).toChar, line.slice(1, line.length), a))
-  }
-
-  /**
-    * Final step : we feed our accumulator with the data we find.
-    *
-    *  - First BULK : It is the member name
-    *  - Second BULK : It is the distance to the ref point
-    *  - INT : The member hash
-    *  - MULTI : The member coordinates. Should contain exactly two members.
-    */
-  private val complexGeoRadius
-      : PartialFunction[(Char, Array[Byte], Option[GeoRadiusMember]), Option[GeoRadiusMember]] = {
-    case (BULK, s, a) =>
-      val retrieved = bulkRead(s)
-      retrieved.map { ret =>
-        a.fold(GeoRadiusMember(Some(Parsers.parseString(ret)))) { some =>
-          some.member.fold(GeoRadiusMember(Some(Parsers.parseString(ret)))) { _ =>
-            some.copy(dist = Some(Parsers.parseString(ret)))
-          }
-        }
-      }
-    case (INT, s, opt) => opt.map(a => a.copy(hash = Some(Parsers.parseLong(s))))
-    case (MULTI, s, a) =>
-      Parsers.parseInt(s) match {
-        case 2 =>
-          val lon: Option[String] = receive(bulkReply).map(Parsers.parseString)
-          val lat: Option[String] = receive(bulkReply).map(Parsers.parseString)
-          a.map(_.copy(coords = Some((lon.getOrElse(""), lat.getOrElse("")))))
-        case _ => None
-      }
-  }
-
-  /**
-    * Second step : We must manage two distinct cases:
-    *
-    *  - The user performed a basic search, he will only receive strings listing the members found in the radius. A
-    *    BULK is exposed in this case.
-    *  - The user performed a complex search (with radius, coordinates or distance in the result). A more complex data structure
-    *    is exposed, as a MULTI containing a BULK, a possible BULK, a possible INT and a possible MULTI. We use a dedicated
-    *    strategy for this containing MULTI that will be able to manage all the possible cases. Rather than using a List.fill here,
-    *    we use a range and fold on it in order to be able to use an accumulator. This way, the accumulator is fed with each
-    *    member of the multi and changed accordingly
-    */
-  private val singleGeoRadius: Reply[Option[GeoRadiusMember]] = {
-    case (BULK, s) =>
-      bulkRead(s).map(str => GeoRadiusMember(Some(Parsers.parseString(str))))
-    case (MULTI, str) =>
-      Parsers.parseInt(str) match {
-        case -1 => None
-        case n =>
-          val out: Option[GeoRadiusMember] =
-            List.range(0, n).foldLeft[Option[GeoRadiusMember]](None)((in, _) => foldReceive(complexGeoRadius, in))
-          out
-      }
-  }
-
-  /**
-    * Entry point for GEORADIUS result analysis. The analysis is done in three steps.
-    *
-    * First step : we are expecting a MULTI structure and will iterate trivially on it.
-    */
-  val geoRadiusMemberReply: Reply[Option[List[Option[GeoRadiusMember]]]] = {
-    case (MULTI, str) =>
-      Parsers.parseInt(str) match {
-        case -1 => None
-        case n  => Some(List.fill(n)(receive(singleGeoRadius)))
-      }
-  }
 }
 
-private[effredis] trait R extends Reply {
-  def asString: Option[String] = receive(singleLineReply) map Parsers.parseString
+trait R extends Reply {
+  def asSimpleString: String = Parsers.parseString(receive(simpleStringReply).value)
+  def asBoolean: Boolean =
+    if (asSimpleString == "OK") true else false
 
-  def asBulk[T](implicit parse: Parse[T]): Option[T] = receive(bulkReply) map parse
+  def asBulkString[T](implicit parse: Parse[T]): Option[T] =
+    receive(bulkStringReply).value match {
+      case NULL_BULK_STRING => None
+      case v                => Some(parse(v))
+    }
 
-  def asBulkWithTime[T](implicit parse: Parse[T]): Option[T] = receive(bulkReply orElse multiBulkReply) match {
-    case Some(bytes: Array[Byte]) => Some(parse(bytes))
-    case _                        => None
+  def asBulkWithTime[T](implicit parse: Parse[T]): Option[T] = receive(bulkStringReply orElse flatArrayReply) match {
+    case s: SingleRedisValue => Some(parse(s.value))
+    case _                   => None
   }
 
-  def asInt: Option[Int]   = receive(integerReply orElse queuedReplyInt)
-  def asLong: Option[Long] = receive(longReply orElse queuedReplyLong)
+  def asInteger: Long = receive(integerReply).value
 
-  def asBoolean: Boolean = receive(integerReply orElse singleLineReply) match {
-    case Some(n: Int) => n > 0
-    case Some(s: Array[Byte]) =>
-      Parsers.parseString(s) match {
-        case "OK"     => true
-        case "QUEUED" => true
-        case _        => false
+  def asList[T](implicit parse: Parse[T]): List[Any] = receive(arrayReply).map
+
+  def asFlatList[T](implicit parse: Parse[T]): List[Option[T]] = receive(flatArrayReply).map
+
+  def asSet[T: Parse]: Set[Option[T]] = asFlatList.toSet
+
+  def asFlatListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): List[(A, B)] =
+    receive(flatArrayReply).value
+      .grouped(2)
+      .flatMap {
+        case List(a, b) => Iterator.single((parseA(a.value), parseB(b.value)))
       }
-    case _ => false
-  }
+      .toList
 
-  def asList[T](implicit parse: Parse[T]): Option[List[Option[T]]] = receive(multiBulkReply).map(_.map(_.map(parse)))
-  def asNestedList[T](implicit parse: Parse[T]): Option[List[Option[List[Option[T]]]]] =
-    receive(multiBulkNested).map(_.map(_.map(_.map(_.map(parse)))))
-
-  def asListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): Option[List[Option[(A, B)]]] =
-    receive(multiBulkReply).map(_.grouped(2).flatMap {
-      case List(Some(a), Some(b)) => Iterator.single(Some((parseA(a), parseB(b))))
-      case _                      => Iterator.single(None)
-    }.toList)
-
-  def asQueuedList: Option[List[Option[String]]] = receive(queuedReplyList).map(_.map(_.map(Parsers.parseString)))
-
-  def asExec(handlers: Seq[() => Any]): Option[List[Any]] = receive(execReply(handlers))
-
-  def asSet[T: Parse]: Option[Set[Option[T]]] = asList map (_.toSet)
-
-  def asPair[T](implicit parse: Parse[T]): Option[(Option[Int], Option[List[Option[T]]])] =
+  def asPair[T](implicit parse: Parse[T]): Option[(Int, List[Option[T]])] =
     receive(pairBulkReply) match {
-      case Some((single, multi)) => Some(((single map Parsers.parseInt), multi.map(_.map(_.map(parse)))))
+      case Some((single, multi)) => Some((Parsers.parseInt(single.value), multi.map))
       case _                     => None
     }
 
-  def asAny = receive(integerReply orElse singleLineReply orElse bulkReply orElse multiBulkReply orElse multiBulkNested)
+  def asExec(handlers: Seq[() => Any]): Option[List[Any]] = receive(execReply(handlers))
 }
 
 trait Protocol extends R
+
+object Main extends App with R {
+  val resp = "$6\r\nfoobar\r\n"
+  val arr  = resp.split("\r\n")
+
+  // val respArray = "*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n"
+  val respArray =
+    "*4\r\n:5461\r\n:10922\r\n*3\r\n$9\r\n127.0.0.1\r\n:7001\r\n$40\r\n677eadd2d4e1370cf42994a263a9f5b038d2bc23\r\n*3\r\n$9\r\n127.0.0.1\r\n:7005\r\n$40\r\n30849963e7a43960cea0e443b054ea8d55046192\r\n"
+  // val respArray = "*3\r\n:5461\r\n:10922\r\n*3\r\n$9\r\n127.0.0.1\r\n:7001\r\n$40\r\n677eadd2d4e1370cf42994a263a9f5b038d2bc23\r\n"
+  val arrArray = respArray.split("\r\n")
+
+  var cursor = 0
+
+  def readLine: Array[Byte] = {
+    val r = arrArray(cursor).getBytes("UTF-8")
+    cursor += 1
+    r
+  }
+
+  def readCounted(n: Int): Array[Byte] = {
+    val r = arrArray(cursor).substring(0, n).getBytes("UTF-8")
+    cursor += 1
+    r
+  }
+  println(asList)
+}

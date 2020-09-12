@@ -15,7 +15,7 @@
  */
 
 package effredis.codecs
-import effredis.resp.RespValues._
+import effredis.RespValues._
 
 object Format {
   def apply(f: PartialFunction[Any, Any]): Format = new Format(f)
