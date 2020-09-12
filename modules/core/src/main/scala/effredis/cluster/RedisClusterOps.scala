@@ -793,7 +793,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
       implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       format: Format,
       parseV: Parse[V]
-  ): F[Resp[List[Option[V]]]] =
+  ): F[Resp[Map[K, Option[V]]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.hmget[K, V](key, fields: _*)
@@ -878,7 +878,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
       format: Format,
       parseK: Parse[K],
       parseV: Parse[V]
-  ): F[Resp[Map[K, V]]] =
+  ): F[Resp[Option[Map[K, V]]]] =
     forKey(key.toString) { node =>
       node.managedClient(pool, node.uri).use {
         _.hgetall[K, V](key)

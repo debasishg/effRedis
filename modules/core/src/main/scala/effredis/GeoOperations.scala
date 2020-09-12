@@ -31,7 +31,7 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
     send("GEOADD", l)(asInteger)
   }
 
-  def geopos(key: Any, members: Any*)(
+  override def geopos(key: Any, members: Any*)(
       implicit format: Format
   ): F[Resp[List[Option[GeoCoordinate]]]] =
     send("GEOPOS", List(key) ::: members.toList) {
@@ -48,16 +48,14 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
       }
     }
 
-  /*
-  override def geohash[A](
+  override def geohash(
       key: Any,
       members: Iterable[Any]
-  )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    send("GEOHASH", key :: members.toList)(asList[A])
+  )(implicit format: Format): F[Resp[List[Option[String]]]] =
+    send("GEOHASH", key :: members.toList)(asFlatList[String])
 
-  override def geodist(key: Any, m1: Any, m2: Any, unit: Option[Any]): F[Resp[Option[String]]] =
-    send("GEODIST", List(key, m1, m2) ++ unit.toList)(asBulk[String])
-   */
+  override def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit]): F[Resp[Option[Double]]] =
+    send("GEODIST", List(key, m1, m2) ++ List(unit.getOrElse(Containers.m)))(asBulkString[String].map(_.toDouble))
 
 //   override def georadius(
 //       key: Any,

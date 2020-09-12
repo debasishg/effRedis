@@ -30,7 +30,7 @@ trait HashApi[F[+_]] {
 
   def hmset(key: Any, map: Iterable[Product2[Any, Any]])(implicit format: Format): F[Resp[Boolean]]
 
-  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[List[Option[V]]]]
+  def hmget[K, V](key: Any, fields: K*)(implicit format: Format, parseV: Parse[V]): F[Resp[Map[K, Option[V]]]]
 
   def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Long]]
 
@@ -48,7 +48,7 @@ trait HashApi[F[+_]] {
 
   def hgetall[K, V](
       key: Any
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Map[K, V]]]
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[Map[K, V]]]]
 
   /**
     * Incrementally iterate hash fields and associated values (since 2.8)

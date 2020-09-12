@@ -42,8 +42,8 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   override def hmget[K, V](
       key: Any,
       fields: K*
-  )(implicit format: Format, parseV: Parse[V]): F[Resp[List[Option[V]]]] =
-    send("HMGET", List(key) ::: fields.toList)(asFlatList[V])
+  )(implicit format: Format, parseV: Parse[V]): F[Resp[Map[K, Option[V]]]] =
+    send("HMGET", List(key) ::: fields.toList)(fields.toList.zip(asFlatList[V]).toMap)
 
   override def hincrby(key: Any, field: Any, value: Long)(implicit format: Format): F[Resp[Long]] =
     send("HINCRBY", List(key, field, value))(asInteger)
@@ -68,10 +68,19 @@ trait HashOperations[F[+_]] extends HashApi[F] { self: Redis[F, _] =>
   override def hvals[A](key: Any)(implicit format: Format, parse: Parse[A]): F[Resp[List[Option[A]]]] =
     send("HVALS", List(key))(asFlatList)
 
+  /**
+    * returns a Some(Map) of key/value pairs when the key exists. If the key does not exist, then
+    * it returns None. This is symmetrical with how hset works. You cannot set an empty Map
+    * - hence hgetall should not return an empty Map if the key does not exist.
+    */
   override def hgetall[K, V](
       key: Any
-  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Map[K, V]]] =
-    send("HGETALL", List(key))(asFlatListPairs[K, V].toMap)
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[Map[K, V]]]] =
+    send("HGETALL", List(key)) {
+      val m = asFlatListPairs[K, V].toMap
+      if (m.isEmpty) None
+      else Some(m)
+    }
 
   override def hscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,

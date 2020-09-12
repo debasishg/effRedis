@@ -29,13 +29,11 @@ trait GeoApi[F[+_]] {
       implicit format: Format
   ): F[Resp[List[Option[GeoCoordinate]]]]
 
-  /*
   def geohash(key: Any, members: Iterable[Any])(
       implicit format: Format
-  ): F[Resp[List[String]]]
+  ): F[Resp[List[Option[String]]]]
 
-  def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit]): F[Resp[Double]]
-   */
+  def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit]): F[Resp[Option[Double]]]
 
 //   def georadius(
 //       key: Any,

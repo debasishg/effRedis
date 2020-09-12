@@ -48,11 +48,11 @@ trait TestHashScenarios {
       x <- hmset("hash2", Map("field1" -> "val1", "field2" -> "val2"))
       _ <- IO(assert(getBoolean(x)))
       x <- hmget("hash2", "field1")
-      _ <- IO(assert(getResp(x).get == List(Some("val1"))))
+      _ <- IO(assert(getResp(x).get == Map("field1" -> Some("val1"))))
       x <- hmget("hash2", "field1", "field2")
-      _ <- IO(assert(getResp(x).get == List(Some("val1"), Some("val2"))))
+      _ <- IO(assert(getResp(x).get == Map("field1" -> Some("val1"), "field2" -> Some("val2"))))
       x <- hmget("hash2", "field1", "field2", "field3")
-      _ <- IO(assert(getResp(x).get == List(Some("val1"), Some("val2"), None)))
+      _ <- IO(assert(getResp(x).get == Map("field1" -> Some("val1"), "field2" -> Some("val2"), "field3" -> None)))
 
       // should increment map values
       _ <- hincrby("hash3", "field1", 1)
@@ -131,6 +131,10 @@ trait TestHashScenarios {
       _ <- IO(assert(getResp(x).get.toString.contains("wrong number of arguments for 'hmset' command")))
       x <- hget("hash1", "field1")
       _ <- IO(assert(getResp(x).get == "val1"))
+      x <- hgetall("hash1")
+      _ <- IO(assert(getResp(x).get == Map("field1" -> "val1", "field2" -> "val2")))
+      x <- hgetall("NonExistentKey")
+      _ <- IO(assert(getResp(x) == None))
     } yield ()
   }
 }

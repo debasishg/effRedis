@@ -29,4 +29,11 @@ object Containers {
   case object km extends GeoUnit
   case object mi extends GeoUnit
   case object ft extends GeoUnit
+
+  case class GeoRadiusMember(
+      member: Option[String],
+      hash: Option[Long] = None,
+      dist: Option[String] = None,
+      coords: Option[(String, String)] = None
+  )
 }
