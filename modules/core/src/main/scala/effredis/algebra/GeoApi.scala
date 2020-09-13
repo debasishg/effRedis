@@ -17,8 +17,7 @@
 package effredis
 package algebra
 
-// import codecs.{ Format, Parse }
-import codecs.Format
+import codecs.{ Format, Parse }
 import Containers._
 
 trait GeoApi[F[+_]] {
@@ -33,7 +32,33 @@ trait GeoApi[F[+_]] {
       implicit format: Format
   ): F[Resp[List[Option[String]]]]
 
-  def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit]): F[Resp[Option[Double]]]
+  def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit])(
+      implicit format: Format
+  ): F[Resp[Option[Double]]]
+
+  def georadius[A](key: Any, geoRadius: GeoRadius, unit: GeoUnit)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[Set[Option[A]]]]
+
+  def georadius[A](key: Any, geoRadius: GeoRadius, unit: GeoUnit, args: GeoRadiusArgs)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[GeoRadiusMember]]]
+
+  def georadiusByMember[A](key: Any, value: Any, distance: Distance, unit: GeoUnit)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[Set[Option[A]]]]
+
+  def georadiusByMember[A](key: Any, value: Any, distance: Distance, unit: GeoUnit, args: GeoRadiusArgs)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[GeoRadiusMember]]]
+
+  // def geoRadius(key: K, geoRadius: GeoRadius, unit: GeoArgs.Unit, args: GeoArgs): F[List[GeoRadiusResult[V]]]
+  // def geoRadiusByMember(key: K, value: V, dist: Distance, unit: GeoArgs.Unit): F[Set[V]]
+  // def geoRadiusByMember(key: K, value: V, dist: Distance, unit: GeoArgs.Unit, args: GeoArgs): F[List[GeoRadiusResult[V]]]
 
 //   def georadius(
 //       key: Any,
