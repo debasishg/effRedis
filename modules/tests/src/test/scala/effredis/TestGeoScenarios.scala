@@ -72,7 +72,13 @@ trait TestGeoScenarios {
             GeoRadiusArgs(withCoord = true, withDist = true, withHash = true, Some(4), Some(ASC))
           )
       _ <- IO(assert(getRespListSize(x).get == 2))
-      _ <- IO(println(getResp(x)))
+      // _ <- IO(println(getResp(x)))
+      _ <- IO {
+            x match {
+              case Value(members) => assert(members.map(_.member.get).toSet == Set("Catania", "Palermo"))
+              case _              => false
+            }
+          }
 
       x <- georadius(
             "Sicily",
@@ -81,7 +87,13 @@ trait TestGeoScenarios {
             GeoRadiusArgs(withCoord = true, withDist = false, withHash = true, Some(4), Some(ASC))
           )
       _ <- IO(assert(getRespListSize(x).get == 2))
-      _ <- IO(println(getResp(x)))
+      // _ <- IO(println(getResp(x)))
+      _ <- IO {
+            x match {
+              case Value(members) => assert(members.map(_.member.get).toSet == Set("Catania", "Palermo"))
+              case _              => false
+            }
+          }
 
     } yield ()
   }
@@ -105,7 +117,13 @@ trait TestGeoScenarios {
             km,
             GeoRadiusArgs(withCoord = true, withDist = true, withHash = true, Some(4), Some(ASC))
           )
-      _ <- IO(println(getResp(x)))
+      // _ <- IO(println(getResp(x)))
+      _ <- IO {
+            x match {
+              case Value(members) => assert(members.map(_.member.get).toSet == Set("Agrigento", "Palermo"))
+              case _              => false
+            }
+          }
     } yield ()
   }
 }

@@ -69,30 +69,13 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[GeoRadiusMember]]] =
-    send("GEORADIUS", List(key) ::: geoRadius.asListString ::: List(unit) ::: args.value) {
-      val resp = asList
-      resp.map { mem =>
-        val lmem = mem.asInstanceOf[List[_]]
-        // member name
-        val mname = lmem.head.asInstanceOf[Option[String]]
-
-        // distance (if present)
-        val mdist =
-          if (args.withDist) lmem.tail.head.asInstanceOf[Option[String]].map(_.toDouble).map(Distance(_)) else None
-
-        // hash (if present)
-        val mhashIdx = if (mdist.isDefined) 2 else 1
-        val mhash    = if (args.withHash) lmem(mhashIdx).asInstanceOf[Option[Long]] else None
-
-        // coordinates (if present)
-        val coords = if (args.withCoord) {
-          val cos = lmem.last.asInstanceOf[List[Option[String]]].map(_.map(_.toDouble))
-          Some(GeoCoordinate(Longitude(cos.head.get), Latitude(cos.tail.head.get)))
-        } else None
-
-        GeoRadiusMember(mname, mhash, mdist, coords)
-      }
-    }
+    send(
+      "GEORADIUS",
+      List(key) :::
+          geoRadius.asListString :::
+          List(unit) :::
+          args.value
+    )(processResponseForGeoRadius(asList, args))
 
   override def georadiusByMember[A](key: Any, value: Any, distance: Distance, unit: GeoUnit)(
       implicit format: Format,
@@ -104,100 +87,32 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[GeoRadiusMember]]] =
-    send("GEORADIUSBYMEMBER", List(key, value) ::: List(distance.value.toString, unit) ::: args.value) {
-      val resp = asList
-      resp.map { mem =>
-        val lmem = mem.asInstanceOf[List[_]]
-        // member name
-        val mname = lmem.head.asInstanceOf[Option[String]]
+    send(
+      "GEORADIUSBYMEMBER",
+      List(key, value) :::
+          List(distance.value.toString, unit) :::
+          args.value
+    )(processResponseForGeoRadius(asList, args))
 
-        // distance (if present)
-        val mdist =
-          if (args.withDist) lmem.tail.head.asInstanceOf[Option[String]].map(_.toDouble).map(Distance(_)) else None
+  private def processResponseForGeoRadius(resp: List[Any], args: GeoRadiusArgs) = resp.map { mem =>
+    val lmem = mem.asInstanceOf[List[_]]
+    // member name
+    val mname = lmem.head.asInstanceOf[Option[String]]
 
-        // hash (if present)
-        val mhashIdx = if (mdist.isDefined) 2 else 1
-        val mhash    = if (args.withHash) lmem(mhashIdx).asInstanceOf[Option[Long]] else None
+    // distance (if present)
+    val mdist =
+      if (args.withDist) lmem.tail.head.asInstanceOf[Option[String]].map(_.toDouble).map(Distance(_)) else None
 
-        // coordinates (if present)
-        val coords = if (args.withCoord) {
-          val cos = lmem.last.asInstanceOf[List[Option[String]]].map(_.map(_.toDouble))
-          Some(GeoCoordinate(Longitude(cos.head.get), Latitude(cos.tail.head.get)))
-        } else None
+    // hash (if present)
+    val mhashIdx = if (mdist.isDefined) 2 else 1
+    val mhash    = if (args.withHash) lmem(mhashIdx).asInstanceOf[Option[Long]] else None
 
-        GeoRadiusMember(mname, mhash, mdist, coords)
-      }
-    }
+    // coordinates (if present)
+    val coords = if (args.withCoord) {
+      val cos = lmem.last.asInstanceOf[List[Option[String]]].map(_.map(_.toDouble))
+      Some(GeoCoordinate(Longitude(cos.head.get), Latitude(cos.tail.head.get)))
+    } else None
 
-//   List(
-//     List(
-//       Some(Catania),
-//       Some(56.4413),
-//       Some(3479447370796909),
-//       List(
-//         Some(15.08726745843887329),
-//         Some(37.50266842333162032)
-//       )
-//     ),
-//     List(
-//       Some(Palermo),
-//       Some(190.4424),
-//       Some(3479099956230698),
-//       List(
-//         Some(13.36138933897018433),
-//         Some(38.11555639549629859)
-//       )
-//     )
-//   )
-
-//   override def georadius(
-//       key: Any,
-//       longitude: Any,
-//       latitude: Any,
-//       radius: Any,
-//       unit: Any,
-//       withCoord: Boolean,
-//       withDist: Boolean,
-//       withHash: Boolean,
-//       count: Option[Int],
-//       sort: Option[Any],
-//       store: Option[Any],
-//       storeDist: Option[Any]
-//   ): F[Resp[Option[List[Option[GeoRadiusMember]]]]] = {
-//     val radArgs = List(
-//       if (withCoord) List("WITHCOORD") else Nil,
-//       if (withDist) List("WITHDIST") else Nil,
-//       if (withHash) List("WITHHASH") else Nil,
-//       sort.fold[List[Any]](Nil)(b => List(b)),
-//       count.fold[List[Any]](Nil)(b => List("COUNT", b)),
-//       store.fold[List[Any]](Nil)(b => List("STORE", b)),
-//       storeDist.fold[List[Any]](Nil)(b => List("STOREDIST", b))
-//     ).flatten
-//     send("GEORADIUS", List(key, longitude, latitude, radius, unit) ++ radArgs)(receive(geoRadiusMemberReply))
-//   }
-//
-//   override def georadiusbymember[A](
-//       key: Any,
-//       member: Any,
-//       radius: Any,
-//       unit: Any,
-//       withCoord: Boolean,
-//       withDist: Boolean,
-//       withHash: Boolean,
-//       count: Option[Int],
-//       sort: Option[Any],
-//       store: Option[Any],
-//       storeDist: Option[Any]
-//   )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[GeoRadiusMember]]]]] = {
-//     val radArgs = List(
-//       if (withCoord) List("WITHCOORD") else Nil,
-//       if (withDist) List("WITHDIST") else Nil,
-//       if (withHash) List("WITHHASH") else Nil,
-//       sort.fold[List[Any]](Nil)(b => List(b)),
-//       count.fold[List[Any]](Nil)(b => List("COUNT", b)),
-//       store.fold[List[Any]](Nil)(b => List("STORE", b)),
-//       storeDist.fold[List[Any]](Nil)(b => List("STOREDIST", b))
-//     ).flatten
-//     send("GEORADIUSBYMEMBER", List(key, member, radius, unit) ++ radArgs)(receive(geoRadiusMemberReply))
-//   }
+    GeoRadiusMember(mname, mhash, mdist, coords)
+  }
 }
