@@ -100,4 +100,7 @@ class EffRedisSpec
   test("hll pfcount")(withRedis(hllPfCount))
   test("hll pfmerge")(withRedis(hllPfMerge))
   test("geo")(withRedis(geosGeoAdd))
+  test("geo")(withRedis(geosGeoPos))
+  test("geo")(withRedis(geosGeoRadius))
+  test("geo")(withRedis(geosGeoRadiusByMember))
 }

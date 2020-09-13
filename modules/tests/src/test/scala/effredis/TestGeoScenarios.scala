@@ -32,10 +32,80 @@ trait TestGeoScenarios {
             GeoLocation(Longitude(15.087269), Latitude(37.502669), "Catania")
           )
       _ <- IO(assert(getResp(x).get == 2))
+    } yield ()
+  }
+
+  final def geosGeoPos(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      x <- geoadd(
+            "Sicily",
+            GeoLocation(Longitude(13.361389), Latitude(38.115556), "Palermo"),
+            GeoLocation(Longitude(15.087269), Latitude(37.502669), "Catania")
+          )
+      _ <- IO(assert(getResp(x).get == 2))
+
       x <- geopos("Sicily", "Palermo", "Catania", "NonExisting")
       _ <- IO(assert(getRespList[Option[GeoCoordinate]](x).get.filter(_.isDefined).size == 2))
       _ <- IO(assert(getRespList[Option[GeoCoordinate]](x).get.filter(!_.isDefined).size == 1))
+    } yield ()
+  }
 
+  final def geosGeoRadius(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      _ <- geoadd(
+            "Sicily",
+            GeoLocation(Longitude(13.361389), Latitude(38.115556), "Palermo"),
+            GeoLocation(Longitude(15.087269), Latitude(37.502669), "Catania")
+          )
+
+      x <- georadius("Sicily", GeoRadius(Longitude(15), Latitude(37), Distance(200)), km)
+      _ <- IO(assert(getResp(x).get == Set(Some("Palermo"), Some("Catania"))))
+      x <- georadius("NonExisting", GeoRadius(Longitude(15), Latitude(37), Distance(200)), km)
+      _ <- IO(assert(getResp(x).get == Set.empty))
+
+      x <- georadius(
+            "Sicily",
+            GeoRadius(Longitude(15), Latitude(37), Distance(200)),
+            km,
+            GeoRadiusArgs(withCoord = true, withDist = true, withHash = true, Some(4), Some(ASC))
+          )
+      _ <- IO(assert(getRespListSize(x).get == 2))
+      _ <- IO(println(getResp(x)))
+
+      x <- georadius(
+            "Sicily",
+            GeoRadius(Longitude(15), Latitude(37), Distance(200)),
+            km,
+            GeoRadiusArgs(withCoord = true, withDist = false, withHash = true, Some(4), Some(ASC))
+          )
+      _ <- IO(assert(getRespListSize(x).get == 2))
+      _ <- IO(println(getResp(x)))
+
+    } yield ()
+  }
+
+  final def geosGeoRadiusByMember(cmd: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import cmd._
+    for {
+      x <- geoadd(
+            "Sicily",
+            GeoLocation(Longitude(13.583333), Latitude(37.316667), "Agrigento"),
+            GeoLocation(Longitude(13.361389), Latitude(38.115556), "Palermo"),
+            GeoLocation(Longitude(15.087269), Latitude(37.502669), "Catania")
+          )
+      _ <- IO(assert(getResp(x).get == 3))
+      x <- georadiusByMember("Sicily", "Agrigento", Distance(100), km)
+      _ <- IO(assert(getResp(x).get == Set(Some("Agrigento"), Some("Palermo"))))
+      x <- georadiusByMember(
+            "Sicily",
+            "Agrigento",
+            Distance(100),
+            km,
+            GeoRadiusArgs(withCoord = true, withDist = true, withHash = true, Some(4), Some(ASC))
+          )
+      _ <- IO(println(getResp(x)))
     } yield ()
   }
 }

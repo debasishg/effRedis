@@ -16,13 +16,41 @@
 
 package effredis
 
+import scala.collection.mutable.ListBuffer
+
 object Containers {
   final case class Latitude(value: Double) extends AnyVal
   final case class Longitude(value: Double) extends AnyVal
+  final case class Distance(value: Double) extends AnyVal
 
   final case class GeoCoordinate(longitude: Longitude, latitude: Latitude)
-
   final case class GeoLocation(longitude: Longitude, latitude: Latitude, member: String)
+  final case class GeoRadius(longitude: Longitude, latitude: Latitude, dist: Distance) {
+    def asListString: List[String] =
+      List(longitude.value.toString, latitude.value.toString, dist.value.toString)
+  }
+
+  final case class GeoRadiusArgs(
+      withCoord: Boolean,
+      withDist: Boolean,
+      withHash: Boolean,
+      count: Option[Int],
+      sort: Option[GeoSort]
+  ) {
+    def value: List[String] = {
+      val b: ListBuffer[String] = ListBuffer.empty
+      if (withCoord) b += "WITHCOORD"
+      if (withDist) b += "WITHDIST"
+      if (withHash) b += "WITHHASH"
+      count.foreach(c => (b ++= List("COUNT", c.toString)))
+      sort.foreach(s => (b += s.toString))
+      b.toList
+    }
+  }
+
+  sealed trait GeoSort
+  case object ASC extends GeoSort
+  case object DESC extends GeoSort
 
   sealed trait GeoUnit
   case object m extends GeoUnit
@@ -33,7 +61,7 @@ object Containers {
   case class GeoRadiusMember(
       member: Option[String],
       hash: Option[Long] = None,
-      dist: Option[String] = None,
-      coords: Option[(String, String)] = None
+      dist: Option[Distance] = None,
+      coords: Option[GeoCoordinate] = None
   )
 }
