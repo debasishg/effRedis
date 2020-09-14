@@ -20,6 +20,7 @@ import cats.effect._
 import RedisClient.DESC
 
 import EffRedisFunSuite._
+import effredis.Containers.{ NX, XX }
 
 trait TestSortedSetScenarios {
   implicit def cs: ContextShift[IO]
@@ -30,12 +31,12 @@ trait TestSortedSetScenarios {
       _ <- IO(assert(getResp(x).get == 1))
       x <- cmd.zadd(
             "hackers",
-            1953,
+            1953d,
             "richard stallman",
-            (1916, "claude shannon"),
-            (1969, "linus torvalds"),
-            (1940, "alan kay"),
-            (1912, "alan turing")
+            (1916d, "claude shannon"),
+            (1969d, "linus torvalds"),
+            (1940d, "alan kay"),
+            (1912d, "alan turing")
           )
       _ <- IO(assert(getResp(x).get == 5))
     } yield ()
@@ -44,7 +45,7 @@ trait TestSortedSetScenarios {
     import cmd._
     for {
       // should return the elements between min and max
-      x <- zadd("hackers-joker", 0, "a", (0, "b"), (0, "c"), (0, "d"))
+      x <- zadd("hackers-joker", 0d, "a", (0d, "b"), (0d, "c"), (0d, "d"))
       _ <- IO(assert(getResp(x).get == 4))
       x <- zrangebylex("hackers-joker", "[a", "[b", None)
       _ <- IO(assert(getResp(x).get == List(Some("a"), Some("b"))))
@@ -62,6 +63,20 @@ trait TestSortedSetScenarios {
       _ <- add(client)
       x <- zadd("hackers", 1912, "alan turing")
       _ <- IO(assert(getResp(x).get == 0))
+      x <- zcard("hackers")
+      _ <- IO(assert(getResp(x).get == 6))
+    } yield ()
+  }
+
+  final def sortedSetsZAddWithOptions(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import client._
+    for {
+      // should add based on proper sorted set semantics
+      _ <- add(client)
+      x <- zadd("hackers", NX, true, 1922, "alan turing")
+      _ <- IO(assert(getResp(x).get == 0))
+      x <- zadd("hackers", XX, true, 1922, "alan turing")
+      _ <- IO(assert(getResp(x).get == 1))
       x <- zcard("hackers")
       _ <- IO(assert(getResp(x).get == 6))
     } yield ()
@@ -87,8 +102,12 @@ trait TestSortedSetScenarios {
       _ <- add(client)
       x <- zrange("hackers")
       _ <- IO(assert(getRespListSize(x).get == 6))
+      x <- zrange("NonExisting")
+      _ <- IO(assert(getResp(x).get == List.empty))
       x <- zrangeWithScore("hackers")
       _ <- IO(assert(getRespListSize(x).get == 6))
+      x <- zrangeWithScore("NonExisting")
+      _ <- IO(assert(getResp(x).get == List.empty))
     } yield ()
   }
 
@@ -265,7 +284,7 @@ trait TestSortedSetScenarios {
   final def sortedSetsZRangeByScoreWithScore(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
-      // should return the elements between min and max") {
+      // should return the elements between min and max"
       _ <- add(client)
       x <- zrangebyscoreWithScore("hackers", 1940, true, 1969, true, None)
       _ <- IO(
@@ -298,4 +317,164 @@ trait TestSortedSetScenarios {
       _ <- IO(assert(getResp(x).get == List(("alan kay", 1940.0))))
     } yield ()
   }
+
+  import Containers.{ Score, ValueScorePair }
+  final def sortedSetsZPopMin(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import client._
+    for {
+      // should return the elements between min and max") {
+      _ <- add(client)
+      x <- zpopmin("hackers")
+      _ <- IO(assert(getRespListSize(x).get == 1))
+      _ <- IO {
+            val resp = getRespList[ValueScorePair[String]](x).get
+            assert(resp.head.value == "alan turing")
+            assert(resp.head.score == Score(1912.0))
+          }
+      x <- zpopmin("hackers", 2)
+      _ <- IO(assert(getRespListSize(x).get == 2))
+      _ <- IO {
+            val resp = getRespList[ValueScorePair[String]](x).get
+            assert(resp.map(_.value).toSet == Set("claude shannon", "alan kay"))
+            assert(resp.map(_.score).toSet == Set(Score(1916.0), Score(1940.0)))
+          }
+      x <- zpopmin("NonExistent")
+      _ <- IO(assert(getRespListSize(x).get == 0))
+    } yield ()
+  }
+
+  final def sortedSetsZPopMax(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import client._
+    for {
+      // should return the elements between min and max") {
+      _ <- add(client)
+      x <- zpopmax("hackers")
+      _ <- IO(assert(getRespListSize(x).get == 1))
+      _ <- IO {
+            val resp = getRespList[ValueScorePair[String]](x).get
+            assert(resp.head.value == "linus torvalds")
+            assert(resp.head.score == Score(1969.0))
+          }
+      x <- zpopmax("hackers", 2)
+      _ <- IO(assert(getRespListSize(x).get == 2))
+      _ <- IO {
+            val resp = getRespList[ValueScorePair[String]](x).get
+            assert(resp.map(_.value).toSet == Set("yukihiro matsumoto", "richard stallman"))
+            assert(resp.map(_.score).toSet == Set(Score(1965.0), Score(1953.0)))
+          }
+      x <- zpopmax("NonExistent")
+      _ <- IO(assert(getRespListSize(x).get == 0))
+    } yield ()
+  }
+
+  final def sortedSetsBZPopMin(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.bzpopmin(3, "zset1", "zset2")
+    } yield x
+
+    val r2 = for {
+      z <- cmd2.zcard("zset1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.zadd("zset1", 0d, "a", (1d, "b"), (2d, "c"))
+    } yield ()
+
+    // start r1 and r2 in fibers and then
+    // then join : r1 blocks but then gets
+    // the value as soon as r2 ends
+    val f = for {
+      a <- r1.start
+      b <- r2.start
+      c <- a.join
+      _ <- b.join
+    } yield c
+    f.map(r => assert(getResp(r) == Some(("zset1", ValueScorePair(Score(0d), "a")))))
+  }
+
+  final def sortedSetsBZPopMinWithTimeout(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.bzpopmin[String, String](1, "zset1", "zset2")
+    } yield x
+
+    val r2 = for {
+      z <- cmd2.zcard("zset1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.zadd("zset3", 0d, "a", (1d, "b"), (2d, "c"))
+    } yield ()
+
+    // start r1 and r2 in fibers and then
+    // then join : r1 blocks but then gets
+    // the value as soon as r2 ends
+    val f = for {
+      a <- r1.start
+      b <- r2.start
+      c <- a.join
+      _ <- b.join
+    } yield c
+    // f.map(r => println(getResp(r)))
+    f.map(r => assert(getResp(r) == None))
+  }
+
+  final def sortedSetsBZPopMax(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.bzpopmax(3, "zset1", "zset2")
+    } yield x
+
+    val r2 = for {
+      z <- cmd2.zcard("zset1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.zadd("zset1", 0d, "a", (1d, "b"), (2d, "c"))
+    } yield ()
+
+    // start r1 and r2 in fibers and then
+    // then join : r1 blocks but then gets
+    // the value as soon as r2 ends
+    val f = for {
+      a <- r1.start
+      b <- r2.start
+      c <- a.join
+      _ <- b.join
+    } yield c
+    f.map(r => assert(getResp(r) == Some(("zset1", ValueScorePair(Score(2d), "c")))))
+  }
+
+  final def sortedSetsBZPopMaxWithTimeout(
+      cmds: (RedisClient[IO, RedisClient.SINGLE.type], RedisClient[IO, RedisClient.SINGLE.type])
+  ): IO[Unit] = {
+    val cmd1 = cmds._1
+    val cmd2 = cmds._2
+    val r1 = for {
+      x <- cmd1.bzpopmax[String, String](1, "zset1", "zset2")
+    } yield x
+
+    val r2 = for {
+      z <- cmd2.zcard("zset1")
+      _ <- IO(assert(getResp(z).get == 0))
+      _ <- cmd2.zadd("zset3", 0d, "a", (1d, "b"), (2d, "c"))
+    } yield ()
+
+    // start r1 and r2 in fibers and then
+    // then join : r1 blocks but then gets
+    // the value as soon as r2 ends
+    val f = for {
+      a <- r1.start
+      b <- r2.start
+      c <- a.join
+      _ <- b.join
+    } yield c
+    // f.map(r => println(getResp(r)))
+    f.map(r => assert(getResp(r) == None))
+  }
+
 }

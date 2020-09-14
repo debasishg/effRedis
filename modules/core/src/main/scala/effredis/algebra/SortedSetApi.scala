@@ -19,6 +19,7 @@ package algebra
 
 import RedisClient.{ ASC, Aggregate, SUM, SortOrder }
 import codecs.{ Format, Parse }
+import Containers._
 
 trait SortedSetApi[F[+_]] {
 
@@ -26,6 +27,28 @@ trait SortedSetApi[F[+_]] {
     * Add the specified members having the specified score to the sorted set stored at key. (Variadic: >= 2.4)
     */
   def zadd(key: Any, score: Double, member: Any, scoreVals: (Double, Any)*)(
+      implicit format: Format
+  ): F[Resp[Long]]
+
+  def zadd(
+      key: Any,
+      updateOption: SortedSetUpdateOption,
+      changed: Boolean,
+      score: Double,
+      member: Any,
+      scoreVals: (Double, Any)*
+  )(
+      implicit format: Format
+  ): F[Resp[Long]]
+
+  def zadd(
+      key: Any,
+      updateOption: Option[SortedSetUpdateOption],
+      changed: Boolean,
+      incr: Boolean,
+      score: Double,
+      member: Any
+  )(
       implicit format: Format
   ): F[Resp[Long]]
 
@@ -114,4 +137,33 @@ trait SortedSetApi[F[+_]] {
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[Option[(Int, List[Option[A]])]]]
+
+  def zpopmin[A](key: Any, count: Int = 1)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[ValueScorePair[A]]]]
+
+  def zpopmax[A](key: Any, count: Int = 1)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[ValueScorePair[A]]]]
+
+  /*
+  def bzpopmin[V](timeoutInSeconds: Int, key: Any, keys: Any*)(
+      implicit format: Format,
+      parseV: Parse[V]
+  ): F[Resp[List[Any]]]
+   */
+
+  def bzpopmin[K, V](timeoutInSeconds: Int, key: K, keys: K*)(
+      implicit format: Format,
+      parseK: Parse[K],
+      parseV: Parse[V]
+  ): F[Resp[Option[(K, ValueScorePair[V])]]]
+
+  def bzpopmax[K, V](timeoutInSeconds: Int, key: K, keys: K*)(
+      implicit format: Format,
+      parseK: Parse[K],
+      parseV: Parse[V]
+  ): F[Resp[Option[(K, ValueScorePair[V])]]]
 }

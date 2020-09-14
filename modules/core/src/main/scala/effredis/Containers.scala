@@ -64,4 +64,11 @@ object Containers {
       dist: Option[Distance] = None,
       coords: Option[GeoCoordinate] = None
   )
+
+  sealed trait SortedSetUpdateOption
+  case object NX extends SortedSetUpdateOption
+  case object XX extends SortedSetUpdateOption
+
+  final case class Score(value: Double) extends AnyVal
+  final case class ValueScorePair[V](score: Score, value: V)
 }
