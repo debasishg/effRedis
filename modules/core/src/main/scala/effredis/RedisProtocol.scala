@@ -249,6 +249,20 @@ trait R extends Reply {
 
   def asFlatList[T](implicit parse: Parse[T]): List[Option[T]] = receive(flatArrayReply).map
 
+  def asTriple[K, V, S](implicit parseK: Parse[K], parseV: Parse[V], parseS: Parse[S]): Option[(K, V, S)] = {
+    val r = receive(flatArrayReply)
+    if (r.value.isEmpty) None
+    // return None if we get a single element redis array with redis nil value
+    // for details on this reply see https://redis.io/commands/bzpopmin
+    else if (r.value.size == 1 && r.value.head.value == NULL_BULK_STRING) None
+    else {
+      val k = parseK(r.value(0).value)
+      val v = parseV(r.value(1).value)
+      val s = parseS(r.value(2).value)
+      Some((k, v, s))
+    }
+  }
+
   def asSet[T: Parse]: Set[Option[T]] = asFlatList.toSet
 
   def asFlatListPairs[A, B](implicit parseA: Parse[A], parseB: Parse[B]): List[(A, B)] =

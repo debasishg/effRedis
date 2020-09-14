@@ -20,6 +20,7 @@ import cats.effect._
 import RedisClient._
 import algebra.SortedSetApi
 import codecs._
+import Containers.{ Score, SortedSetUpdateOption, ValueScorePair }
 
 trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
@@ -29,6 +30,46 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       implicit format: Format
   ): F[Resp[Long]] =
     send("ZADD", List(key, score, member) ::: scoreVals.toList.flatMap(x => List(x._1, x._2)))(asInteger)
+
+  override def zadd(
+      key: Any,
+      updateOption: SortedSetUpdateOption,
+      changed: Boolean,
+      score: Double,
+      member: Any,
+      scoreVals: (Double, Any)*
+  )(
+      implicit format: Format
+  ): F[Resp[Long]] = {
+    val args =
+      if (changed) {
+        List(key, updateOption.toString, "CH", score, member) ::: scoreVals.toList.flatMap(x => List(x._1, x._2))
+      } else {
+        List(key, updateOption.toString, score, member) ::: scoreVals.toList.flatMap(x => List(x._1, x._2))
+      }
+    send("ZADD", args)(asInteger)
+  }
+
+  override def zadd(
+      key: Any,
+      updateOption: Option[SortedSetUpdateOption],
+      changed: Boolean,
+      incr: Boolean,
+      score: Double,
+      member: Any
+  )(
+      implicit format: Format
+  ): F[Resp[Long]] = {
+    val subArgs1 =
+      if (changed && incr) List("CH", "INCR")
+      else if (changed) List("CH")
+      else if (incr) List("INCR")
+      else Nil
+    val subArgs2 =
+      updateOption.map(u => List(u.toString)).getOrElse(Nil)
+
+    send("ZADD", List(key) ::: subArgs2 ::: subArgs1 ::: List(score, member))(asInteger)
+  }
 
   override def zrem(key: Any, member: Any, members: Any*)(implicit format: Format): F[Resp[Long]] =
     send("ZREM", List(key, member) ::: members.toList)(asInteger)
@@ -196,4 +237,48 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
           )
     )(asPair)
 
+  override def zpopmin[A](key: Any, count: Int = 1)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[ValueScorePair[A]]]] =
+    send("ZPOPMIN", List(key, count))(
+      asFlatListPairs[A, Double](parse, Parse.Implicits.parseDouble).map {
+        case (v, s) => ValueScorePair[A](Score(s), v)
+      }
+    )
+
+  override def zpopmax[A](key: Any, count: Int = 1)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[List[ValueScorePair[A]]]] =
+    send("ZPOPMAX", List(key, count))(
+      asFlatListPairs[A, Double](parse, Parse.Implicits.parseDouble).map {
+        case (v, s) => ValueScorePair[A](Score(s), v)
+      }
+    )
+
+  override def bzpopmin[K, V](
+      timeoutInSeconds: Int,
+      key: K,
+      keys: K*
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[(K, ValueScorePair[V])]]] =
+    send("BZPOPMIN", key :: keys.foldRight(List[Any](timeoutInSeconds))(_ :: _)) {
+      asTriple[K, V, Double](parseK, parseV, Parse.Implicits.parseDouble) match {
+        case None                      => None
+        case r: Option[(K, V, Double)] => Some((r.get._1, ValueScorePair(Score(r.get._3), r.get._2)))
+        case x                         => println(s"gt $x"); None
+      }
+    }
+
+  override def bzpopmax[K, V](
+      timeoutInSeconds: Int,
+      key: K,
+      keys: K*
+  )(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): F[Resp[Option[(K, ValueScorePair[V])]]] =
+    send("BZPOPMAX", key :: keys.foldRight(List[Any](timeoutInSeconds))(_ :: _)) {
+      asTriple[K, V, Double](parseK, parseV, Parse.Implicits.parseDouble) match {
+        case None                      => None
+        case r: Option[(K, V, Double)] => Some((r.get._1, ValueScorePair(Score(r.get._3), r.get._2)))
+      }
+    }
 }
