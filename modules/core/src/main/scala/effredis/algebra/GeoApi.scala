@@ -55,37 +55,4 @@ trait GeoApi[F[+_]] {
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[GeoRadiusMember]]]
-
-  // def geoRadius(key: K, geoRadius: GeoRadius, unit: GeoArgs.Unit, args: GeoArgs): F[List[GeoRadiusResult[V]]]
-  // def geoRadiusByMember(key: K, value: V, dist: Distance, unit: GeoArgs.Unit): F[Set[V]]
-  // def geoRadiusByMember(key: K, value: V, dist: Distance, unit: GeoArgs.Unit, args: GeoArgs): F[List[GeoRadiusResult[V]]]
-
-//   def georadius(
-//       key: Any,
-//       longitude: Any,
-//       latitude: Any,
-//       radius: Any,
-//       unit: Any,
-//       withCoord: Boolean,
-//       withDist: Boolean,
-//       withHash: Boolean,
-//       count: Option[Int],
-//       sort: Option[Any],
-//       store: Option[Any],
-//       storeDist: Option[Any]
-//   ): F[Resp[Option[List[Option[GeoRadiusMember]]]]]
-//
-//   def georadiusbymember[A](
-//       key: Any,
-//       member: Any,
-//       radius: Any,
-//       unit: Any,
-//       withCoord: Boolean,
-//       withDist: Boolean,
-//       withHash: Boolean,
-//       count: Option[Int],
-//       sort: Option[Any],
-//       store: Option[Any],
-//       storeDist: Option[Any]
-//   )(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[GeoRadiusMember]]]]]
 }

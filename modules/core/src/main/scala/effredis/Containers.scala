@@ -58,7 +58,7 @@ object Containers {
   case object mi extends GeoUnit
   case object ft extends GeoUnit
 
-  case class GeoRadiusMember(
+  final case class GeoRadiusMember(
       member: Option[String],
       hash: Option[Long] = None,
       dist: Option[Distance] = None,
