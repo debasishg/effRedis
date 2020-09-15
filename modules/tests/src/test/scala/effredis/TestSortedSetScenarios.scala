@@ -20,7 +20,7 @@ import cats.effect._
 import RedisClient.DESC
 
 import EffRedisFunSuite._
-import effredis.Containers.{ NX, XX }
+import Containers.{ NX, Score, ValueScorePair, XX }
 
 trait TestSortedSetScenarios {
   implicit def cs: ContextShift[IO]
@@ -154,7 +154,7 @@ trait TestSortedSetScenarios {
       _ <- IO(assert(getResp(x).get == 6))
 
       x <- zrangeWithScore("hackers")
-      _ <- IO(assert(getRespList[(String, Double)](x).get.map(_._2) == List(1912, 1916, 1940, 1953, 1965, 1969)))
+      _ <- IO(assert(getRespList[(String, Score)](x).get.map(_._2.value) == List(1912, 1916, 1940, 1953, 1965, 1969)))
 
       // union with modified weights
       x <- zunionstoreWeighted(
@@ -165,7 +165,11 @@ trait TestSortedSetScenarios {
       x <- zrangeWithScore(
             "hackers weighted"
           )
-      _ <- IO(assert(getRespList[(String, Double)](x).get.map(_._2.toInt) == List(1953, 1965, 3832, 3938, 5820, 7648)))
+      _ <- IO(
+            assert(
+              getRespList[(String, Score)](x).get.map(_._2.value.toInt) == List(1953, 1965, 3832, 3938, 5820, 7648)
+            )
+          )
     } yield ()
   }
 
@@ -215,7 +219,7 @@ trait TestSortedSetScenarios {
       x <- zinterstoreWeighted("baby boomer hackers weighted", Map("hackers" -> 0.5, "baby boomers" -> 0.5))
       _ <- IO(assert(getResp(x).get == 5))
       x <- zrangeWithScore("baby boomer hackers weighted")
-      _ <- IO(assert(getRespList[(String, Double)](x).get.map(_._2.toInt) == List(1953, 1954, 1956, 1965, 1965)))
+      _ <- IO(assert(getRespList[(String, Score)](x).get.map(_._2.value.toInt) == List(1953, 1954, 1956, 1965, 1965)))
     } yield ()
   }
 
@@ -225,6 +229,32 @@ trait TestSortedSetScenarios {
       _ <- add(client)
       x <- zcount("hackers", 1912, 1920)
       _ <- IO(assert(getResp(x).get == 2))
+    } yield ()
+  }
+
+  final def sortedSetsZLexCount(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import client._
+    for {
+      _ <- zadd("myzset", 0d, "a", (0d, "b"), (0d, "c"), (0d, "d"), (0d, "e"))
+      _ <- zadd("myzset", 0d, "f", (0d, "g"))
+      x <- zlexcount("myzset", "-", "+")
+      _ <- IO(assert(getResp(x).get == 7))
+      x <- zlexcount("myzset", "[b", "[f")
+      _ <- IO(assert(getResp(x).get == 5))
+    } yield ()
+  }
+
+  final def sortedSetsZRemRangeByLex(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
+    import client._
+    for {
+      x <- zadd("myzset", 0d, "aaaa", (0d, "b"), (0d, "c"), (0d, "d"), (0d, "e"))
+      _ <- IO(assert(getResp(x).get == 5))
+      x <- zadd("myzset", 0d, "foo", (0d, "zap"), (0d, "zip"), (0d, "ALPHA"), (0d, "alpha"))
+      _ <- IO(assert(getResp(x).get == 5))
+      x <- zremrangebylex("myzset", "[alpha", "[omega")
+      _ <- IO(assert(getResp(x).get == 6))
+      x <- zrange("myzset", 0, -1)
+      _ <- IO(assert(getRespList(x).get == List(Some("ALPHA"), Some("aaaa"), Some("zap"), Some("zip"))))
     } yield ()
   }
 
@@ -290,10 +320,10 @@ trait TestSortedSetScenarios {
       _ <- IO(
             assert(
               getResp(x).get == List(
-                    ("alan kay", 1940.0),
-                    ("richard stallman", 1953.0),
-                    ("yukihiro matsumoto", 1965.0),
-                    ("linus torvalds", 1969.0)
+                    ("alan kay", Score(1940.0)),
+                    ("richard stallman", Score(1953.0)),
+                    ("yukihiro matsumoto", Score(1965.0)),
+                    ("linus torvalds", Score(1969.0))
                   )
             )
           )
@@ -302,23 +332,22 @@ trait TestSortedSetScenarios {
       _ <- IO(
             assert(
               getResp(x).get == List(
-                    ("linus torvalds", 1969.0),
-                    ("yukihiro matsumoto", 1965.0),
-                    ("richard stallman", 1953.0),
-                    ("alan kay", 1940.0)
+                    ("linus torvalds", Score(1969.0)),
+                    ("yukihiro matsumoto", Score(1965.0)),
+                    ("richard stallman", Score(1953.0)),
+                    ("alan kay", Score(1940.0))
                   )
             )
           )
 
       x <- zrangebyscoreWithScore("hackers", 1940, true, 1969, true, Some((3, 1)))
-      _ <- IO(assert(getResp(x).get == List(("linus torvalds", 1969.0))))
+      _ <- IO(assert(getResp(x).get == List(("linus torvalds", Score(1969.0)))))
 
       x <- zrangebyscoreWithScore("hackers", 1940, true, 1969, true, Some((3, 1)), DESC)
-      _ <- IO(assert(getResp(x).get == List(("alan kay", 1940.0))))
+      _ <- IO(assert(getResp(x).get == List(("alan kay", Score(1940.0)))))
     } yield ()
   }
 
-  import Containers.{ Score, ValueScorePair }
   final def sortedSetsZPopMin(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
     import client._
     for {
