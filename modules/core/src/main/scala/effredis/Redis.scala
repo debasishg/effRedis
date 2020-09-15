@@ -29,6 +29,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   var handlers: Vector[(String, () => Any)] = Vector.empty
   var commandBuffer: StringBuffer           = new StringBuffer
   val crlf                                  = "\r\n"
+  var seenMulti: Boolean                    = false
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
@@ -46,12 +47,16 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
           commandBuffer.append((List(command) ++ args.toList).mkString(" ") ++ crlf)
           Buffered.pure[F]
 
-        } else {
+        } else { // mode == TRANSACT
           write(cmd)
-          handlers :+= ((command, () => result))
-          val _ = receive(simpleStringReply)
-          Queued.pure[F]
-
+          // if we get watch or unwatch or any other command in transaction
+          // mode before we get multi - we need to return back the values
+          if (command == "WATCH" || command == "UNWATCH" || seenMulti == false) Value(result).pure[F]
+          else {
+            handlers :+= ((command, () => result))
+            val _ = receive(simpleStringReply)
+            Queued.pure[F]
+          }
         }
 
       } catch {
@@ -90,11 +95,9 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
           }
 
         } else { // mode == TRANSACT
-          if (command == "MULTI") {
-            write(cmd)
-            Value(result).pure[F]
-
-          } else if (command == "EXEC") {
+          if (command == "MULTI" || command == "EXEC" || seenMulti == false) {
+            if (command == "MULTI") seenMulti = true
+            if (command == "EXEC") seenMulti = false
             write(cmd)
             Value(result).pure[F]
 
