@@ -61,7 +61,7 @@ trait SortedSetApi[F[+_]] {
 
   def zcard(key: Any)(implicit format: Format): F[Resp[Long]]
 
-  def zscore(key: Any, element: Any)(implicit format: Format): F[Resp[Option[Double]]]
+  def zscore(key: Any, element: Any)(implicit format: Format): F[Resp[Option[Score]]]
 
   def zrange[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
@@ -71,9 +71,9 @@ trait SortedSetApi[F[+_]] {
   def zrangeWithScore[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[(A, Double)]]]
+  ): F[Resp[List[(A, Score)]]]
 
-  def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)])(
+  def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)], sortAs: SortOrder)(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[Option[A]]]]
@@ -96,7 +96,7 @@ trait SortedSetApi[F[+_]] {
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[(A, Double)]]]
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[(A, Score)]]]
 
   def zrank(key: Any, member: Any, reverse: Boolean = false)(implicit format: Format): F[Resp[Long]]
 
@@ -104,6 +104,11 @@ trait SortedSetApi[F[+_]] {
 
   def zremrangebyscore(key: Any, start: Double = Double.NegativeInfinity, end: Double = Double.PositiveInfinity)(
       implicit format: Format
+  ): F[Resp[Long]]
+
+  def zremrangebylex[A](key: Any, min: String, max: String)(
+      implicit format: Format,
+      parse: Parse[A]
   ): F[Resp[Long]]
 
   def zunionstore(dstKey: Any, keys: Iterable[Any], aggregate: Aggregate = SUM)(
@@ -130,6 +135,11 @@ trait SortedSetApi[F[+_]] {
       maxInclusive: Boolean = true
   )(implicit format: Format): F[Resp[Long]]
 
+  def zlexcount[A](key: Any, min: String, max: String)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[Long]]
+
   /**
     * Incrementally iterate sorted sets elements and associated scores (since 2.8)
     */
@@ -147,13 +157,6 @@ trait SortedSetApi[F[+_]] {
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[ValueScorePair[A]]]]
-
-  /*
-  def bzpopmin[V](timeoutInSeconds: Int, key: Any, keys: Any*)(
-      implicit format: Format,
-      parseV: Parse[V]
-  ): F[Resp[List[Any]]]
-   */
 
   def bzpopmin[K, V](timeoutInSeconds: Int, key: K, keys: K*)(
       implicit format: Format,

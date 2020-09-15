@@ -80,8 +80,8 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   override def zcard(key: Any)(implicit format: Format): F[Resp[Long]] =
     send("ZCARD", List(key))(asInteger)
 
-  override def zscore(key: Any, element: Any)(implicit format: Format): F[Resp[Option[Double]]] =
-    send("ZSCORE", List(key, element))(asBulkString(Parse.Implicits.parseDouble))
+  override def zscore(key: Any, element: Any)(implicit format: Format): F[Resp[Option[Score]]] =
+    send("ZSCORE", List(key, element))(asBulkString(Parse.Implicits.parseDouble).map(Score))
 
   override def zrange[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
@@ -92,20 +92,20 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
   override def zrangeWithScore[A](key: Any, start: Int = 0, end: Int = -1, sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
-  ): F[Resp[List[(A, Double)]]] =
+  ): F[Resp[List[(A, Score)]]] =
     send(if (sortAs == ASC) "ZRANGE" else "ZREVRANGE", List(key, start, end, "WITHSCORES"))(
-      asFlatListPairs(parse, Parse.Implicits.parseDouble)
+      asFlatListPairs(parse, Parse.Implicits.parseDouble).map(e => (e._1, Score(e._2)))
     )
 
-  override def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)])(
+  override def zrangebylex[A](key: Any, min: String, max: String, limit: Option[(Int, Int)], sortAs: SortOrder = ASC)(
       implicit format: Format,
       parse: Parse[A]
   ): F[Resp[List[Option[A]]]] =
     if (!limit.isEmpty) {
       val params = limit.toList.flatMap(l => List(key, min, max, "LIMIT", l._1, l._2))
-      send("ZRANGEBYLEX", params)(asFlatList)
+      send(if (sortAs == ASC) "ZRANGEBYLEX" else "ZREVRANGEBYLEX", params)(asFlatList)
     } else {
-      send("ZRANGEBYLEX", List(key, min, max))(asFlatList)
+      send(if (sortAs == ASC) "ZRANGEBYLEX" else "ZREVRANGEBYLEX", List(key, min, max))(asFlatList)
     }
 
   override def zrangebyscore[A](
@@ -136,7 +136,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       maxInclusive: Boolean = true,
       limit: Option[(Int, Int)],
       sortAs: SortOrder = ASC
-  )(implicit format: Format, parse: Parse[A]): F[Resp[List[(A, Double)]]] = {
+  )(implicit format: Format, parse: Parse[A]): F[Resp[List[(A, Score)]]] = {
 
     val (limitEntries, minParam, maxParam) =
       zrangebyScoreWithScoreInternal(min, minInclusive, max, maxInclusive, limit)
@@ -145,7 +145,7 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       case ASC  => ("ZRANGEBYSCORE", key :: minParam :: maxParam :: "WITHSCORES" :: limitEntries)
       case DESC => ("ZREVRANGEBYSCORE", key :: maxParam :: minParam :: "WITHSCORES" :: limitEntries)
     }
-    send(params._1, params._2)(asFlatListPairs(parse, Parse.Implicits.parseDouble))
+    send(params._1, params._2)(asFlatListPairs(parse, Parse.Implicits.parseDouble).map(e => (e._1, Score(e._2))))
   }
 
   private def zrangebyScoreWithScoreInternal[A](
@@ -184,6 +184,12 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       end: Double = Double.PositiveInfinity
   )(implicit format: Format): F[Resp[Long]] =
     send("ZREMRANGEBYSCORE", List(key, start, end))(asInteger)
+
+  override def zremrangebylex[A](key: Any, min: String, max: String)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[Long]] =
+    send("ZREMRANGEBYLEX", List(key, min, max))(asInteger)
 
   override def zunionstore(dstKey: Any, keys: Iterable[Any], aggregate: Aggregate = SUM)(
       implicit format: Format
@@ -225,6 +231,12 @@ trait SortedSetOperations[F[+_]] extends SortedSetApi[F] { self: Redis[F, _] =>
       maxInclusive: Boolean = true
   )(implicit format: Format): F[Resp[Long]] =
     send("ZCOUNT", List(key, Format.formatDouble(min, minInclusive), Format.formatDouble(max, maxInclusive)))(asInteger)
+
+  override def zlexcount[A](key: Any, min: String, max: String)(
+      implicit format: Format,
+      parse: Parse[A]
+  ): F[Resp[Long]] =
+    send("ZLEXCOUNT", List(key, min, max))(asInteger)
 
   override def zscan[A](key: Any, cursor: Int, pattern: Any = "*", count: Int = 10)(
       implicit format: Format,
