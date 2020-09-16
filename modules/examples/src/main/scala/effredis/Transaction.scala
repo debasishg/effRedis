@@ -33,7 +33,17 @@ object Transaction extends LoggerIOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
-      val r1 = RedisClient.transaction(cli)(program)
+      val r1 = RedisClient.transaction(cli) {
+        import cli._
+        for {
+          _ <- set("k1", "v1")
+          _ <- set("k2", 100)
+          _ <- incrby("k2", 12)
+          _ <- get("k1")
+          _ <- get("k2")
+          _ <- lpop("k1")
+        } yield ()
+      }
       r1.unsafeRunSync() match {
 
         case Value(ls)        => ls.foreach(println)

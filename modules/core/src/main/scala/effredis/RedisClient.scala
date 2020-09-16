@@ -264,13 +264,13 @@ object RedisClient {
     */
   def transaction[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, TRANSACT.type]
-  )(f: RedisClient[F, TRANSACT.type] => F[A]): F[Resp[Option[List[Any]]]] = {
+  )(cmds: F[A]): F[Resp[Option[List[Any]]]] = {
 
     import client._
 
     send("MULTI")(asSimpleString).flatMap { _ =>
       try {
-        f(client).flatMap { _ =>
+        cmds.flatMap { _ =>
           // no exec if discard
           if (client.handlers
                 .map(_._1)

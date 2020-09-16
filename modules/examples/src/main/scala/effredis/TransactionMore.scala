@@ -61,7 +61,7 @@ object TransactionMore extends LoggerIOApp {
           _ <- t.set("k2", 200)
           v <- t.get[Int]("k2")(codecs.Format.default, codecs.Parse.Implicits.parseInt)
           x <- getResp(v)
-          t <- RedisClient.transaction(t)(program(x.get))
+          t <- RedisClient.transaction(t)(program(x.get)(t))
         } yield t
 
         // final block:
