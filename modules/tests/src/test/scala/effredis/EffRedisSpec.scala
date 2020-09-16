@@ -28,6 +28,7 @@ class EffRedisSpec
     with TestBaseScenarios
     with TestHyperLogLogScenarios
     with TestGeoScenarios
+    with TestScriptsScenarios
     with cluster.TestClusterScenarios {
   // test("parse cluster slots")(withRedisForURI(new URI("http://localhost:7000"))(parseClusterSlots))
   test("strings api get and set")(withRedis(stringsGetAndSet))
@@ -112,4 +113,13 @@ class EffRedisSpec
   test("geo")(withRedis(geosGeoPos))
   test("geo")(withRedis(geosGeoRadius))
   test("geo")(withRedis(geosGeoRadiusByMember))
+  test("lua eval")(withRedis(luaEvalWithReply))
+  test("lua evalsha")(withRedis(luaEvalSha))
+  test("lua evalsha")(withRedis(luaEvalShaInt))
+  test("lua evalsha")(withRedis(luaEvalShaDouble))
+  test("lua evalsha")(withRedis(luaEvalMultiShaString))
+  test("lua evalsha")(withRedis(luaEvalMultiShaInt))
+  test("lua script exists")(withRedis(luaScriptExists))
+  test("lua script flush")(withRedis(luaScriptFlush))
+  test("lua script exec")(withRedis(luaExec))
 }
