@@ -20,7 +20,7 @@ import java.net.URI
 import cats.effect._
 import log4cats._
 
-object TransactionMore extends LoggerIOApp {
+object TransactionWithWatch extends LoggerIOApp {
 
   // transactional part
   def program(i: Int)(c: RedisClient[IO, RedisClient.TRANSACT.type]): IO[Resp[Option[String]]] = {
