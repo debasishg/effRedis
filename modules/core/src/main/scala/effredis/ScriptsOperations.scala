@@ -17,10 +17,10 @@
 package effredis
 
 import cats.effect._
-import algebra.EvalApi
+import algebra.ScriptsApi
 import codecs._
 
-trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F, _] =>
+trait ScriptsOperations[F[+_]] extends ScriptsApi[F] { self: Redis[F, _] =>
   implicit def conc: Concurrent[F]
   implicit def ctx: ContextShift[F]
 
@@ -46,10 +46,9 @@ trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F, _] =>
     send("EVALSHA", argsForEval(shahash, keys, args))(asFlatList[A])
 
   override def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
-      implicit format: Format,
-      parse: Parse[A]
-  ): F[Resp[Option[A]]] =
-    send("EVALSHA", argsForEval(shahash, keys, args))(asBulkString)
+      implicit format: Format
+  ): F[Resp[Long]] =
+    send("EVALSHA", argsForEval(shahash, keys, args))(asInteger)
 
   override def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
@@ -63,8 +62,8 @@ trait EvalOperations[F[+_]] extends EvalApi[F] { self: Redis[F, _] =>
   override def scriptExists(shas: String*): F[Resp[List[Option[Int]]]] =
     send("SCRIPT", List("EXISTS") ::: shas.toList)(asFlatList[Int](Parse.Implicits.parseInt))
 
-  override def scriptFlush: F[Resp[String]] =
-    send("SCRIPT", List("FLUSH"))(asSimpleString)
+  override def scriptFlush: F[Resp[Boolean]] =
+    send("SCRIPT", List("FLUSH"))(asBoolean)
 
   private def argsForEval(luaCode: String, keys: List[Any], args: List[Any]): List[Any] =
     luaCode :: keys.length :: keys ::: args

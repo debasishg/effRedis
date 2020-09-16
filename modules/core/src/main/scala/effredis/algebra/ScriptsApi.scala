@@ -19,7 +19,7 @@ package algebra
 
 import codecs.{ Format, Parse }
 
-trait EvalApi[F[+_]] {
+trait ScriptsApi[F[+_]] {
 
   /**
     * evaluates lua code on the server.
@@ -42,9 +42,8 @@ trait EvalApi[F[+_]] {
   ): F[Resp[List[Option[A]]]]
 
   def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
-      implicit format: Format,
-      parse: Parse[A]
-  ): F[Resp[Option[A]]]
+      implicit format: Format
+  ): F[Resp[Long]]
 
   def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
       implicit format: Format,
@@ -55,5 +54,5 @@ trait EvalApi[F[+_]] {
 
   def scriptExists(shas: String*): F[Resp[List[Option[Int]]]]
 
-  def scriptFlush: F[Resp[String]]
+  def scriptFlush: F[Resp[Boolean]]
 }

@@ -21,26 +21,51 @@ import cats.effect._
 import log4cats._
 
 object Transaction extends LoggerIOApp {
-  def program(c: RedisClient[IO, RedisClient.TRANSACT.type]): IO[Unit] =
-    for {
-      _ <- c.set("k1", "v1")
-      _ <- c.set("k2", 100)
-      _ <- c.incrby("k2", 12)
-      _ <- c.get("k1")
-      _ <- c.get("k2")
-      _ <- c.lpop("k1")
-    } yield ()
 
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
-      val r1 = RedisClient.transaction(cli)(program)
-      r1.unsafeRunSync() match {
-
-        case Value(ls)        => ls.foreach(println)
-        case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-        case Error(err)       => println(s"oops! $err")
-        case err              => println(err)
-      }
+      normalTransaction(cli)
+      discardedTransaction(cli)
       IO(ExitCode.Success)
     }
+
+  def normalTransaction(cli: RedisClient[IO, RedisClient.TRANSACT.type]) = {
+    val r1 = RedisClient.transaction(cli) {
+      import cli._
+      for {
+        _ <- set("k1", "v1")
+        _ <- set("k2", 100)
+        _ <- incrby("k2", 12)
+        _ <- get("k1")
+        _ <- get("k2")
+        _ <- lpop("k1")
+      } yield ()
+    }
+    r1.unsafeRunSync() match {
+
+      case Value(ls)        => ls.foreach(println)
+      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+      case Error(err)       => println(s"oops! $err")
+      case err              => println(err)
+    }
+  }
+
+  def discardedTransaction(cli: RedisClient[IO, RedisClient.TRANSACT.type]) = {
+    val r1 = RedisClient.transaction(cli) {
+      import cli._
+      for {
+        _ <- set("k2", 100)
+        _ <- incrby("k2", 12)
+        _ <- discard
+        _ <- get("k2")
+      } yield ()
+    }
+    r1.unsafeRunSync() match {
+
+      case Value(ls)        => ls.foreach(println)
+      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+      case Error(err)       => println(s"oops! $err")
+      case err              => println(err)
+    }
+  }
 }
