@@ -30,6 +30,7 @@ import RedisClient._
 object ClusterP extends LoggerIOApp {
 
   val nKeys = 60000
+  val nsubs = 6
   def subProgram(cl: RedisClusterClient[IO, SINGLE.type], keyPrefix: String, valuePrefix: String)(
       implicit pool: KeyPool[IO, URI, (RedisClient[IO, SINGLE.type], IO[Unit])]
   ): IO[Unit] =
@@ -45,7 +46,7 @@ object ClusterP extends LoggerIOApp {
       for {
         // optionally the cluster topology can be refreshed to reflect the latest partitions
         // this step schedules that job at a pre-configured interval
-        _ <- ClusterUtils.repeatAtFixedRate(10.seconds, cl.topologyCache.expire).start
+        _ <- ClusterUtils.repeatAtFixedRate(30.seconds, cl.topologyCache.expire).start
         _ <- RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
               implicit val p = pool
               // parallelize the job with fibers
@@ -53,17 +54,28 @@ object ClusterP extends LoggerIOApp {
               // also handles cancelation
               (
                 subProgram(cl, "k1", "v1").start,
-                subProgram(cl, "k2", "v2").start
+                subProgram(cl, "k2", "v2").start,
+                subProgram(cl, "k3", "v3").start,
+                subProgram(cl, "k4", "v4").start,
+                subProgram(cl, "k4", "v4").start,
+                subProgram(cl, "k4", "v4").start
               ).tupled.bracket {
-                case (fa, fb) =>
-                  (fa.join, fb.join).tupled
-              } { case (fa, fb) => fa.cancel >> fb.cancel }
+                case (fa, fb, fc, fd, fe, ff) =>
+                  (fa.join, fb.join, fc.join, fd.join, fe.join, ff.join).tupled
+              } {
+                case (fa, fb, fc, fd, fe, ff) =>
+                  fa.cancel >> fb.cancel >> fc.cancel >> fd.cancel >> fe.cancel >> ff.cancel
+              }
             }
       } yield ()
     }
 
   override def run(args: List[String]): IO[ExitCode] = {
+    val start = System.currentTimeMillis()
     program.unsafeRunSync()
+    val elapsed = (System.currentTimeMillis() - start) / 1000
+    println(s"Elapsed: $elapsed seconds for 360000 sets")
+    println(s"Rate: ${(elapsed * 1000000) / (nKeys * nsubs)} microsecs per set")
     IO(ExitCode.Success)
   }
 }

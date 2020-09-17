@@ -29,7 +29,7 @@ import RedisClient._
 
 object Cluster extends LoggerIOApp {
 
-  val nKeys = 1000
+  val nKeys = 100000
   def program: IO[Unit] =
     RedisClusterClient.make[IO, SINGLE.type](NonEmptyList.one(new URI("http://localhost:7001"))).flatMap { cl =>
       for {
@@ -40,7 +40,7 @@ object Cluster extends LoggerIOApp {
               implicit val p = pool
               for {
                 _ <- (0 to nKeys)
-                      .map(i => cl.set(s"aag-key$i", s"value $i"))
+                      .map(i => cl.set(s"test-key$i", s"test-value $i"))
                       .toList
                       .sequence
               } yield ()

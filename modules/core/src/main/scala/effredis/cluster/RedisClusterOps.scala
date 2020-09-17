@@ -76,7 +76,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
