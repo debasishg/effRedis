@@ -40,7 +40,7 @@ object Main extends LoggerIOApp {
 
       val res = (set("k1", "v1"), set("k2", 100), get("k1"), incrby("k2", 12)).mapN { (_, _, k1val, k2val) =>
         (k1val, k2val) match {
-          case (Value(Some(k1)), Value(Some(k2))) => Foo(k1, k2)
+          case (Value(Some(k1)), Value(k2)) => Foo(k1, k2)
           case err                                => println(s"Error $err")
         }
       }
@@ -133,6 +133,9 @@ object Pipeline extends LoggerIOApp {
 
 ### Transactions
 
+`effRedis` supports Redis transactions and `watch` / `unwatch` semantics. Here's an example that shows how to use Redis transactions in the simplest possible way. Have a look at this [example](https://github.com/debasishg/effRedis/blob/master/modules/examples/src/main/scala/effredis/TransactionWithWatch.scala) on how to use `watch` alongside transactions.
+
+
 ```scala
 package effredis
 
@@ -141,19 +144,21 @@ import cats.effect._
 import log4cats._
 
 object Transaction extends LoggerIOApp {
-  def program(c: RedisClient[IO, RedisClient.TRANSACT.type]): IO[Unit] =
-    for {
-      _ <- c.set("k1", "v1")
-      _ <- c.set("k2", 100)
-      _ <- c.incrby("k2", 12)
-      _ <- c.get("k1")
-      _ <- c.get("k2")
-      _ <- c.lpop("k1")
-    } yield ()
 
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
-      val r1 = RedisClient.transaction(cli)(program)
+      val r1 = RedisClient.transaction(cli){
+        import cli._
+        for {
+          _ <- set("k1", "v1")
+          _ <- set("k2", 100)
+          _ <- incrby("k2", 12)
+          _ <- get("k1")
+          _ <- get("k2")
+          _ <- lpop("k1")
+        } yield ()
+      }
+      
       r1.unsafeRunSync() match {
 
         case Value(ls)        => ls.foreach(println)

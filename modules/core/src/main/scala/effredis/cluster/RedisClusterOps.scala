@@ -29,6 +29,7 @@ import effredis.{ Error, Log, Resp, Value }
 import effredis.codecs._
 import effredis.algebra.StringApi._
 import effredis.RedisClient._
+import Resp._
 
 abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] {
   self: RedisClusterClient[F, M] =>
@@ -75,7 +76,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.info(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
@@ -947,8 +948,16 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
   /**
     * returns all the keys matching the glob-style pattern.
     */
-  final def keys[A](pattern: Any = "*")(implicit format: Format, parse: Parse[A]): F[Resp[Option[List[Option[A]]]]] =
-    conc.raiseError(new NotAllowedInClusterError(s"KEYS $pattern $format $parse not allowed in cluster mode"))
+  final def keys[A](pattern: Any = "*")(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[Option[A]]]] =
+    onAllNodes(node =>
+      node.managedClient(pool, node.uri).use {
+        _.keys(pattern)
+      }
+    ).map(_.sequence.map(_.flatten))
 
   /**
     * returns the current server time as a two items lists:

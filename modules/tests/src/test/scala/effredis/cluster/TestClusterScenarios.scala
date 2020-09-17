@@ -18,15 +18,68 @@ package effredis.cluster
 
 import cats.effect._
 
-import effredis.RedisClient
+import effredis.EffRedisFunSuite._
+import effredis.Log.NoOp._
+import effredis.RedisClientPool
+import effredis.RedisClient._
 
 trait TestClusterScenarios {
   implicit def cs: ContextShift[IO]
+  implicit def tr: Timer[IO]
 
-  final def parseClusterSlots(client: RedisClient[IO, RedisClient.SINGLE.type]): IO[Unit] = {
-    println(client.clusterSlots.unsafeRunSync())
-    for {
-      _ <- client.flushdb
-    } yield ()
+  def clusterCommands(cmd: RedisClusterClient[IO, SINGLE.type]): IO[Unit] = {
+    import cmd._
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
+      implicit val p = pool
+      for {
+        x <- set("key-2", "bar")
+        _ <- IO(assert(getBoolean(x)))
+        x <- get("key-2")
+        _ <- IO(assert(getResp(x).get == "bar"))
+        x <- lpush("lkey-1", "lval-1", "lval-2", "lval-3")
+        _ <- IO(assert(getResp(x).get == 3))
+        x <- llen("lkey-1")
+        _ <- IO(assert(getResp(x).get == 3))
+      } yield ()
+    }
   }
+
+  def clusterListsLPush(cmd: RedisClusterClient[IO, SINGLE.type]): IO[Unit] = {
+    import cmd._
+    RedisClientPool.poolResource[IO, SINGLE.type](SINGLE).use { pool =>
+      implicit val p = pool
+      for {
+        x <- lpush("list-1", "foo")
+        _ <- IO(assert(getResp(x).get == 1))
+        x <- lpush("list-1", "bar")
+        _ <- IO(assert(getResp(x).get == 2))
+
+        x <- set("anshin-1", "debasish")
+        _ <- IO(assert(getBoolean(x)))
+        x <- lpush("anshin-1", "bar")
+        _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+
+        // lpush with variadic arguments
+        x <- lpush("list-2", "foo", "bar", "baz")
+        _ <- IO(assert(getResp(x).get == 3))
+        x <- lpush("list-2", "bag", "fog")
+        _ <- IO(assert(getResp(x).get == 5))
+        x <- lpush("list-2", "bag", "fog")
+        _ <- IO(assert(getResp(x).get == 7))
+
+        // lpushx
+        x <- lpush("list-3", "foo")
+        _ <- IO(assert(getResp(x).get == 1))
+        x <- lpushx("list-3", "bar")
+        _ <- IO(assert(getResp(x).get == 2))
+
+        x <- set("anshin-2", "debasish")
+        _ <- IO(assert(getBoolean(x)))
+        x <- lpushx("anshin-2", "bar")
+        _ <- IO(assert(getResp(x).get.toString.contains("Operation against a key holding the wrong kind of value")))
+
+      } yield ()
+    }
+  }
+
 }
