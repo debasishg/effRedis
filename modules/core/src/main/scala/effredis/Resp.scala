@@ -16,6 +16,8 @@
 
 package effredis
 
+import cats.Applicative
+
 sealed trait Resp[+A]
 
 // generates a value A
@@ -32,3 +34,20 @@ case class Error(cause: String) extends Resp[Nothing]
 
 // transaction discarded
 case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends Resp[Nothing]
+
+object Resp {
+  implicit def applicativeForResp: Applicative[Resp] = new Applicative[Resp] {
+    def pure[A](a: A): Resp[A] = Value(a)
+
+    override def map[A, B](fa: Resp[A])(f: A => B): Resp[B] = fa match {
+      case Value(a) => Value(f(a))
+      case x        => Error(s"Error in values to compose $x")
+    }
+
+    override def ap[A, B](f: Resp[A => B])(fa: Resp[A]): Resp[B] =
+      (f, fa) match {
+        case (Value(fab), Value(a)) => Value(fab(a))
+        case x                      => Error(s"Error in values to compose $x")
+      }
+  }
+}
