@@ -62,8 +62,10 @@ case class RedisArray(value: List[RedisValue]) extends RedisValue {
         } catch { case e: Exception => e.printStackTrace; None }
       case a @ RedisArray(_)     => a.map
       case a @ RedisFlatArray(_) => a.map
+      case RedisError(cause)     => Some(cause)
     }
 }
+case class RedisError(cause: String) extends RedisValue
 
 // Response codes from the Redis server
 object RespValues {
@@ -174,14 +176,18 @@ trait Reply {
         case -1 => RedisArray(List(RedisBulkString(NULL_BULK_STRING)))
         case n =>
           RedisArray(
-            List.fill(n)(
-              receive(
-                integerReply orElse
-                    simpleStringReply orElse
-                    bulkStringReply orElse
-                    arrayReply
-              )
-            )
+            List.fill(n) {
+              try {
+                receive(
+                  integerReply orElse
+                      simpleStringReply orElse
+                      bulkStringReply orElse
+                      arrayReply
+                )
+              } catch {
+                case e: Exception => RedisError(e.getMessage())
+              }
+            }
           )
       }
     }

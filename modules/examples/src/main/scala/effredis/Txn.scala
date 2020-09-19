@@ -18,18 +18,47 @@ package effredis
 
 import java.net.URI
 import cats.effect._
+import cats.implicits._
 import log4cats._
 
-object Transaction extends LoggerIOApp {
+object Txn extends LoggerIOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
       normalTransaction(cli)
+      normalTxn(cli)
       discardedTransaction(cli)
+      val r = for {
+        x <- cli.set("k3", 100)
+        y <- cli.incrby("k3", 450)
+        z <- cli.get[Int]("k3")(codecs.Format.default, codecs.Parse.Implicits.parseInt)
+      } yield (x, y, z)
+      println(r.unsafeRunSync())
       IO(ExitCode.Success)
     }
 
   def normalTransaction(cli: RedisClient[IO, RedisClient.TRANSACT.type]) = {
+    val r1 = RedisClient.transaction(cli) {
+      import cli._
+      (
+        set("k1", "v1"),
+        set("k2", 100),
+        incrby("k2", 12),
+        get("k1"),
+        get("k2"),
+        lpop("k1")
+      ).tupled
+    }
+    r1.unsafeRunSync() match {
+
+      case Value(ls)        => println(ls)
+      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
+      case Error(err)       => println(s"oops! $err")
+      case err              => println(err)
+    }
+  }
+
+  def normalTxn(cli: RedisClient[IO, RedisClient.TRANSACT.type]) = {
     val r1 = RedisClient.transaction(cli) {
       import cli._
       for {
@@ -53,16 +82,16 @@ object Transaction extends LoggerIOApp {
   def discardedTransaction(cli: RedisClient[IO, RedisClient.TRANSACT.type]) = {
     val r1 = RedisClient.transaction(cli) {
       import cli._
-      for {
-        _ <- set("k2", 100)
-        _ <- incrby("k2", 12)
-        _ <- discard
-        // _ <- get("k2")
-      } yield ()
+      (
+        set("k2", 100),
+        incrby("k2", 12),
+        discard,
+        get("k2")
+      ).tupled
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => ls.foreach(println)
+      case Value(ls)        => println(ls)
       case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
       case Error(err)       => println(s"oops! $err")
       case err              => println(err)

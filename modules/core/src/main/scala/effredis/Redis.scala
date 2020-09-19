@@ -30,6 +30,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   var commandBuffer: StringBuffer           = new StringBuffer
   val crlf                                  = "\r\n"
   var seenMulti: Boolean                    = false
+  var seenDiscard: Boolean                  = false
 
   def send[A](command: String, args: Seq[Any])(
       result: => A
@@ -53,7 +54,6 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
           // mode before we get multi - we need to return back the values
           if (command == "WATCH" || command == "UNWATCH" || seenMulti == false) Value(result).pure[F]
           else {
-            handlers :+= ((command, () => result))
             val _ = receive(simpleStringReply)
             Queued.pure[F]
           }
@@ -76,7 +76,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   ): F[Resp[A]] = {
     val cmd = Request.request(List(command.getBytes("UTF-8")))
 
-    F.debug(s"Sending ${command}") >> {
+    F.debug(s"Sending ${command} with $mode") >> {
       try {
         if (mode == SINGLE) {
           write(cmd)
@@ -102,10 +102,16 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
             Value(result).pure[F]
 
           } else {
-            write(cmd)
-            handlers :+= ((command, () => result))
-            val _ = receive(simpleStringReply)
-            Queued.pure[F]
+            if (command == "DISCARD") {
+              seenDiscard = true
+              seenMulti = false
+              write(cmd)
+              Value(result).pure[F]
+            } else {
+              write(cmd)
+              val _ = receive(simpleStringReply)
+              Queued.pure[F]
+            }
           }
         }
 

@@ -48,8 +48,8 @@ object Pipeline extends LoggerIOApp {
       import cli._
 
       val res = for {
-        r1 <- RedisClient.pipeline(cli)(program)
-        r2 <- RedisClient.pipeline(cli)(program2)
+        r1 <- RedisClient.pipeline(cli)(program(cli))
+        r2 <- RedisClient.pipeline(cli)(program2(cli))
       } yield (r1, r2)
 
       println(res.unsafeRunSync())

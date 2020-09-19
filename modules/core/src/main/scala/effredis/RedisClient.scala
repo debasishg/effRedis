@@ -171,9 +171,9 @@ object RedisClient {
     */
   def pipeline[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, PIPE.type]
-  )(f: RedisClient[F, PIPE.type] => F[A]): F[Resp[Option[List[Any]]]] =
+  )(cmds: F[A]): F[Resp[Option[List[Any]]]] =
     try {
-      f(client).flatMap { _ =>
+      cmds.flatMap { _ =>
         client
           .send(client.commandBuffer.toString, true)(Some(client.handlers.map(_._2).map(_()).toList))
       }
@@ -262,7 +262,7 @@ object RedisClient {
     * @param f the pipeline of functions
     * @return response from server
     */
-  def transaction[F[+_]: Concurrent: ContextShift: Log, A](
+  def txn[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, TRANSACT.type]
   )(cmds: F[A]): F[Resp[Option[List[Any]]]] = {
 
@@ -287,6 +287,28 @@ object RedisClient {
               r.pure[F]
             }
           }
+        }
+      } catch {
+        case e: Exception =>
+          Error(e.getMessage()).pure[F]
+      }
+    }
+  }
+
+  def transaction[F[+_]: Concurrent: ContextShift: Log, A](
+      client: RedisClient[F, TRANSACT.type]
+  )(cmds: F[A]): F[Resp[List[Any]]] = {
+
+    import client._
+
+    multi.flatMap { _ =>
+      try {
+        cmds.flatMap { _ =>
+          if (client.seenDiscard) TransactionDiscarded.pure[F].flatTap { r =>
+            client.seenDiscard = false
+            r.pure[F]
+          }
+          else exec
         }
       } catch {
         case e: Exception =>
