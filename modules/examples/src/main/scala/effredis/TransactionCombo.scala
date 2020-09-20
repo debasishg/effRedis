@@ -21,13 +21,17 @@ import cats.effect._
 import cats.implicits._
 import log4cats._
 
-object Txn extends LoggerIOApp {
+object TransactionCombo extends LoggerIOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
+      // one normal transaction
       normalTransaction(cli)
+      // another normal transaction
       normalTxn(cli)
+      // discarded transaction
       discardedTransaction(cli)
+      // no transaction
       val r = for {
         x <- cli.set("k3", 100)
         y <- cli.incrby("k3", 450)
@@ -51,10 +55,10 @@ object Txn extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => println(ls)
-      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-      case Error(err)       => println(s"oops! $err")
-      case err              => println(err)
+      case Value(ls)            => println(ls)
+      case TransactionDiscarded => println("Transaction discarded")
+      case Error(err)           => println(s"oops! $err")
+      case err                  => println(err)
     }
   }
 
@@ -72,10 +76,10 @@ object Txn extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => println(ls)
-      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-      case Error(err)       => println(s"oops! $err")
-      case err              => println(err)
+      case Value(ls)            => println(ls)
+      case TransactionDiscarded => println("Transaction discarded")
+      case Error(err)           => println(s"oops! $err")
+      case err                  => println(err)
     }
   }
 
@@ -91,10 +95,10 @@ object Txn extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => println(ls)
-      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-      case Error(err)       => println(s"oops! $err")
-      case err              => println(err)
+      case Value(ls)            => println(ls)
+      case TransactionDiscarded => println("Transaction discarded")
+      case Error(err)           => println(s"oops! $err")
+      case err                  => println(err)
     }
   }
 }

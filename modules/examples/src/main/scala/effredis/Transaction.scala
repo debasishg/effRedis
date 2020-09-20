@@ -43,10 +43,10 @@ object Transaction extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => println(ls)
-      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-      case Error(err)       => println(s"oops! $err")
-      case err              => println(err)
+      case Value(ls)            => println(ls)
+      case TransactionDiscarded => println("Transaction discarded")
+      case Error(err)           => println(s"oops! $err")
+      case err                  => println(err)
     }
   }
 
@@ -57,15 +57,15 @@ object Transaction extends LoggerIOApp {
         _ <- set("k2", 100)
         _ <- incrby("k2", 12)
         _ <- discard
-        // _ <- get("k2")
+        _ <- get("k2")
       } yield ()
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)        => ls.foreach(println)
-      case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-      case Error(err)       => println(s"oops! $err")
-      case err              => println(err)
+      case Value(ls)            => ls.foreach(println)
+      case TransactionDiscarded => println("Transaction discarded")
+      case Error(err)           => println(s"oops! $err")
+      case err                  => println(err)
     }
   }
 }

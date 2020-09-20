@@ -33,7 +33,6 @@ case object Buffered extends Resp[Nothing]
 case class Error(cause: String) extends Resp[Nothing]
 
 // transaction discarded
-case class TxnDiscarded(contents: Vector[(String, () => Any)]) extends Resp[Nothing]
 case object TransactionDiscarded extends Resp[Nothing]
 
 object Resp {

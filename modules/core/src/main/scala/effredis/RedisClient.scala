@@ -211,82 +211,23 @@ object RedisClient {
     * the transaction set
     *
     * @param client the transaction client
-    * @param f the pipeline of functions
+    * @param cmds the pipeline of functions
     * @return response from server
     */
   def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
       client: RedisClient[F, TRANSACT.type]
-  )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
-    client.multi.flatMap { _ =>
-      try {
-        commands().flatMap { _ =>
-          if (client.handlers
-                .map(_._1)
-                .filter(_ == "DISCARD")
-                .isEmpty) {
-
-            // exec only if no discard
-            F.debug(s"Executing transaction ..") >> {
-              try {
-                client.exec(client.handlers.map(_._2)).flatTap { _ =>
-                  client.handlers = Vector.empty
-                  ().pure[F]
-                }
-              } catch {
-                case e: Exception =>
-                  Error(e.getMessage()).pure[F]
-              }
-            }
-
-          } else {
-            // no exec if discard
-            F.debug(s"Got DISCARD .. discarding transaction") >> {
-              TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-                client.handlers = Vector.empty
-                r.pure[F]
-              }
-            }
-          }
-        }
-      } catch {
-        case e: Exception =>
-          Error(e.getMessage()).pure[F]
-      }
-    }
-
-  /**
-    * API for transaction. Allows HList to be used for setting up
-    * the transaction set
-    *
-    * @param client the transaction client
-    * @param f the pipeline of functions
-    * @return response from server
-    */
-  def txn[F[+_]: Concurrent: ContextShift: Log, A](
-      client: RedisClient[F, TRANSACT.type]
-  )(cmds: F[A]): F[Resp[Option[List[Any]]]] = {
+  )(cmds: F[In]): F[Resp[List[Any]]] = {
 
     import client._
 
-    send("MULTI")(asSimpleString).flatMap { _ =>
+    multi.flatMap { _ =>
       try {
         cmds.flatMap { _ =>
-          // no exec if discard
-          if (client.handlers
-                .map(_._1)
-                .filter(_ == "DISCARD")
-                .isEmpty) {
-
-            send("EXEC")(asExec(client.handlers.map(_._2))).flatTap { _ =>
-              client.handlers = Vector.empty
-              ().pure[F]
-            }
-          } else {
-            TxnDiscarded(client.handlers).pure[F].flatTap { r =>
-              client.handlers = Vector.empty
-              r.pure[F]
-            }
+          if (client.seenDiscard) TransactionDiscarded.pure[F].flatTap { r =>
+            client.seenDiscard = false
+            r.pure[F]
           }
+          else exec
         }
       } catch {
         case e: Exception =>
@@ -295,6 +236,13 @@ object RedisClient {
     }
   }
 
+  /**
+    * API for transaction.
+    *
+    * @param client the transaction client
+    * @param cmds the pipeline of functions
+    * @return response from server
+    */
   def transaction[F[+_]: Concurrent: ContextShift: Log, A](
       client: RedisClient[F, TRANSACT.type]
   )(cmds: F[A]): F[Resp[List[Any]]] = {
