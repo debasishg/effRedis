@@ -28,4 +28,7 @@ trait TransactionOperations[F[+_]] extends TransactionApi[F] { self: Redis[F, _]
 
   override def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]] =
     send("EXEC")(asExec(hs))
+
+  override def exec: F[Resp[List[Any]]] =
+    send("EXEC")(asList)
 }

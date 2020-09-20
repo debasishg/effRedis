@@ -29,21 +29,20 @@ object HTransaction extends LoggerIOApp {
     RedisClient.transact[IO](new URI("http://localhost:6379")).use { cli =>
       import cli._
 
-      val cmds = { () =>
+      val cmds =
         (set("k1", "v1") ::
             set("k2", "v2") ::
             get("k1") ::
             get("k2") ::
             HNil).sequence
-      }
 
       val r = RedisClient.htransaction(cli)(cmds)
 
       r.unsafeRunSync() match {
-        case Value(Some(ls))  => ls.foreach(println)
-        case TxnDiscarded(cs) => println(s"Transaction discarded $cs")
-        case Error(ex)        => println(s"Error $ex")
-        case err              => println(err)
+        case Value(ls)            => println(ls)
+        case TransactionDiscarded => println("Transaction discarded")
+        case Error(ex)            => println(s"Error $ex")
+        case err                  => println(err)
       }
       IO(ExitCode.Success)
     }
