@@ -231,7 +231,7 @@ object RedisClient {
         }
       } catch {
         case e: Exception =>
-          Error(e.getMessage()).pure[F]
+          TransactionAborted(e.getMessage()).pure[F]
       }
     }
   }
@@ -260,7 +260,7 @@ object RedisClient {
         }
       } catch {
         case e: Exception =>
-          Error(e.getMessage()).pure[F]
+          TransactionAborted(e.getMessage()).pure[F]
       }
     }
   }

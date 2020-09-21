@@ -43,10 +43,11 @@ object Transaction extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)            => println(ls)
-      case TransactionDiscarded => println("Transaction discarded")
-      case Error(err)           => println(s"oops! $err")
-      case err                  => println(err)
+      case Value(ls)               => println(ls)
+      case TransactionDiscarded    => println("Transaction discarded")
+      case TransactionAborted(err) => println(s"Transaction aborted: $err")
+      case Error(err)              => println(s"oops! $err")
+      case err                     => println(err)
     }
   }
 
@@ -62,10 +63,11 @@ object Transaction extends LoggerIOApp {
     }
     r1.unsafeRunSync() match {
 
-      case Value(ls)            => ls.foreach(println)
-      case TransactionDiscarded => println("Transaction discarded")
-      case Error(err)           => println(s"oops! $err")
-      case err                  => println(err)
+      case Value(ls)               => ls.foreach(println)
+      case TransactionDiscarded    => println("Transaction discarded")
+      case TransactionAborted(err) => println(s"Transaction aborted: $err")
+      case Error(err)              => println(s"oops! $err")
+      case err                     => println(err)
     }
   }
 }
