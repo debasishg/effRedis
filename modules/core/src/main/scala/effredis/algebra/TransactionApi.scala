@@ -32,6 +32,5 @@ trait TransactionApi[F[+_]] {
   /**
     * exec to complete the transaction
     */
-  def exec(hs: Seq[() => Any]): F[Resp[Option[List[Any]]]]
   def exec: F[Resp[List[Any]]]
 }

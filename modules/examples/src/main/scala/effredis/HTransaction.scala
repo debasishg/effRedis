@@ -39,10 +39,11 @@ object HTransaction extends LoggerIOApp {
       val r = RedisClient.htransaction(cli)(cmds)
 
       r.unsafeRunSync() match {
-        case Value(ls)            => println(ls)
-        case TransactionDiscarded => println("Transaction discarded")
-        case Error(ex)            => println(s"Error $ex")
-        case err                  => println(err)
+        case Value(ls)               => println(ls)
+        case TransactionDiscarded    => println("Transaction discarded")
+        case TransactionAborted(err) => println(s"Transaction aborted: $err")
+        case Error(ex)               => println(s"Error $ex")
+        case err                     => println(err)
       }
       IO(ExitCode.Success)
     }

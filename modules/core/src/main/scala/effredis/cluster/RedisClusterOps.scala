@@ -1572,12 +1572,10 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
       }
     )
 
-  def exec(
-      hs: Seq[() => Any]
-  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[List[Any]]]] =
+  def exec(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[List[Any]]] =
     onANode(node =>
       node.managedClient(pool, node.uri).use {
-        _.exec(hs)
+        _.exec
       }
     )
 }

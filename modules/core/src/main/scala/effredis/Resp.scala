@@ -35,6 +35,9 @@ case class Error(cause: String) extends Resp[Nothing]
 // transaction discarded
 case object TransactionDiscarded extends Resp[Nothing]
 
+// transaction aborted
+case class TransactionAborted(cause: String) extends Resp[Nothing]
+
 object Resp {
   implicit def applicativeForResp: Applicative[Resp] = new Applicative[Resp] {
     def pure[A](a: A): Resp[A] = Value(a)
