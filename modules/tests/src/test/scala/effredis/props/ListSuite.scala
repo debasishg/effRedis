@@ -36,7 +36,7 @@ class ListSuite extends EffRedisPropsFunSuite {
       .suchThat(_.size >= 4)
       .map(_.mkString)
 
-  test("test redis list operations lpush and rpush") {
+  test("redis list operations lpush and rpush increases the length of the list by the number of elements pushed") {
     RedisClient
       .single[IO](new URI("http://localhost:6379"))
       .use { cl =>
@@ -48,16 +48,63 @@ class ListSuite extends EffRedisPropsFunSuite {
               z <- llen("list-2")
               x <- if (v.size <= 1) {
                     lpush("list-1", v.head)
-                      .map(res => assert(getLong(res).get == getLong(y).get + 1))
+                      .map(res => assert(lengthIncreasesBy(y, res, 1)))
                     rpush("list-2", v.head)
-                      .map(res => assert(getLong(res).get == getLong(z).get + 1))
+                      .map(res => assert(lengthIncreasesBy(z, res, 1)))
                   } else {
                     lpush("list-1", v.head, v.tail: _*)
-                      .map(res => assert(getLong(res).get == getLong(y).get + v.tail.size + 1))
+                      .map(res => assert(lengthIncreasesBy(y, res, v.tail.size + 1)))
                     rpush("list-2", v.head, v.tail: _*)
-                      .map(res => assert(getLong(res).get == getLong(z).get + v.tail.size + 1))
+                      .map(res => assert(lengthIncreasesBy(z, res, v.tail.size + 1)))
                   }
             } yield x
+          }
+        }
+      }
+      .unsafeRunSync()
+  }
+
+  test("redis list operations lpush / rpush followed by lpop / rpop / ltrim truncates the list") {
+    RedisClient
+      .single[IO](new URI("http://localhost:6379"))
+      .use { cl =>
+        import cl._
+        IO {
+          PropF.forAllF(Gen.listOfN(10, genValue).suchThat(_.size > 0)) { (v: List[String]) =>
+            for {
+              x <- if (v.size <= 1) {
+                    (lpush("list-1", v.head) *> lpop("list-1") *>
+                        llen("list-1")).map(r => assert(getLong(r).get == 0))
+                    (rpush("list-1", v.head) *> rpop("list-1") *>
+                        llen("list-1")).map(r => assert(getLong(r).get == 0))
+                  } else {
+                    (lpush("list-1", v.head, v.tail: _*) *>
+                        ltrim("list-1", 2, 1) *> llen("list-1")).map(r => assert(getLong(r).get == 0))
+                    (rpush("list-1", v.head, v.tail: _*) *>
+                        ltrim("list-1", 2, 1) *> llen("list-1")).map(r => assert(getLong(r).get == 0))
+                  }
+            } yield x
+          }
+        }
+      }
+      .unsafeRunSync()
+  }
+
+  test("test redis list operations lrange should return the full list pushed using lpush or rpush") {
+    RedisClient
+      .single[IO](new URI("http://localhost:6379"))
+      .use { cl =>
+        import cl._
+        IO {
+          PropF.forAllF(Gen.listOfN(10, genValue).suchThat(_.size > 1)) { (v: List[String]) =>
+            for {
+              _ <- (lpush("list-1", v.head, v.tail: _*) *> lrange("list-1", 0, -1))
+                     .map(r => assert(getRespListSize(r).get == v.length))
+              _ <- ltrim("list-1", 2, 1)
+              _ <- (rpush("list-1", v.head, v.tail: _*) *> lrange("list-1", 0, -1))
+                     .map(r => assert(getRespListSize(r).get == v.length))
+              _ <- ltrim("list-1", 2, 1)
+            } yield ()
           }
         }
       }

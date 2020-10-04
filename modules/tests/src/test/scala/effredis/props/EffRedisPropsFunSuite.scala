@@ -88,4 +88,7 @@ object EffRedisPropsFunSuite {
     case Value(ls: List[_])       => Some(ls.asInstanceOf[List[A]])
     case _                        => None
   }
+
+  final def lengthIncreasesBy(start: Resp[Long], end: Resp[Long], by: Int): Boolean =
+    getLong(end).get == getLong(start).get + by
 }
