@@ -1749,17 +1749,19 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     }
   }
 
-  // this needs change: is the client supposed to track which script gets loaded to which server ?
+  // load script to all nodes
   def scriptLoad(
       luaCode: String
   )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[String]]] =
-    onANode(node =>
+    onAllNodes(node =>
       node.managedClient(pool, node.uri).use {
         _.scriptLoad(luaCode)
       }
-    )
+    ).map(_.head)
 
-  // this needs change: is the client supposed to track which script exists in which server ?
+  // script exists should find it if it exists anywhere in the cluster as we are loading to all nodes
+  // if the user does not find a script in some node which was supposed to contain it, this means
+  // that the node has been restarted - in that case she needs to do a reload
   def scriptExists(
       shas: String*
   )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[List[Option[Int]]]] =
