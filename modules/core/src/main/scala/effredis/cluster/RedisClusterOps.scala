@@ -29,6 +29,7 @@ import effredis.{ Error, Log, Resp, Value }
 import effredis.codecs._
 import effredis.algebra.StringApi._
 import effredis.RedisClient._
+import effredis.Containers._
 import Resp._
 
 abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] {
@@ -1578,6 +1579,202 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
         _.exec
       }
     )
+
+  // Geo operations
+
+  final def geoadd(key: Any, members: GeoLocation*)(
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Long]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.geoadd(key, members: _*)
+      }
+    }
+
+  final def geopos(key: Any, members: Any*)(
+      implicit format: Format,
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[Option[GeoCoordinate]]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.geopos(key, members: _*)
+      }
+    }
+
+  final def geohash(
+      key: Any,
+      members: Iterable[Any]
+  )(implicit format: Format, pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[List[Option[String]]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.geohash(key, members)
+      }
+    }
+
+  final def geodist(key: Any, m1: Any, m2: Any, unit: Option[GeoUnit])(
+      implicit format: Format,
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Option[Double]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.geodist(key, m1, m2, unit)
+      }
+    }
+
+  final def georadius[A](key: Any, geoRadius: GeoRadius, unit: GeoUnit)(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Set[Option[A]]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.georadius(key, geoRadius, unit)
+      }
+    }
+
+  final def georadius[A](key: Any, geoRadius: GeoRadius, unit: GeoUnit, args: GeoRadiusArgs)(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[GeoRadiusMember]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.georadius(key, geoRadius, unit, args)
+      }
+    }
+
+  final def georadiusByMember[A](key: Any, value: Any, distance: Distance, unit: GeoUnit)(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Set[Option[A]]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.georadiusByMember(key, value, distance, unit)
+      }
+    }
+
+  final def georadiusByMember[A](key: Any, value: Any, distance: Distance, unit: GeoUnit, args: GeoRadiusArgs)(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[GeoRadiusMember]]] =
+    forKey(key.toString) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.georadiusByMember(key, value, distance, unit, args)
+      }
+    }
+
+  // Lua scripting operations
+
+  def evalMultiBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[Option[A]]]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalMultiBulk[A](luaCode, keys, args)
+      }
+    }
+  }
+
+  def evalBulk[A](luaCode: String, keys: List[Any], args: List[Any])(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Option[A]]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalBulk[A](luaCode, keys, args)
+      }
+    }
+  }
+
+  def evalInt(luaCode: String, keys: List[Any], args: List[Any])(
+      implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Long]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalInt(luaCode, keys, args)
+      }
+    }
+
+  }
+
+  def evalMultiSHA[A](shahash: String, keys: List[Any], args: List[Any])(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[List[Option[A]]]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalMultiSHA(shahash, keys, args)
+      }
+    }
+  }
+
+  def evalSHA[A](shahash: String, keys: List[Any], args: List[Any])(
+      implicit format: Format,
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Long]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalSHA(shahash, keys, args)
+      }
+    }
+  }
+
+  def evalSHABulk[A](shahash: String, keys: List[Any], args: List[Any])(
+      implicit format: Format,
+      parse: Parse[A],
+      pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]
+  ): F[Resp[Option[A]]] = {
+
+    val (k, ks) = (keys.head, keys.tail)
+    forKeys(k.toString, ks.toList.map(_.toString): _*) { node =>
+      node.managedClient(pool, node.uri).use {
+        _.evalSHABulk(shahash, keys, args)
+      }
+    }
+  }
+
+  // this needs change: is the client supposed to track which script gets loaded to which server ?
+  def scriptLoad(
+      luaCode: String
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Option[String]]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.scriptLoad(luaCode)
+      }
+    )
+
+  // this needs change: is the client supposed to track which script exists in which server ?
+  def scriptExists(
+      shas: String*
+  )(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[List[Option[Int]]]] =
+    onANode(node =>
+      node.managedClient(pool, node.uri).use {
+        _.scriptExists(shas: _*)
+      }
+    )
+
+  def scriptFlush(implicit pool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])]): F[Resp[Boolean]] =
+    onAllNodes(node =>
+      node.managedClient(pool, node.uri).use {
+        _.scriptFlush
+      }
+    ) *> F.delay(Value(true))
 }
 
 class NotAllowedInClusterError(message: String) extends RuntimeException(message)
