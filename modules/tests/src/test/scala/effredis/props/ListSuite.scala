@@ -17,6 +17,7 @@
 package effredis.props
 
 import java.net.URI
+import cats.Monad
 import cats.effect._
 import org.scalacheck._
 import org.scalacheck.effect.PropF
@@ -80,6 +81,11 @@ class ListSuite extends EffRedisPropsFunSuite {
                   } else {
                     (lpush("list-1", v.head, v.tail: _*) *>
                         ltrim("list-1", 2, 1) *> llen("list-1")).map(r => assert(getLong(r).get == 0))
+
+                    (lpush("list-1", v.head, v.tail: _*) *>
+                        Monad[IO].whileM_(lpop("list-1").map(getResp(_).isDefined))(IO(())) *> llen("list-1"))
+                      .map(r => assert(getLong(r).get == 0))
+
                     (rpush("list-1", v.head, v.tail: _*) *>
                         ltrim("list-1", 2, 1) *> llen("list-1")).map(r => assert(getLong(r).get == 0))
                   }
@@ -99,10 +105,10 @@ class ListSuite extends EffRedisPropsFunSuite {
           PropF.forAllF(Gen.listOfN(10, genValue).suchThat(_.size > 1)) { (v: List[String]) =>
             for {
               _ <- (lpush("list-1", v.head, v.tail: _*) *> lrange("list-1", 0, -1))
-                     .map(r => assert(getRespListSize(r).get == v.length))
+                    .map(r => assert(getRespListSize(r).get == v.length))
               _ <- ltrim("list-1", 2, 1)
               _ <- (rpush("list-1", v.head, v.tail: _*) *> lrange("list-1", 0, -1))
-                     .map(r => assert(getRespListSize(r).get == v.length))
+                    .map(r => assert(getRespListSize(r).get == v.length))
               _ <- ltrim("list-1", 2, 1)
             } yield ()
           }
