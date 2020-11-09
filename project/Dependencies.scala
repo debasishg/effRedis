@@ -19,7 +19,7 @@ object Dependencies {
     val contextApplied   = "0.1.4"
     val kindProjector    = "0.11.0"
 
-    val munit = "0.7.15"
+    val munit = "0.7.17"
     val enumeratum = "1.6.1"
     val cormorant = "0.3.0"
     val keypool = "0.2.0"
