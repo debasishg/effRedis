@@ -6,7 +6,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val cats       = "2.2.0"
+    val cats       = "2.3.0"
     val catsEffect = "2.3.0"
     val circe      = "0.13.0"
     val fs2        = "2.4.2"
@@ -24,8 +24,8 @@ object Dependencies {
     val cormorant = "0.3.0"
     val keypool = "0.2.0"
     val kittens = "2.2.1"
-    val munitScalacheckEffect = "0.3.0"
-    val munitCatsEffect = "0.3.0"
+    val munitScalacheckEffect = "0.6.0"
+    val munitCatsEffect = "0.11.0"
   }
 
   object Libraries {
@@ -64,7 +64,7 @@ object Dependencies {
     val catsTestKit      = cats("testkit")
     val munitCore        = "org.scalameta" %% "munit" % V.munit
     val munitScalacheckEffect = "org.typelevel" %% "scalacheck-effect-munit" % V.munitScalacheckEffect
-    val munitCatsEffect = "org.typelevel" %% "munit-cats-effect" % V.munitCatsEffect
+    val munitCatsEffect = "org.typelevel" %% "munit-cats-effect-2" % V.munitCatsEffect
   }
 
   object CompilerPlugins {

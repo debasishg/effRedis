@@ -276,6 +276,7 @@ trait R extends Reply {
       .grouped(2)
       .flatMap {
         case List(a, b) => Iterator.single((parseA(a.value), parseB(b.value)))
+        case _          => ???
       }
       .toList
 
