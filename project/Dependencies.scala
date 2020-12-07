@@ -6,7 +6,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val cats       = "2.3.0"
+    val cats       = "2.2.0"
     val catsEffect = "2.3.0"
     val circe      = "0.13.0"
     val fs2        = "2.4.2"
@@ -17,13 +17,13 @@ object Dependencies {
 
     val betterMonadicFor = "0.3.1"
     val contextApplied   = "0.1.4"
-    val kindProjector    = "0.11.0"
+    val kindProjector    = "0.11.2"
 
-    val munit = "0.7.17"
+    val munit = "0.7.19"
     val enumeratum = "1.6.1"
     val cormorant = "0.3.0"
     val keypool = "0.2.0"
-    val kittens = "2.2.0"
+    val kittens = "2.2.1"
     val munitScalacheckEffect = "0.3.0"
     val munitCatsEffect = "0.3.0"
   }
