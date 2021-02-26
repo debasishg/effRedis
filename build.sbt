@@ -3,7 +3,7 @@ import com.scalapenos.sbt.prompt._
 import Dependencies._
 
 ThisBuild / name := "effredis"
-ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.4")
+ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.5")
 
 inThisBuild(List(
   organization := "io.github.debasishg",
