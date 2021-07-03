@@ -26,7 +26,7 @@ import effredis.RedisClient._
 
 import effredis.{ Log, RedisClient }
 
-final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] private (
+final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log, M <: Mode] private (
     // collection of initial seed uris for the cluster
     // try sequentially till one of them works
     seedURIs: NonEmptyList[URI],
@@ -40,7 +40,7 @@ final case class RedisClusterClient[F[+_]: Concurrent: ContextShift: Log: Timer,
 
 object RedisClusterClient {
 
-  def make[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode](
+  def make[F[+_]: Concurrent: ContextShift: Log, M <: Mode](
       seedURIs: NonEmptyList[URI]
   ): F[RedisClusterClient[F, M]] =
     RedisClient.single(seedURIs).flatMap {

@@ -29,7 +29,7 @@ final private[effredis] case class ClusterTopology(
 
 object ClusterTopology {
 
-  def create[F[+_]: Concurrent: ContextShift: Log: Timer](
+  def create[F[+_]: Concurrent: Log](
       cl: RedisClient[F, SINGLE.type]
   ): F[ClusterTopology] = {
 
@@ -59,19 +59,19 @@ object ClusterTopology {
           s"nodeId uri nodeFlags replicaUpstreamNodeId pingTimestamp pongTimestamp configEpoch linkState slots\n$n"
         ) match {
           case Right(tsNel) =>
-            F.debug("Cluster topology fetched") *>
+            Log[F].debug("Cluster topology fetched") *>
                 ClusterTopology(tsNel.toList.map(ts => toRedisClusterNode(ts))).pure[F]
           case Left(err) =>
-            F.error(s"Error fetching topology $err") *>
+            Log[F].error(s"Error fetching topology $err") *>
                 F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
         }
       }
       case Error(err) =>
-        F.error(s"Error fetching topology $err") *>
+        Log[F].error(s"Error fetching topology $err") *>
             F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
       case err =>
-        F.error(s"Error fetching topology $err") *>
+        Log[F].error(s"Error fetching topology $err") *>
             F.raiseError(new IllegalStateException(s"Error fetching topology $err"))
-    } <* F.debug(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
+    } <* Log[F].debug(s"ClusterTopology created with information from client ${cl.host}:${cl.port}")
   }
 }

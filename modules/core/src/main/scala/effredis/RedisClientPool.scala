@@ -23,7 +23,7 @@ import io.chrisdavenport.keypool._
 import cats.effect._
 import RedisClient._
 
-case class RedisClientPool[F[+_]: Concurrent: ContextShift: Log: Timer]()
+case class RedisClientPool[F[+_]]()
 
 object RedisClientPool {
   def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode](

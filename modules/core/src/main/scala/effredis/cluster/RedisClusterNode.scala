@@ -22,7 +22,7 @@ import scala.collection.immutable.BitSet
 import io.chrisdavenport.keypool._
 import cats.effect._
 import cats.implicits._
-import effredis.{ Log, RedisClient }
+import effredis.RedisClient
 import effredis.RedisClient._
 
 final case class RedisClusterNode(
@@ -39,7 +39,7 @@ final case class RedisClusterNode(
   def getSlots(): List[Int]       = slots.toList
   def hasSlot(slot: Int): Boolean = slots(slot)
 
-  def managedClient[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode](
+  def managedClient[F[+_]: Concurrent, M <: Mode](
       keypool: KeyPool[F, URI, (RedisClient[F, M], F[Unit])],
       uri: URI
   ): Resource[F, RedisClient[F, M]] =

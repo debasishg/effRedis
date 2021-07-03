@@ -21,15 +21,14 @@ package util
 import cats.effect.concurrent.{ Deferred, Ref }
 import cats.effect._
 import cats.syntax.all._
-import effredis.Log
 
-abstract class Cached[F[_]: Concurrent: ContextShift: Timer: Log, A] {
+abstract class Cached[F[_], A] {
   def get: F[A]
   def expire: F[Unit]
 }
 
 object Cached {
-  def create[F[_]: Concurrent: ContextShift: Timer: Log, A](fa: F[A]): F[Cached[F, A]] = {
+  def create[F[_]: Concurrent, A](fa: F[A]): F[Cached[F, A]] = {
     sealed trait State
     case class Value(v: A) extends State
 

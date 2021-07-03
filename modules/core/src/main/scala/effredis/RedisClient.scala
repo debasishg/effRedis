@@ -109,7 +109,7 @@ object RedisClient {
         F.raiseError(new IllegalArgumentException(s"None of the supplied URIs $uris could connect to the cluster"))
     }
 
-  private def clientPings[F[+_]: ContextShift: Concurrent: Log](r: RedisClient[F, SINGLE.type]): F[Boolean] =
+  private def clientPings[F[+_]: Concurrent](r: RedisClient[F, SINGLE.type]): F[Boolean] =
     r.ping.flatMap {
       case Value(_) => true.pure[F]
       case _        => false.pure[F]
@@ -169,7 +169,7 @@ object RedisClient {
     * @param f the pipeline of functions
     * @return response from server
     */
-  def pipeline[F[+_]: Concurrent: ContextShift: Log, A](
+  def pipeline[F[+_]: Concurrent, A](
       client: RedisClient[F, PIPE.type]
   )(cmds: F[A]): F[Resp[Option[List[Any]]]] =
     try {
@@ -189,7 +189,7 @@ object RedisClient {
     * @param f the pipeline of functions
     * @return response from server
     */
-  def hpipeline[F[+_]: Concurrent: ContextShift: Log, In <: HList](
+  def hpipeline[F[+_]: Concurrent, In <: HList](
       client: RedisClient[F, PIPE.type]
   )(commands: () => F[In]): F[Resp[Option[List[Any]]]] =
     try {
@@ -214,7 +214,7 @@ object RedisClient {
     * @param cmds the pipeline of functions
     * @return response from server
     */
-  def htransaction[F[+_]: Concurrent: ContextShift: Log, In <: HList](
+  def htransaction[F[+_]: Concurrent, In <: HList](
       client: RedisClient[F, TRANSACT.type]
   )(cmds: F[In]): F[Resp[List[Any]]] = {
 
@@ -243,7 +243,7 @@ object RedisClient {
     * @param cmds the pipeline of functions
     * @return response from server
     */
-  def transaction[F[+_]: Concurrent: ContextShift: Log, A](
+  def transaction[F[+_]: Concurrent, A](
       client: RedisClient[F, TRANSACT.type]
   )(cmds: F[A]): F[Resp[List[Any]]] = {
 

@@ -25,9 +25,9 @@ object log4cats {
 
   implicit def log4CatsInstance[F[_]: Logger]: Log[F] =
     new Log[F] {
-      def debug(msg: => String): F[Unit] = F.debug(msg)
-      def error(msg: => String): F[Unit] = F.error(msg)
-      def info(msg: => String): F[Unit]  = F.info(msg)
+      def debug(msg: => String): F[Unit] = Logger[F].debug(msg)
+      def error(msg: => String): F[Unit] = Logger[F].error(msg)
+      def info(msg: => String): F[Unit]  = Logger[F].info(msg)
     }
 
 }

@@ -32,7 +32,7 @@ import effredis.RedisClient._
 import effredis.Containers._
 import Resp._
 
-abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode] {
+abstract class RedisClusterOps[F[+_]: Concurrent: Log, M <: Mode] {
   self: RedisClusterClient[F, M] =>
 
   /*
@@ -77,7 +77,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     val node = topologyCache.get.map(_.nodes.filter(_.hasSlot(slot)).headOption)
 
     node.flatMap { n =>
-      F.debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
+      Log[F].debug(s"Command with key $key mapped to slot $slot node uri ${n.get.uri}") *>
         executeOnNode(n, slot, List(key))(fn).flatMap {
           case r @ Value(_) => r.pure[F]
           case Error(err) =>
@@ -139,7 +139,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     val parts = err.split(" ")
     val slot  = parts(1).toInt
 
-    F.debug(s"Got MOVED redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
+    Log[F].debug(s"Got MOVED redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
       if (parts.size != 3) {
         F.raiseError(
           new IllegalStateException(
@@ -167,7 +167,7 @@ abstract class RedisClusterOps[F[+_]: Concurrent: ContextShift: Log: Timer, M <:
     val parts = err.split(" ")
     val slot  = parts(1).toInt
 
-    F.debug(s"Got ASK redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
+    Log[F].debug(s"Got ASK redirection: Retrying with ${parts(1)} ${parts(2)}") *> {
       if (parts.size != 3) {
         F.raiseError(
           new IllegalStateException(

@@ -45,6 +45,7 @@ trait GeoOperations[F[+_]] extends GeoApi[F] { self: Redis[F, _] =>
           )
         }
         case List(None) => None
+        case _          => None
       }
     }
 

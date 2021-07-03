@@ -440,6 +440,7 @@ trait TestSetScenarios {
       _ <- IO {
             getResp(x).get match {
               case s: Set[_] => s.size == 4
+              case _         => false
             }
           }
 
@@ -448,6 +449,7 @@ trait TestSetScenarios {
       _ <- IO {
             getResp(x).get match {
               case s: Set[_] => s.size <= 4
+              case _         => false
             }
           }
 
@@ -456,6 +458,7 @@ trait TestSetScenarios {
       _ <- IO {
             getResp(x).get match {
               case s: Set[_] => s.size == 8
+              case _         => false
             }
           }
 

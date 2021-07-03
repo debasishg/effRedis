@@ -19,7 +19,7 @@ package effredis
 import cats.effect._
 import RedisClient._
 
-abstract class RedisCommand[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M)
+abstract class RedisCommand[F[+_]: Concurrent: Log, M <: Mode](mode: M)
     extends Redis[F, M](mode)
     with BaseOperations[F]
     with StringOperations[F]

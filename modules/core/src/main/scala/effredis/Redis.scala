@@ -24,8 +24,7 @@ import cats.syntax.all._
 import codecs.Format
 import RedisClient._
 
-abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) extends RedisIO with Protocol {
-
+abstract class Redis[F[+_]: Concurrent: Log, M <: Mode](mode: M) extends RedisIO with Protocol {
   var handlers: Vector[(String, () => Any)] = Vector.empty
   var commandBuffer: StringBuffer           = new StringBuffer
   val crlf                                  = "\r\n"
@@ -35,7 +34,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   def send[A](command: String, args: Seq[Any])(
       result: => A
   )(implicit format: Format): F[Resp[A]] =
-    F.debug(s"Sending $command $args") >> {
+    Log[F].debug(s"Sending $command $args") >> {
       val cmd = Request.request(command.getBytes("UTF-8") +: (args map (format.apply)))
 
       try {
@@ -76,7 +75,7 @@ abstract class Redis[F[+_]: Concurrent: ContextShift: Log, M <: Mode](mode: M) e
   ): F[Resp[A]] = {
     val cmd = Request.request(List(command.getBytes("UTF-8")))
 
-    F.debug(s"Sending ${command} with $mode") >> {
+    Log[F].debug(s"Sending ${command} with $mode") >> {
       try {
         if (mode == SINGLE) {
           write(cmd)
