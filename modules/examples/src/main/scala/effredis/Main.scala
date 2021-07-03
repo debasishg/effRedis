@@ -20,6 +20,7 @@ import java.net.URI
 import cats.effect._
 import cats.syntax.all._
 import log4cats._
+import cats.effect.Resource
 
 object Main extends LoggerIOApp {
   override def run(args: List[String]): IO[ExitCode] =
@@ -77,7 +78,7 @@ object Main extends LoggerIOApp {
 
       } yield (a, b, c)
 
-      val onSeparateContextShift = Blocker[IO].use { blocker =>
+      val onSeparateContextShift = Resource.unit[IO].use { blocker =>
         for {
           a <- blocker.blockOn(resl)
           _ <- IO(println(a))

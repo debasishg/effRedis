@@ -28,6 +28,7 @@ import io.chrisdavenport.cormorant.implicits._
 import cats.effect._
 import cats.syntax.all._
 import cats.data.{ EitherNec, NonEmptyList }
+import cats.effect.Temporal
 
 object ClusterUtils {
   case class TopologyString(
@@ -65,7 +66,7 @@ object ClusterUtils {
     else BitSet((parts(0).toInt to parts(1).toInt).toList: _*)
   }
 
-  def repeatAtFixedRate[F[+_]: Concurrent](period: Duration, task: F[Unit])(implicit timer: Timer[F]): F[Unit] =
+  def repeatAtFixedRate[F[+_]: Concurrent](period: Duration, task: F[Unit])(implicit timer: Temporal[F]): F[Unit] =
     timer.clock.monotonic(MILLISECONDS).flatMap { start =>
       task *> timer.clock.monotonic(MILLISECONDS).flatMap { finish =>
         val nextDelay = period.toMillis - (finish - start)

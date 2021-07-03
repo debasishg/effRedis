@@ -16,7 +16,7 @@
 
 package effredis
 
-import cats.effect.{ Concurrent, ContextShift }
+import cats.effect.Concurrent
 import algebra.BaseApi
 import codecs._
 

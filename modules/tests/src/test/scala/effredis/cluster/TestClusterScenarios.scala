@@ -22,10 +22,11 @@ import effredis.EffRedisFunSuite._
 import effredis.Log.NoOp._
 import effredis.RedisClientPool
 import effredis.RedisClient._
+import cats.effect.Temporal
 
 trait TestClusterScenarios {
   implicit def cs: ContextShift[IO]
-  implicit def tr: Timer[IO]
+  implicit def tr: Temporal[IO]
 
   def clusterCommands(cmd: RedisClusterClient[IO, SINGLE.type]): IO[Unit] = {
     import cmd._

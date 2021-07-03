@@ -24,7 +24,7 @@ trait RedisBlocker {
 }
 
 object RedisBlocker {
-  def apply(blocker: Blocker): RedisBlocker =
+  def apply: RedisBlocker =
     new RedisBlocker {
       def ec: Blocker = blocker
     }

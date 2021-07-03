@@ -22,11 +22,12 @@ import scala.concurrent.duration._
 import io.chrisdavenport.keypool._
 import cats.effect._
 import RedisClient._
+import cats.effect.Temporal
 
 case class RedisClientPool[F[+_]]()
 
 object RedisClientPool {
-  def poolResource[F[+_]: Concurrent: ContextShift: Log: Timer, M <: Mode](
+  def poolResource[F[+_]: Concurrent: ContextShift: Log: Temporal, M <: Mode](
       clientMode: M = SINGLE
   ): Resource[F, KeyPool[F, URI, (RedisClient[F, M], F[Unit])]] =
     KeyPoolBuilder[F, URI, (RedisClient[F, M], F[Unit])](
