@@ -29,11 +29,12 @@ import munit.FunSuite
 import org.scalacheck.effect.PropF
 import RedisClient._
 import cluster.RedisClusterClient
+import cats.effect.Temporal
 
 abstract class EffRedisFunSuite(isCluster: Boolean = false) extends FunSuite {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-  implicit val tr: Timer[IO]        = IO.timer(ExecutionContext.global)
+  implicit val tr: Temporal[IO]        = IO.timer(ExecutionContext.global)
 
   val flushAllFixture = new Fixture[Unit]("FLUSHALL") {
     def apply(): Unit = ()
