@@ -17,7 +17,7 @@ object Dependencies {
 
     val betterMonadicFor = "0.3.1"
     val contextApplied   = "0.1.4"
-    val kindProjector    = "0.13.0"
+    val kindProjector    = "0.13.1"
 
     val munit = "0.7.27"
     val enumeratum = "1.7.0"
