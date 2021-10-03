@@ -25,7 +25,7 @@ object Dependencies {
     val keypool = "0.2.0"
     val kittens = "2.2.2"
     val munitCatsEffect = "1.0.5"
-    val munitScalacheckEffect = "1.0.2"
+    val munitScalacheckEffect = "1.0.3"
   }
 
   object Libraries {
