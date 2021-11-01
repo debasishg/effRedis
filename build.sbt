@@ -3,21 +3,23 @@ import com.scalapenos.sbt.prompt._
 import Dependencies._
 
 ThisBuild / name := "effredis"
-ThisBuild / crossScalaVersions := Seq("2.12.15", "2.13.6")
+ThisBuild / crossScalaVersions := Seq("2.12.15", "2.13.7")
 
-inThisBuild(List(
-  organization := "io.github.debasishg",
-  homepage := Some(url("https://github.com/debasishg/effRedis")),
-  licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
-  developers := List(
-    Developer(
-      "debasishg",
-      "Debasish Ghosh",
-      "dghosh@acm.org",
-      url("https://debasishg.blogspot.com")
-    )
+inThisBuild(
+  List(
+    organization := "io.github.debasishg",
+    homepage := Some(url("https://github.com/debasishg/effRedis")),
+    licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    developers := List(
+          Developer(
+            "debasishg",
+            "Debasish Ghosh",
+            "dghosh@acm.org",
+            url("https://debasishg.blogspot.com")
+          )
+        )
   )
-))
+)
 
 // thanks https://github.com/profunktor/redis4cats/blob/master/build.sbt
 promptTheme := PromptTheme(
@@ -52,11 +54,11 @@ val commonSettings = Seq(
         Libraries.slf4jLog4j,
         Libraries.slf4jApi,
         Libraries.log4j,
-        Libraries.catsLaws         % Test,
-        Libraries.catsTestKit      % Test,
-        Libraries.munitCore        % Test,
-        Libraries.munitScalacheckEffect  % Test,
-        Libraries.munitCatsEffect % Test
+        Libraries.catsLaws              % Test,
+        Libraries.catsTestKit           % Test,
+        Libraries.munitCore             % Test,
+        Libraries.munitScalacheckEffect % Test,
+        Libraries.munitCatsEffect       % Test
       ),
   resolvers += "Apache public" at "https://repository.apache.org/content/groups/public/",
   scalacOptions ++= pred(
