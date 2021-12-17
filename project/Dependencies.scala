@@ -13,7 +13,7 @@ object Dependencies {
     val log4cats   = "1.1.1"
     val shapeless  = "2.4.0-M1"
 
-    val logback = "1.2.8"
+    val logback = "1.2.9"
 
     val betterMonadicFor = "0.3.1"
     val contextApplied   = "0.1.4"
