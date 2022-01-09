@@ -50,7 +50,6 @@ object RedisClient {
 
   private[effredis] def acquireAndRelease[F[+_]: Concurrent: ContextShift: Log, M <: Mode](
       uri: URI,
-      blocker: Blocker,
       mode: M
   ): Resource[F, RedisClient[F, M]] = {
 

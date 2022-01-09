@@ -18,9 +18,9 @@
 package effredis.cluster
 package util
 
-import cats.effect.concurrent.{ Deferred, Ref }
 import cats.effect._
 import cats.syntax.all._
+import cats.effect.{ Deferred, Ref }
 
 abstract class Cached[F[_], A] {
   def get: F[A]

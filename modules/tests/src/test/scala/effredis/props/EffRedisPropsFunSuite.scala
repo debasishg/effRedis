@@ -28,11 +28,12 @@ import munit.ScalaCheckEffectSuite
 import effredis.RedisClient
 import effredis.Log.NoOp._
 import effredis._
+import cats.effect.Temporal
 
 abstract class EffRedisPropsFunSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-  implicit val tr: Timer[IO]        = IO.timer(ExecutionContext.global)
+  implicit val tr: Temporal[IO]        = IO.timer(ExecutionContext.global)
 
   val flushAllFixture = new Fixture[Unit]("FLUSHALL") {
     def apply(): Unit = ()
