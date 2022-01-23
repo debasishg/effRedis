@@ -19,7 +19,7 @@
 
 package effredis
 
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 
 object log4cats {
 
