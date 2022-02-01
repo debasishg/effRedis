@@ -66,8 +66,8 @@ val commonSettings = Seq(
         t = Seq("-Xmax-classfile-name", "80"),
         f = Seq.empty
       ),
-  sources in (Compile, doc) := (sources in (Compile, doc)).value,
-  scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
+  (Compile / doc / sources) := (Compile / doc / sources).value,
+  (Compile / doc / scalacOptions) ++= Seq("-groups", "-implicits"),
   autoAPIMappings := true,
   scalafmtOnCompile := true
 )
@@ -76,7 +76,7 @@ lazy val noPublish = Seq(
   publish := {},
   publishLocal := {},
   publishArtifact := false,
-  skip in publish := true
+  (publish / skip) := true
 )
 
 lazy val `effredis-root` = project
@@ -93,14 +93,14 @@ lazy val `effredis-core` = project
   .in(file("modules/core"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.keypool)
-  .settings(parallelExecution in Test := false)
+  .settings((Test / parallelExecution) := false)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `effredis-log4cats` = project
   .in(file("modules/log4cats"))
   .settings(commonSettings: _*)
   .settings(libraryDependencies += Libraries.log4CatsCore)
-  .settings(parallelExecution in Test := false)
+  .settings((Test / parallelExecution) := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
 
@@ -110,7 +110,7 @@ lazy val `effredis-examples` = project
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
   .settings(libraryDependencies += Libraries.keypool)
   .settings(libraryDependencies += Libraries.logback % "runtime")
-  .settings(parallelExecution in Test := false)
+  .settings((Test / parallelExecution) := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
   .dependsOn(`effredis-log4cats`)
@@ -121,7 +121,7 @@ lazy val `effredis-tests` = project
   .settings(libraryDependencies += Libraries.log4CatsSlf4j)
   .settings(libraryDependencies += Libraries.logback % "runtime")
   .settings(noPublish)
-  .settings(parallelExecution in Test := false)
+  .settings((Test / parallelExecution) := false)
   .enablePlugins(AutomateHeaderPlugin)
   .dependsOn(`effredis-core`)
   .dependsOn(`effredis-log4cats`)
