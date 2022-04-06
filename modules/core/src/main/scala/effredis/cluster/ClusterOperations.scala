@@ -16,7 +16,7 @@
 
 package effredis.cluster
 
-import cats.effect.{ Concurrent, ContextShift }
+import cats.effect.Concurrent
 import algebra.ClusterApi
 import effredis.{ Log, Redis, Resp }
 
