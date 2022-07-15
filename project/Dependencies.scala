@@ -10,7 +10,7 @@ object Dependencies {
     val catsEffect = "2.5.4"
     val circe      = "0.13.0"
     val fs2        = "2.4.2"
-    val log4cats   = "2.2.0"
+    val log4cats   = "2.4.0"
     val shapeless  = "2.4.0-M1"
 
     val logback = "1.2.10"
