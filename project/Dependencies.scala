@@ -20,7 +20,7 @@ object Dependencies {
     val kindProjector    = "0.13.2"
 
     val munit                 = "0.7.29"
-    val enumeratum            = "1.7.0"
+    val enumeratum            = "1.7.2"
     val cormorant             = "0.3.0"
     val keypool               = "0.2.0"
     val kittens               = "2.3.2"
