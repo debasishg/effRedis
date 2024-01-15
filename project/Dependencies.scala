@@ -23,7 +23,7 @@ object Dependencies {
     val enumeratum            = "1.7.0"
     val cormorant             = "0.3.0"
     val keypool               = "0.2.0"
-    val kittens               = "2.3.2"
+    val kittens               = "3.2.0"
     val munitCatsEffect       = "1.0.7"
     val munitScalacheckEffect = "1.0.3"
   }
